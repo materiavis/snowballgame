@@ -1,0 +1,20 @@
+# Rojo / tooling
+sourcemap.json
+build/*
+!build/.gitkeep
+*.rbxl.lock
+*.rbxlx.lock
+
+# Claude Code: personal settings and temporary agent worktrees
+.claude/settings.local.json
+.claude/worktrees/
+
+# Secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
