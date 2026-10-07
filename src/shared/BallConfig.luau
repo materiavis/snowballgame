@@ -18,7 +18,8 @@ BallConfig.VisualCapDiameter = 50
 -- Distance measurement (server)
 BallConfig.SampleInterval = 0.1 -- seconds between server position samples
 -- Movement faster than this (studs/s) between two samples is ignored for growth (anti-exploit).
-BallConfig.MaxCountedSpeed = 40
+-- Kept just above PushMaxSpeed so legit pushing counts but little else does.
+BallConfig.MaxCountedSpeed = 20
 -- Movement below this many studs per sample is treated as standing still / solver jitter.
 BallConfig.MinDistancePerSample = 0.05
 -- Ground check: ray from the ball center straight down, length = radius + margin.
