@@ -114,3 +114,7 @@ what was built, linked PRs, what was tested, open points, next steps. German is 
 - a change would alter core gameplay, monetisation or the save-data format,
 - something requires publishing, spending Robux or touching live data,
 - an agent is unsure whether something is allowed.
+
+## 14. Releases
+
+- Before any release, a mobile check issue assigned to Jan (label `mobile`) must exist for that release and be **closed**. Without it, the release is blocked.
