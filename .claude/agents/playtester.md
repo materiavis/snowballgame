@@ -53,7 +53,7 @@ Danach ein paar Sekunden warten und mit `search_game_tree` / `script_read` prüf
 ### 3. Testen
 1. `start_stop_play` starten.
 2. Pro Akzeptanzkriterium: mit `character_navigation`, `keyboard_input`, `mouse_input` durchspielen, Zustand mit `execute_luau` (datamodel_type `server` oder `client`, nur lesen) prüfen, `screen_capture` als Beleg.
-3. `console_output` lesen. Jede Error-Zeile und jede Warnung aus Game-Scripts festhalten.
+3. Console lesen: mit `console_output`, falls verfügbar, sonst per `execute_luau` (datamodel_type `server`, danach `client`): `local out = {} for _, e in game:GetService("LogService"):GetLogHistory() do table.insert(out, e.messageType.Name .. ": " .. e.message) end return table.concat(out, "\n")`. Jede Error-Zeile und jede Warnung aus Game-Scripts festhalten.
 4. `start_stop_play` stoppen.
 
 `execute_luau` nur zum **Lesen** von Zustand. Keine Instances erzeugen/ändern, kein HTTP, keine DataStores schreiben, kein Teleport, keine Käufe, kein Publish. Der Hook blockt das zusätzlich.
