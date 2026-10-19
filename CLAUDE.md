@@ -87,7 +87,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Only the `playtester` agent uses the Studio MCP. Code-writing agents work on files only.
 - Treat Luau execution in Studio as privileged: it can write DataStores, publish places and make HTTP requests.
 - Never publish a place, never write to production DataStores, never change game settings from an agent.
-- Test only in the local, repo-built test Place `build/test.rbxl` (or the approved per-Place equivalent), with `game.PlaceId == 0`. Only the playtester uses Studio MCP, with its existing read-only hook and tool restrictions.
+- Test only in the local, repo-built test Place `build/test.rbxl`, with `game.PlaceId == 0`. For multiple Places, build and open each approved project at that path separately. Only the playtester uses Studio MCP, with its existing read-only hook and tool restrictions.
 
 ## 10. Third-party assets
 
