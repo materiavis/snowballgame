@@ -28,8 +28,9 @@ format are in [GitHub handoff and recovery](references/github.md).
   changed requirements go back to intake review. Repository tooling issues need
   no invented game-concept approval.
 - Resolve dependencies before implementing dependent work. Do not reopen closed
-  issues or replace already merged work. If already merged, return its PR and
-  pending reporting work. If closed without a merge, ask for the intended action.
+  issues or replace already merged work. If already merged, verify its merge and
+  hand off that PR to `/report <PR-number-or-URL>` if reporting is pending. If
+  closed without a merge, ask for the intended action.
 - Find existing PRs (including closed/merged), issue progress comments and local
   worktrees before creating anything. Reuse the same issue branch and PR on
   resume. Ambiguous competing implementations require resolution first.
@@ -162,9 +163,10 @@ relevant rechecks. Respect repository protection and existing tool prompts.
   merge. Do not bypass protections with admin/force options. Verify the actual
   merged state and merge commit before claiming success.
 
-Only after a verified merge, hand off PR, issue, merge commit, changes, test
-evidence and open points to `/report` if installed. Otherwise state the report
-is pending; do not create that separate skill or mark a report as written.
+Only after a verified merge, use [the report skill](../report/SKILL.md) through
+`/report <PR-number-or-URL>`, supplying issue, merge commit, changes, test evidence
+and open points. If the skill/Notion destination is unavailable, state reporting
+is pending; a copy-ready report is not proof it was saved in Notion.
 Return issue, branch/worktree, PR/base/head, correction count, check and AC
 results, current workflow state and the next required action. Preserve worktrees
 and branches while work or a human merge remains pending.

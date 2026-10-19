@@ -111,6 +111,10 @@ For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio
 After a feature is merged, the Development Manager writes a short report to Notion:
 what was built, linked PRs, what was tested, open points, next steps. German is fine.
 
+Use `/report <PR-number-or-URL>` via [.claude/skills/report/SKILL.md](.claude/skills/report/SKILL.md), after verifying the actual merge. Repeated runs update the same report by repository/PR identity. Report missing or stale test evidence honestly; an integration-branch merge is not a release.
+
+Reports belong under Wissen & Dokumente → Development Reports. The destination URL is pending the [Reports Space setup task](https://app.notion.com/p/3f9c1165e2b9819fb152da3f97b0e376); discover and verify the actual container before writing. If missing or inaccessible, return a copy-ready report and the blocker instead of saving to a fallback destination.
+
 ## 13. Escalate to the humans when
 
 - a spec in Notion contradicts itself or the code,
