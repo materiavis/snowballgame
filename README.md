@@ -38,6 +38,32 @@ stylua src
 selene src
 ```
 
+## Issue build-loop
+
+In the Claude Code Development Manager session, run `/build <issue-number-or-URL>`.
+The [build skill](.claude/skills/build/SKILL.md) takes one prepared GitHub issue
+from intake, delegates implementation in an isolated worktree, checks formatting,
+Selene and Rojo, reviews acceptance criteria and coordinates a Studio playtest.
+Repository tooling issues can also use the loop without a game concept.
+
+FAIL findings return to the same implementation agent. The initial attempt is
+followed by at most three correction rounds, tracked on the issue even across
+restarts; unresolved failures then need owner intervention. Repeat the same
+`/build <issue>` to resume existing work rather than create another branch/PR.
+
+Playtests run one at a time on the local Studio host. Start the configured
+playtester in a separate terminal with `claude --agent playtester`, using the
+DM's PR/branch/SHA and acceptance-criteria handoff. The designated main checkout
+must be clean, with the repo-built test Place open and Rojo connected. A missing
+Studio connection leaves testing pending. See the
+[playtester handoff](.claude/skills/build/references/playtest.md).
+
+The DM may merge a passing PR into an approved branch other than `main`.
+**Merges into `main` remain human-only.** Existing tool permission prompts still
+apply. After an actual merge, the evidence is handed off for a Development Report;
+the separate `/report` skill is not included here. This command does not release
+the game or replace Jan's mobile release check.
+
 ## Agents
 
 Defined in `.claude/agents/`:

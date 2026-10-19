@@ -72,7 +72,8 @@ Never write scripts only inside Studio: anything not in Git does not exist.
   Example: `feat/12-ball-growth`.
 - Commits: short imperative subject, reference the issue: `Add ball growth on snow contact (#12)`.
 - PR description uses the template and links the issue with `Closes #<n>`.
-- Merging is done by the Development Manager after review, or by a human. Subagents never merge.
+- The Development Manager may merge PRs into branches other than `main` only after technical checks, acceptance review and applicable playtests pass for the current PR head. Recheck the live base and head before merging; bind the merge to the verified head SHA.
+- **Only humans merge PRs into `main`.** The Development Manager must hand off a ready PR and never merge it, enable auto-merge into `main`, or retarget it to bypass this rule. Subagents never merge any PR.
 - No force pushes, no history rewrites on shared branches.
 
 ## 8. Worktrees and parallel work
@@ -86,7 +87,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Only the `playtester` agent uses the Studio MCP. Code-writing agents work on files only.
 - Treat Luau execution in Studio as privileged: it can write DataStores, publish places and make HTTP requests.
 - Never publish a place, never write to production DataStores, never change game settings from an agent.
-- Test in a local place file / private test place only.
+- Test only in the local, repo-built test Place `build/test.rbxl` (or the approved per-Place equivalent), with `game.PlaceId == 0`. Only the playtester uses Studio MCP, with its existing read-only hook and tool restrictions.
 
 ## 10. Third-party assets
 
@@ -99,9 +100,11 @@ A task is done when:
 1. The code does what the issue asks, nothing more.
 2. `stylua --check src` and `selene src` pass.
 3. `rojo build -o build/test.rbxl` succeeds.
-4. Relevant behaviour was playtested in Studio (or the PR states why not).
+4. Every acceptance criterion has review/check evidence; relevant runtime behaviour has a Playtester PASS for the current PR head, with per-criterion evidence and no errors from game scripts. A tooling/docs-only change may explain why Studio is inapplicable. Unavailable Studio access leaves a feature pending, not passed.
 5. The PR is open, uses the template, links the issue and lists open questions.
 6. Technical docs in `docs/technical/` are updated if architecture changed.
+
+For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio check may be recorded as not applicable with a concrete reason. Feature work requires every applicable check; unavailable tooling is blocked, never a pass or an applicability exception.
 
 ## 12. Reports
 
@@ -114,6 +117,7 @@ what was built, linked PRs, what was tested, open points, next steps. German is 
 - a change would alter core gameplay, monetisation or the save-data format,
 - something requires publishing, spending Robux or touching live data,
 - an agent is unsure whether something is allowed.
+- the `/build` loop still fails after **three correction rounds** following the initial implementation. Technical, review and playtest failures share this budget. Preserve the count on the issue across restarts; stop further fixes and merging until an owner resolves the blocker or explicitly authorizes a new budget.
 
 ## 14. Releases
 
