@@ -37,6 +37,22 @@ Lint and format:
 stylua src
 selene src
 ```
+## Concept intake
+
+In Claude Code, run `/intake <Notion concept URL>`. The
+[intake skill](.claude/skills/intake/SKILL.md) checks that the concept is
+**Freigegeben für Development** and its release checklist is complete, then
+drafts a technical ADR in `docs/technical/`.
+
+The command stops for **Miguel and Yowaldy** to review the plan. Resume with
+`/intake <Notion concept URL> <ADR path>` after both approvals are recorded for
+that revision. Only then does it create/reuse GitHub milestones and one issue
+per feature. Concept or substantive plan changes require renewed review.
+
+The session needs a Notion connection and GitHub access (connected tools or an
+authenticated `gh` CLI with milestone and issue permissions). Existing tool
+permission prompts still apply. This is a Claude Code skill; it is not a shell
+command. It prepares work for the separate build-loop.
 
 ## Issue build-loop
 
