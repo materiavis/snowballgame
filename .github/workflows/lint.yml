@@ -1,0 +1,39 @@
+name: "Lint"
+
+# Runs the automatable checks from the PR template on every pull request
+# and on pushes to main. Tool versions come from rokit.toml (single source of truth).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: "StyLua - Selene - Rojo build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Install toolchain (rokit.toml)"
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          cache: true
+
+      - name: "StyLua (format check)"
+        run: stylua --check src
+
+      - name: "Selene (lint)"
+        run: selene src
+
+      - name: "Rojo build"
+        run: rojo build default.project.json -o build/test.rbxl
