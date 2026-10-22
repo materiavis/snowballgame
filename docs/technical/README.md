@@ -14,3 +14,4 @@ Name files `NNNN-short-title.md`, e.g. `0001-server-authoritative-ball-size.md`:
 | # | Decision | Status |
 |---|---|---|
 | 0001 | [Rojo and Git as source of truth for code](0001-rojo-git-source-of-truth.md) | Accepted |
+| 0003 | [Snow Rush technical intake](0003-snow-rush-intake.md) | Accepted |
