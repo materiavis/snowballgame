@@ -446,6 +446,70 @@ Both reviewers must approve the same plan revision before GitHub creation. Only 
 
 Updated after GitHub operations. This log does not alter the reviewed plan.
 
+Run of 2026-10-22 against materiavis/snowballgame, concept v5 unchanged (last edited 2026-10-22T17:08:01Z), ADR revision 2 Accepted.
+
 | Feature/milestone key | Created/reused/remaining | GitHub URL | Verification or failure |
 |---|---|---|---|
-| — | No GitHub objects created (plan revision 1 awaiting review) | — | — |
+| Milestone "Konzept freigegeben" | Created (#1, no due date) | https://github.com/materiavis/snowballgame/milestone/1 | Read back: title matches, `due_on` unset |
+| Milestone "Prototyp" | Created (#2, no due date) | https://github.com/materiavis/snowballgame/milestone/2 | Read back: title matches, `due_on` unset |
+| Milestone "Vertical Slice" | Created (#3, no due date) | https://github.com/materiavis/snowballgame/milestone/3 | Read back: title matches, `due_on` unset |
+| Milestone "Interner Test" | Created (#4, no due date) | https://github.com/materiavis/snowballgame/milestone/4 | Read back: title matches, `due_on` unset |
+| Milestone "Testversion ab 16" | Created (#5, no due date) | https://github.com/materiavis/snowballgame/milestone/5 | Read back: title matches, `due_on` unset |
+| Milestone "Freigabe für alle Altersstufen" | Created (#6, no due date) | https://github.com/materiavis/snowballgame/milestone/6 | Read back: title matches, `due_on` unset |
+| Milestone "Launch" | Created (#7, no due date) | https://github.com/materiavis/snowballgame/milestone/7 | Read back: title matches, `due_on` unset |
+| `x-multi-place-rojo` | Created #23 (Prototyp) | https://github.com/materiavis/snowballgame/issues/23 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-net-remotes` | Created #24 (Prototyp) | https://github.com/materiavis/snowballgame/issues/24 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-test-harness` | Created #25 (Prototyp) | https://github.com/materiavis/snowballgame/issues/25 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `12.1-player-data` | Created #26 (Prototyp) | https://github.com/materiavis/snowballgame/issues/26 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `8.3-economy-config` | Created #27 (Prototyp) | https://github.com/materiavis/snowballgame/issues/27 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-travel-teleports` | Created #28 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/28 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `6.2-world1-zones` | Created #29 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/29 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-release-mobile-check-interner-test` | Created #30 (Interner Test) | https://github.com/materiavis/snowballgame/issues/30 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-release-mobile-check-testversion` | Created #31 (Testversion ab 16) | https://github.com/materiavis/snowballgame/issues/31 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `x-release-mobile-check-launch` | Created #32 (Launch) | https://github.com/materiavis/snowballgame/issues/32 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.3-ball-push` | Created #33 (Prototyp) | https://github.com/materiavis/snowballgame/issues/33 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.4-ball-growth` | Created #34 (Prototyp) | https://github.com/materiavis/snowballgame/issues/34 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.8-upgrades` | Created #36 (Prototyp) | https://github.com/materiavis/snowballgame/issues/36 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `10.2-hud-menus` | Created #35 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/35 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.1-lobby-portals` | Created #37 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/37 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.5-selling` | Created #38 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/38 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.6-zones-barriers` | Created #39 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/39 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.7-finds` | Created #40 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/40 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.9-pets-eggs` | Created #41 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/41 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `10.1-onboarding` | Created #42 (Vertical Slice) | https://github.com/materiavis/snowballgame/issues/42 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `12.2-analytics` | Created #43 (Testversion ab 16) | https://github.com/materiavis/snowballgame/issues/43 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.2-leaderboards` | Created #44 (Launch) | https://github.com/materiavis/snowballgame/issues/44 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.10-rebirth` | Created #45 (Launch) | https://github.com/materiavis/snowballgame/issues/45 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.11-events` | Created #46 (Launch) | https://github.com/materiavis/snowballgame/issues/46 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.12-daily-rewards` | Created #48 (Launch) | https://github.com/materiavis/snowballgame/issues/48 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.23-pet-trading` | Created #49 (Launch) | https://github.com/materiavis/snowballgame/issues/49 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.24-chat-visible-progress` | Created #50 (Launch) | https://github.com/materiavis/snowballgame/issues/50 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.14-matchmaking` | Created #51 (Launch) | https://github.com/materiavis/snowballgame/issues/51 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.15-match-flow` | Created #52 (Launch) | https://github.com/materiavis/snowballgame/issues/52 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.16-throwing` | Created #53 (Launch) | https://github.com/materiavis/snowballgame/issues/53 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.17-quick-signals` | Created #54 (Launch) | https://github.com/materiavis/snowballgame/issues/54 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.18-powerups` | Created #55 (Launch) | https://github.com/materiavis/snowballgame/issues/55 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.19-arenas` | Created #56 (Launch) | https://github.com/materiavis/snowballgame/issues/56 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.20-fight-progression` | Created #57 (Launch) | https://github.com/materiavis/snowballgame/issues/57 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.21-results-screen` | Created #58 (Launch) | https://github.com/materiavis/snowballgame/issues/58 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.22-bots` | Created #59 (Launch) | https://github.com/materiavis/snowballgame/issues/59 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.2-gamepasses` | Created #60 (Launch) | https://github.com/materiavis/snowballgame/issues/60 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.3-developer-products` | Created #47 (Launch) | https://github.com/materiavis/snowballgame/issues/47 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.4-premium-private-servers` | Created #61 (Launch) | https://github.com/materiavis/snowballgame/issues/61 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.6-shop` | Created #62 (Launch) | https://github.com/materiavis/snowballgame/issues/62 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.1b-seasonal-decor` | Created #63 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/63 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.2b-season-leaderboards` | Created #64 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/64 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.6b-world-2-arctic` | Created #65 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/65 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.6c-world-3-himalaya` | Created #66 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/66 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.6d-worlds-4-5` | Created #67 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/67 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.9b-rainbow-secret-pet` | Created #68 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/68 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.12b-daily-quests` | Created #69 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/69 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.13-collection-book` | Created #70 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/70 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.18b-more-powerups` | Created #71 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/71 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.19b-glacier-fortress` | Created #72 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/72 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `7.20b-more-cosmetics` | Created #73 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/73 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.2b-double-xp` | Created #74 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/74 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| `9.4b-season-pass` | Created #75 (no milestone, later) | https://github.com/materiavis/snowballgame/issues/75 | Read back: marker, milestone, labels, dependency links; concept criteria copied and unchecked |
+| #4 Mobile check: ball prototype | Reused, milestone set to Prototyp (D7) | https://github.com/materiavis/snowballgame/issues/4 | Read back: milestone Prototyp |
+| #3 / PR #7, #8 | Reused as existing work (D7), linking comments added | https://github.com/materiavis/snowballgame/issues/3, https://github.com/materiavis/snowballgame/issues/8 | Referenced from #33 and #34 |
+| Remaining | No feature missing. Mobile-check issues #30–#32 have no assignee (Jan's GitHub account unconfirmed). Label `system` used; the agent definition says `systems` | — | Open points for the owners |
