@@ -1,6 +1,6 @@
 # 0003 — Snow Rush technical intake
 
-**Status:** Proposed
+**Status:** Accepted (plan revision 2, approved by Miguel and Yowaldy on 2026-10-22)
 **Plan revision:** 2 (revision 1 was never reviewed. Revision 2 adds the review notes of 2026-10-22: collision groups, trade locks and abort path, session-lock renewal and stolen locks.)
 **Concept:** [❄️ 02 - Snow Rush](https://app.notion.com/p/3f9c1165e2b98133a597c16e25cbffbc) (page ID `3f9c1165-e2b9-8133-a597-c16e25cbffbc`) · v5 (Stand 2026-10-15, v5 Freigabe 2026-10-22) · last edited 2026-10-22T17:08:01Z
 **Concept approval:** Section 0 records status **Freigegeben für Development** on 2026-10-22, approved by all four owners: Marco Lecluse, Miguel Covas, Jan Reimer and Yowaldy Keller (Notion user IDs resolved via workspace user list). Claude entered the approval on Miguel's instruction (change log "v5 Freigabe"). Repository field: `materiavis/snowballgame`, which matches `origin` (`https://github.com/materiavis/snowballgame.git`).
@@ -439,8 +439,8 @@ Both reviewers must approve the same plan revision before GitHub creation. Only 
 
 | Reviewer | Approved revision | Review date | Evidence |
 |---|---|---|---|
-| Miguel | Pending | — | — |
-| Yowaldy | Pending | — | — |
+| Miguel | 2 | 2026-10-22 | PR #22 comment by `mcmateriavis` "Approve plan revision 2", 17:57:24Z, after head `830aebf`: https://github.com/materiavis/snowballgame/pull/22#issuecomment-6347583463 |
+| Yowaldy | 2 | 2026-10-22 | PR #22 comment by `YKITler` "Approved plan revision 2", 17:58:02Z (https://github.com/materiavis/snowballgame/pull/22#issuecomment-6347595863), plus a PR review on `830aebf` at 17:59:17Z |
 
 ## Intake result log
 
