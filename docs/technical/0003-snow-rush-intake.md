@@ -1,7 +1,7 @@
 # 0003 — Snow Rush technical intake
 
 **Status:** Proposed
-**Plan revision:** 1
+**Plan revision:** 2 (revision 1 was never reviewed. Revision 2 adds the review notes of 2026-10-22: collision groups, trade locks and abort path, session-lock renewal and stolen locks.)
 **Concept:** [❄️ 02 - Snow Rush](https://app.notion.com/p/3f9c1165e2b98133a597c16e25cbffbc) (page ID `3f9c1165-e2b9-8133-a597-c16e25cbffbc`) · v5 (Stand 2026-10-15, v5 Freigabe 2026-10-22) · last edited 2026-10-22T17:08:01Z
 **Concept approval:** Section 0 records status **Freigegeben für Development** on 2026-10-22, approved by all four owners: Marco Lecluse, Miguel Covas, Jan Reimer and Yowaldy Keller (Notion user IDs resolved via workspace user list). Claude entered the approval on Miguel's instruction (change log "v5 Freigabe"). Repository field: `materiavis/snowballgame`, which matches `origin` (`https://github.com/materiavis/snowballgame.git`).
 **Repository:** materiavis/snowballgame · analysis commit `d00991d4f9497c9a36f21898179d3b08f4f65879` (`origin/main`)
@@ -93,7 +93,22 @@ The 15 October workflow decisions apply here:
 
 **Alternatives considered**
 - **Persistence library.** A vendored, pinned ProfileStore (MIT) gives proven session locking and teleport handoff. An in-house `UpdateAsync` lock gives full control and no third-party code. **Decided (D1):** in-house, built on `UpdateAsync` with a lock token, lock timeout and forced steal after the timeout. It stays small and auditable, and the trade ledger needs custom hooks anyway.
-- **Ball collisions with foreign characters.** 7.3 and 6.1 require that characters walk through foreign balls. Per-player collision groups would need two groups per player, with a limit of 32 groups. **Proposal:** each client sets `CanCollide = false` on foreign balls locally. Characters are client-simulated, so this is enough, and the server keeps the shared `SnowBalls` group (PR #7) for ball-vs-ball.
+- **Ball collisions with foreign characters.** 7.3 and 6.1 require that characters walk through foreign balls. Per-player collision groups would need two groups per player, with a limit of 32 groups. Setting `CanCollide = false` locally on foreign balls was rejected in review because it changes the part itself instead of only the pairs that should not collide. **Proposal (revision 2):** a few global collision groups, registered once on the server. Each client assigns them locally from its own point of view:
+  - `OwnCharacter`: the local player's character parts,
+  - `OwnBall`: the local player's ball,
+  - `Balls`: every other ball.
+
+  The collision rules are:
+
+  | Pair | Collides? | Reason |
+  |---|---|---|
+  | `OwnCharacter` ↔ `OwnBall` | yes | Pushing |
+  | `OwnCharacter` ↔ `Balls` | no | Walking through foreign balls (7.3, 6.1) |
+  | `OwnBall` ↔ `Balls` | **no** | Concept 7.3 ✅ Fix (decision 2026-10-07): balls of different players do not collide |
+  | `Balls` ↔ `Balls` | no | The same Fix; these parts are simulated by their owners anyway |
+  | Any group ↔ `Default` (world) | yes | Ground, obstacles |
+
+  Each client simulates only its own character and its own ball (network owner), so its local assignment decides exactly the pairs that matter for it. The server keeps its own view, with all balls in `Balls` and characters in `Default`, so that server-side raycasts and checks stay consistent. The server's ground raycast keeps excluding balls and characters, as in PR #7.
 - **Arena match configuration.** Teleport data passes through the client and is not trusted. The Arena server looks up its match record (mode, teams, parties, arena, private flag) in MemoryStore, keyed by `game.PrivateServerId` of the reserved server.
 
 ### Places, Rojo and world assets
@@ -182,14 +197,20 @@ This is a **new** save format (schema version 1). It does not change a live form
 | `sim.records`, `sim.titles`, `sim.stats` | biggest ball, most coins in one ball, titles, counters | various | Profile | 12.1 |
 | `sim.daily` | {streakDay, lastClaimDay (UTC day index)} | DailyRewardService | Profile | 7.12 |
 | `sim.ballSkins`, `starterPackBought` | set/bool | PurchaseService | Profile | 9.3 |
-| `sim.tradeHistory` | ring buffer of 50 {tradeId, partner, gave, got, time}; `pendingTradeId` | TradeService | Profile | 7.23 |
+| `sim.tradeHistory` | ring buffer of 50 {tradeId, partner, gave, got, time}; `pendingTradeId` (pets in the offer stay locked while it is set) | TradeService | Profile | 7.23 |
 | `fight.snowCoins`, `fight.xp`, `fight.level`, `fight.wins`, `fight.losses`, `fight.freezes` | numbers | ArenaRewardService | Profile + ordered stores | 7.20, 7.2 |
 | `fight.cosmetics` | {owned set, equipped per slot} | CosmeticService | Profile | 7.20 |
 | `purchases.receipts` | bounded map of processed `PurchaseId`s | PurchaseService | Profile, saved before granting | 9.6, 6.5 |
 | Ball size and finds currently in the ball | — | BallService | **Not saved**: lost on leave (6.5) | 6.5 |
 
 **Rules**
-- **Session locking.** Each profile key holds `{lockServer, lockTime}` written through `UpdateAsync`. Another server waits and retries up to a timeout, then steals a stale lock. Before a teleport, the server saves, releases the lock and only then teleports (6.5: stay in place with a message if the save fails). The destination waits for the release.
+- **Session locking.**
+  - Each profile key holds `{lockServer (JobId), lockTime}`, written through `UpdateAsync`.
+  - **Renewal:** every autosave (2 min) and every immediate save renews `lockTime` in the same `UpdateAsync` call.
+  - **Timeout:** a lock counts as stale only after `Config.Data.LockTimeout`, which is set well above the autosave interval (start value 10 min, at least 3 missed autosaves). A live server therefore never loses its lock just because one save was slow.
+  - **Waiting and stealing:** another server waits and retries while the lock is fresh. It steals the lock only after the timeout.
+  - **Stolen lock:** every write checks inside `UpdateAsync` that `lockServer` is still its own JobId. If not, the write is cancelled without changing the stored value. The server marks the session lost, never saves that profile again, and kicks the player with a short message. Only the new lock holder writes from then on.
+  - **Teleport:** before a teleport, the server saves, releases the lock and only then teleports (6.5: stay in place with a message if the save fails). The destination waits for the release.
 - **Load failure.** The player is never given a blank profile that would overwrite saved data. In the Lobby they see a notice and the portals stay locked (6.5). In other Places the server retries, then returns them to the Lobby.
 - **Saving.** Autosave every 2 min, on leave and on `BindToClose`. Immediate save for Robux purchases, paid barriers, rebirths and completed trades. A write never overwrites a newer state: each save carries a monotonically increasing `saveSeq`, checked inside `UpdateAsync`.
 - **Purchases (exactly once).** `ProcessReceipt` checks `purchases.receipts[PurchaseId]`, applies the grant, records the id, saves, and returns `PurchaseGranted` only after the save succeeds. Otherwise it returns `NotProcessedYet`. Game passes are cached per session, refreshed on `PromptGamePassPurchaseFinished`, and take effect immediately in any Place.
@@ -198,7 +219,16 @@ This is a **new** save format (schema version 1). It does not change a live form
   2. Write the ledger entry `committed` with both item lists.
   3. Apply the swap in memory, append to history, clear `pendingTradeId`, and save both.
 
-  On every profile load, a non-empty `pendingTradeId` is reconciled against the ledger: committed and not applied → apply; absent → clear. Ownership and inventory space are re-checked at step 1 (6.5, 7.23). This satisfies "gilt erst, wenn für beide gespeichert" without assuming cross-key atomicity.
+  Ownership and inventory space are re-checked at step 1 (6.5, 7.23).
+  - **Locked pets.** From step 1 until step 3 is saved, every pet in the offer is locked while its profile has `pendingTradeId` set. A locked pet cannot be deleted, merged (Gold/Rainbow), equipped, or offered in a second trade. PetService rejects these actions on the server, whatever the client shows.
+  - **Idempotent apply.** Applying a trade is expressed with pet uids: "the given uids are absent and the received uids are present, with the same data as in the ledger entry". Replaying the apply after a crash or on a later load is therefore a no-op once it has happened, so a pet can neither be duplicated nor lost.
+  - **Reconcile on load.** If a profile loads with a non-empty `pendingTradeId`, DataService reads the ledger entry:
+    - `committed` → apply idempotently, append to history, clear `pendingTradeId`, save;
+    - `aborted` → clear `pendingTradeId` and unlock, save;
+    - no entry yet → take the abort path below.
+  - **Abort path** (timeout, disconnect, or failed check between steps 1 and 2). Before clearing `pendingTradeId`, the server checks the ledger with `UpdateAsync`. If no entry exists, it writes `aborted`, so a commit that arrives later is refused. If the entry is already `committed`, it applies the trade instead of aborting. Only then does it clear `pendingTradeId` and save.
+
+  This satisfies "gilt erst, wenn für beide gespeichert" without assuming that two DataStore keys can be written atomically.
 - **Global leaderboards.** OrderedDataStores accept only integers below 2^63, but coins reach Sx (1e21). Large values are stored as `floor(log10(v) × 1e6)` and decoded for display. Integers are stored raw for zones, rebirths, wins, freezes and level. Writes happen at most on autosave. Bots and private servers never write (7.2).
 - **Deletion requests (12.1).** `DataService.EraseUser(userId)` removes the profile and ordered-store entries. Owners run it after a Roblox right-to-erasure request. It is exposed only as an owner-run admin script, never as a remote.
 - **Cross-server ephemeral state (MemoryStore).** This covers queues, parties, match records (TTL), portal presence counts (TTL 60 s, refresh ≤30 s) and the mapping from private server to reserved Simulator server. Losing it never loses progress.
@@ -321,6 +351,7 @@ Acceptance criteria for **prereq rows** are derived and need review approval:
   - Every 6.5 row on loading/saving/teleport/server crash passes with the fake store.
   - A forced load failure never writes an empty profile.
   - Session lock contention between two simulated servers resolves without loss.
+  - The lock is renewed on every autosave. A lock older than `LockTimeout` can be stolen. The server that lost its lock never writes again and kicks the player (fake-store test).
   - PlaceId 0 never touches real DataStores.
   - Erase works.
 - `8.3-economy-config`
@@ -344,7 +375,7 @@ Acceptance criteria for **prereq rows** are derived and need review approval:
   - formulas: barrier, egg, upgrade, sell with bonuses (×1.4 + ×2.0 + ×3.0 → ×4.4), income/min,
   - RNG distribution (10,000 rolls per egg and find table, ±1 pp),
   - number formatting,
-  - the trade state machine (1,000 randomised trades with injected failures: no duplicate or lost uid),
+  - the trade state machine: 1,000 randomised trades with failures injected between every two steps, crash and reload, and abort racing commit. No uid may be duplicated or lost, locked pets cannot be deleted, merged or re-offered, and replaying an apply changes nothing,
   - DataService locking and `saveSeq` against the fake store.
 
 **Studio playtests (playtester only, `build/test.rbxl`, PlaceId 0, one Place at a time)**
@@ -398,6 +429,7 @@ Decided by Miguel Covas on 2026-10-22, in an explicit message in the Claude Code
 | Question | Source | Owner | Blocking? | Default/proposal |
 |---|---|---|---|---|
 | Q-U More cosmetics: Update 1 (7.20) or Update 2 (15.2)? | 7.20 vs 15.2 | Marco (concept) | No | Later, no milestone, until clarified |
+| Q-C The review note of 2026-10-22 asked that "balls keep colliding with each other". Concept 7.3 ✅ Fix and decision 2026-10-07 say that balls of different players do **not** collide. Revision 2 follows the concept. | 7.3, 16; review note | Reviewers; owners if the Fix should change (CLAUDE.md §13) | Must be confirmed in the review of revision 2 | Keep the concept Fix: no ball-vs-ball collisions |
 | Q-L follow-up: `systems` and `ui` labels exist before issue creation | `.claude/agents` | Yowaldy | No (issues fall back to `task` if missing) | Yowaldy creates them |
 | Q2, Q6, Q7, Q9, Q14, Q15, Q16, R1, R3–R6 | 17 | As in concept | No (Blockiert Development nicht) | Concept defaults apply. Q15 default: Instant Fresh Snow is server-wide. Q16 default: only pets tradeable. R6 trade-rule check before the test version |
 | Owner for Roblox release and policies (Q6) | 14, 15.1 | All four owners | No for development; yes for the "Testversion ab 16" milestone | Unassigned |
