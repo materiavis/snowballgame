@@ -14,3 +14,4 @@ Name files `NNNN-short-title.md`, e.g. `0001-server-authoritative-ball-size.md`:
 | # | Decision | Status |
 |---|---|---|
 | 0001 | [Rojo and Git as source of truth for code](0001-rojo-git-source-of-truth.md) | Accepted |
+| 0002 | [Snowball push model, network ownership, collision groups and visual size cap](0002-snowball-push-ownership-size-cap.md) | Proposed |
