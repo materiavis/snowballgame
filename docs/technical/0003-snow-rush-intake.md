@@ -408,7 +408,7 @@ Acceptance criteria for **prereq rows** are derived and need review approval:
 
 ## Recorded decisions
 
-Decided by Miguel Covas on 2026-10-22, in an explicit message in the Claude Code intake session, before the first commit of this ADR. These are plan decisions, **not** plan approval. Approval still needs reviews from both Miguel and Yowaldy (below).
+Decided by Miguel Covas on 2026-10-22, in explicit messages in the Claude Code intake session: Q-C after revision 2, all others before the first commit of this ADR. These are plan decisions, **not** plan approval. Approval still needs reviews from both Miguel and Yowaldy (below).
 
 | Key | Decision |
 |---|---|
@@ -423,14 +423,13 @@ Decided by Miguel Covas on 2026-10-22, in an explicit message in the Claude Code
 | Q11 | Inventory expansion: +10 slots for the value of 10 full balls of the highest unlocked zone, up to 150 slots |
 | R2 | Client-side pet/find rendering, simplified foreign pets, lower Visual Cap if PR #7/#4 show instability, "Weniger Effekte" option |
 | Q-L | Yowaldy creates the `systems` and `ui` labels |
+| Q-C | Closed (Miguel, 2026-10-22, explicit message in the intake session): concept 7.3 applies, so balls of different players do not collide. This confirms the collision table of revision 2 as written. The plan content is unchanged |
 
 ## Open questions
 
 | Question | Source | Owner | Blocking? | Default/proposal |
 |---|---|---|---|---|
-| Q-U More cosmetics: Update 1 (7.20) or Update 2 (15.2)? | 7.20 vs 15.2 | Marco (concept) | No | Later, no milestone, until clarified |
-| Q-C The review note of 2026-10-22 asked that "balls keep colliding with each other". Concept 7.3 ✅ Fix and decision 2026-10-07 say that balls of different players do **not** collide. Revision 2 follows the concept. | 7.3, 16; review note | Reviewers; owners if the Fix should change (CLAUDE.md §13) | Must be confirmed in the review of revision 2 | Keep the concept Fix: no ball-vs-ball collisions |
-| Q-L follow-up: `systems` and `ui` labels exist before issue creation | `.claude/agents` | Yowaldy | No (issues fall back to `task` if missing) | Yowaldy creates them |
+| Q-U More cosmetics: Update 1 (7.20) or Update 2 (15.2)? | 7.20 vs 15.2 | Marco (concept) | No | Later, no milestone, until clarified || Q-L follow-up: `systems` and `ui` labels exist before issue creation | `.claude/agents` | Yowaldy | No (issues fall back to `task` if missing) | Yowaldy creates them |
 | Q2, Q6, Q7, Q9, Q14, Q15, Q16, R1, R3–R6 | 17 | As in concept | No (Blockiert Development nicht) | Concept defaults apply. Q15 default: Instant Fresh Snow is server-wide. Q16 default: only pets tradeable. R6 trade-rule check before the test version |
 | Owner for Roblox release and policies (Q6) | 14, 15.1 | All four owners | No for development; yes for the "Testversion ab 16" milestone | Unassigned |
 
