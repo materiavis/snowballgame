@@ -23,14 +23,17 @@ Roblox game by Materiavis. Roll a snowball, make it huge, sell it, upgrade, repe
 ## Daily workflow
 
 ```sh
-rojo serve              # then click "Connect" in the Rojo plugin in Studio
-claude                  # start the Development Manager session in this folder
+rojo serve places/world1.project.json   # then click "Connect" in the Rojo plugin in Studio
+claude                                  # start the Development Manager session in this folder
 ```
 
+Each Place (`lobby`, `world1`, `arena`) has its own project, and one Place is open at a time.
 Build a place file without Studio:
 ```sh
-rojo build -o build/test.rbxl
+rojo build places/world1.project.json -o build/test.rbxl
 ```
+
+Without a project argument, `rojo serve` and `rojo build` use `default.project.json`, an alias of World 1.
 
 Lint and format:
 ```sh

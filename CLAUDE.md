@@ -39,8 +39,11 @@ src/
   client/          -> StarterPlayerScripts.Client  (init.client.luau starts Controllers/*)
     Controllers/   -> one ModuleScript per client system, exposes Start()
   shared/          -> ReplicatedStorage.Shared     (config, types, pure helpers)
+  places/          -> social, lobby, simulator, arena; each with server/ and client/, mounted per Place
+places/            -> one Rojo project per Place (<place>.project.json). Change when adding a Place or top-level location.
+world/             -> map areas as .rbxmx, mapped per Place
 docs/technical/    -> architecture notes and decisions (ADRs)
-default.project.json -> Rojo mapping. Change only when adding a new top-level location.
+default.project.json -> alias of places/world1.project.json. Holds no mapping of its own.
 ```
 
 Code lives as files in Git and is synced into Studio with Rojo.
@@ -53,7 +56,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Naming: `PascalCase` for modules, services, controllers, types and Instances; `camelCase` for locals and functions; `UPPER_SNAKE_CASE` for true constants.
 - Services end in `Service` (`BallService`), controllers end in `Controller` (`BallController`).
 - One module = one responsibility. No file over ~400 lines without a reason in the PR.
-- Gameplay numbers (growth rate, prices, limits) go in `src/shared/Config.luau` or a dedicated config module, never hard-coded in logic.
+- Gameplay numbers (growth rate, prices, limits) go in `src/shared/Config/` or a dedicated config module, never hard-coded in logic.
 - Comments explain *why*, not *what*.
 
 ## 6. Roblox architecture rules
@@ -99,7 +102,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 A task is done when:
 1. The code does what the issue asks, nothing more.
 2. `stylua --check src` and `selene src` pass.
-3. `rojo build -o build/test.rbxl` succeeds.
+3. `rojo build places/<place>.project.json -o build/test.rbxl` succeeds for every affected Place (`lobby`, `world1`, `arena`).
 4. Every acceptance criterion has review/check evidence; relevant runtime behaviour has a Playtester PASS for the current PR head, with per-criterion evidence and no errors from game scripts. A tooling/docs-only change may explain why Studio is inapplicable. Unavailable Studio access leaves a feature pending, not passed.
 5. The PR is open, uses the template, links the issue and lists open questions.
 6. Technical docs in `docs/technical/` are updated if architecture changed.
