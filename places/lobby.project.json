@@ -1,0 +1,46 @@
+{
+  "name": "snowballgame-lobby",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "../src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "../src/server",
+        "SocialServices": {
+          "$path": "../src/places/social/server"
+        },
+        "PlaceServices": {
+          "$path": "../src/places/lobby/server"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "../src/client",
+          "SocialControllers": {
+            "$path": "../src/places/social/client"
+          },
+          "PlaceControllers": {
+            "$path": "../src/places/lobby/client"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true
+      },
+      "$attributes": {
+        "PlaceRole": "Lobby"
+      },
+      "Map": {
+        "$path": "../world/lobby"
+      }
+    }
+  }
+}

@@ -35,5 +35,21 @@ jobs:
       - name: "Selene (lint)"
         run: selene src
 
-      - name: "Rojo build"
-        run: rojo build default.project.json -o build/test.rbxl
+      - name: "Rojo build (every Place)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          projects=(places/*.project.json)
+          if [ "${#projects[@]}" -eq 0 ]; then
+            echo "::error::No Place projects found in places/"
+            exit 1
+          fi
+          mkdir -p build
+          for project in "${projects[@]}"; do
+            place="$(basename "$project" .project.json)"
+            rojo build "$project" -o "build/ci-$place.rbxl"
+          done
+
+      - name: "Rojo build (default alias)"
+        run: rojo build default.project.json -o build/ci-default.rbxl

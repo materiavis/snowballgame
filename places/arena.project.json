@@ -1,0 +1,42 @@
+{
+  "name": "snowballgame-arena",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "../src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "../src/server",
+        "PlaceServices": {
+          "$path": "../src/places/arena/server"
+        }
+      }
+    },
+    "ServerStorage": {
+      "Arenas": {
+        "$path": "../world/arena"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "../src/client",
+          "PlaceControllers": {
+            "$path": "../src/places/arena/client"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true
+      },
+      "$attributes": {
+        "PlaceRole": "Arena"
+      }
+    }
+  }
+}

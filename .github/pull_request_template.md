@@ -9,7 +9,7 @@ Closes #
 ## Checks
 - [ ] `stylua --check src` passes
 - [ ] `selene src` passes
-- [ ] `rojo build -o build/test.rbxl` succeeds
+- [ ] `rojo build places/<place>.project.json -o build/test.rbxl` succeeds for every affected Place
 - [ ] Playtested in Studio (or explain why not)
 - [ ] `docs/technical/` updated if architecture changed
 - [ ] No change to save-data format (or marked **BREAKING** below)

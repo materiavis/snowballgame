@@ -1,0 +1,47 @@
+{
+  "name": "snowballgame-world1",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "../src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "../src/server",
+        "SocialServices": {
+          "$path": "../src/places/social/server"
+        },
+        "PlaceServices": {
+          "$path": "../src/places/simulator/server"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "../src/client",
+          "SocialControllers": {
+            "$path": "../src/places/social/client"
+          },
+          "PlaceControllers": {
+            "$path": "../src/places/simulator/client"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true
+      },
+      "$attributes": {
+        "PlaceRole": "Simulator",
+        "WorldIndex": 1
+      },
+      "Map": {
+        "$path": "../world/world1"
+      }
+    }
+  }
+}
