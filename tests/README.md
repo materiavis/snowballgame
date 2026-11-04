@@ -20,6 +20,7 @@ The runner exits non-zero if any test fails, a spec cannot load, or no test runs
 | `tests/TestKit.luau` | `suite`, `equal`, `near`, `isTrue`, `throws`. |
 | `tests/helpers/SeededRandom.luau` | Deterministic generator (Roblox `Random` does not exist under Lune). |
 | `tests/helpers/Distribution.luau` | Chance-table check in percentage points (concept 4.4). |
+| `tests/helpers/FakeClock.luau` | Hand-driven clock for code that takes a `() -> number` clock (e.g. `Net.RateLimiter`). |
 | `tests/examples/` | **Examples only.** Fixtures and specs that show the formula, RNG and trade-state-machine patterns. They are not game code and their numbers are not design values. |
 | `tests/shared/` | Specs for real modules in `src/shared/`. |
 
