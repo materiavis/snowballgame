@@ -39,7 +39,7 @@ Images and icons:
 Workflow:
 - Create a branch `feat/<issue>-<slug>` (or `fix/…`) in your worktree.
 - Keep changes inside the issue's scope. If you need something outside it, stop and report back.
-- Run `stylua src`, `selene src` and `rojo build -o build/test.rbxl` before committing.
+- Run `stylua src`, `selene src` and `rojo build places/<place>.project.json -o build/test.rbxl` for each affected Place (`lobby`, `world1`, `arena`) before committing.
 - Commit, push your branch and open a PR with `gh pr create`, using the template and `Closes #<n>`.
 - Give the playtester concrete checks for visual layout, clipping, touch targets, mobile window size, controller navigation, input-device switching and the issue's acceptance criteria. Request screenshots at representative phone, tablet and desktop sizes and a console-error check.
 - Correct UI defects returned by the playtester within the issue's scope. Report remaining failures; a successful build alone does not establish visual or functional correctness.

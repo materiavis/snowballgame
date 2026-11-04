@@ -19,7 +19,7 @@ Responsibilities:
 
 Workflow:
 - Branch `feat/<issue>-<slug>` (or `fix/…`), keep to the issue's scope.
-- Run `stylua src`, `selene src`, `rojo build -o build/test.rbxl` before committing.
+- Run `stylua src`, `selene src`, `rojo build places/<place>.project.json -o build/test.rbxl` for each affected Place (`lobby`, `world1`, `arena`) before committing.
 - Push and open a PR with `gh pr create`, template filled in, `Closes #<n>`.
 
 Never:

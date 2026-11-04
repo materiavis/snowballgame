@@ -16,7 +16,7 @@ How you work:
 - Server is authoritative. Gameplay state (size, coins, unlocks) is decided in `src/server/Services`. Client code in `src/client/Controllers` only sends requests and shows results.
 - Put tuning numbers in `src/shared/Config.luau` or a dedicated config module.
 - Keep changes inside the issue's scope. If you need something outside it, stop and report back.
-- Run `stylua src`, `selene src` and `rojo build -o build/test.rbxl` before committing.
+- Run `stylua src`, `selene src` and `rojo build places/<place>.project.json -o build/test.rbxl` for each affected Place (`lobby`, `world1`, `arena`) before committing.
 - Commit, push your branch, open a PR with `gh pr create` using the template and `Closes #<n>`.
 
 You do not:

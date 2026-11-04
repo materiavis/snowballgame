@@ -31,11 +31,16 @@ Before testing:
    SHA. The playtester uses `git checkout --detach origin/<branch>` in this
    checkout because that branch is already checked out in the agent's worktree.
    Confirm `git rev-parse HEAD` after the switch; a branch name alone is not proof.
-3. Build `build/test.rbxl` from that revision and the applicable Rojo project
-   (pass its project file explicitly when it is not the default).
-   Open this local test Place, with `rojo serve` for that same project running
-   in the designated checkout and Studio's Rojo plugin connected. If setup is
-   unavailable, request the local preparation and leave the test pending.
+3. For each affected Place, in this order, in the designated checkout:
+   1. Close Studio **completely**, before every run including the first.
+      Reloading the file or reconnecting Rojo is not enough.
+   2. `rojo build places/<place>.project.json -o build/test.rbxl`
+   3. Confirm `build/test.rbxl.lock` is gone, then open `build/test.rbxl`.
+   4. `rojo serve places/<place>.project.json`
+   5. Connect Studio's Rojo plugin.
+
+   If setup is unavailable, request the local preparation and leave the test
+   pending.
 4. The playtester verifies `game.PlaceId == 0` and the expected scripts have
    synced before Play. No test in a published Place. Map/project changes that
    require rebuilding/reopening the Place must be included, not assumed synced.
@@ -43,10 +48,11 @@ Before testing:
 The existing agent also fetches and checks out the branch. It must verify that
 this still resolves to the supplied SHA and abort on a mismatch; the DM checks
 the SHA again when accepting the report. The current playtester accepts only
-`build/test.rbxl`. For multiple affected Places, test serially: build each
-approved project into that fixed path, reopen it and reconnect the matching Rojo
-project before its test. Retain project-specific evidence for each; the distinct
-technical build outputs alone do not prove that Place was played.
+`build/test.rbxl`. For multiple affected Places, test serially: repeat
+the full step 3 sequence for each Place, starting with closing Studio
+completely, so no run happens in a previous Place's still-open build. Retain
+project-specific evidence for each; CI's separate build outputs alone do not
+prove that Place was played.
 
 ## Evidence and cleanup
 
