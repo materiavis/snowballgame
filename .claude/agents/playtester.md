@@ -32,7 +32,7 @@ Fehlt eins davon: abbrechen und nachfragen, nicht raten.
 ## Ablauf
 
 ### 1. Vorbedingungen prüfen
-Getestet wird nur im Test-Place `build/test.rbxl`. Er wird aus dem Repo gebaut (`rojo build -o build/test.rbxl`) und enthält deshalb nur Code und `.rbxmx`-Map-Teile aus dem Repo. Was nur in Studio existiert, gilt als nicht vorhanden. Den veröffentlichten Place öffnest du nie.
+Getestet wird nur im Test-Place `build/test.rbxl`. Er wird pro Place aus dessen Rojo-Projekt im Repo gebaut (`rojo build places/<place>.project.json -o build/test.rbxl`, `<place>` = `lobby`, `world1` oder `arena`) und enthält deshalb nur Code und `.rbxmx`-Map-Teile aus dem Repo. Was nur in Studio existiert, gilt als nicht vorhanden. Den veröffentlichten Place öffnest du nie.
 
 1. `git status --porcelain` im Haupt-Checkout. Ist er nicht sauber → abbrechen, melden.
 2. `list_roblox_studios`: genau ein Studio aktiv? Sonst mit `set_active_studio` den Test-Place wählen oder abbrechen.
@@ -40,7 +40,7 @@ Getestet wird nur im Test-Place `build/test.rbxl`. Er wird aus dem Repo gebaut (
    **Nur weitermachen, wenn PlaceId = 0.** Sonst ist der veröffentlichte Place offen → sofort abbrechen und melden, dass `build/test.rbxl` geöffnet werden muss.
 
 ### 2. Branch in Studio laden
-Studio folgt dem Haupt-Checkout über `rojo serve` (läuft bereits, startest du nicht selbst).
+Studio folgt dem Haupt-Checkout über `rojo serve places/<place>.project.json` für denselben Place (läuft bereits, startest du nicht selbst).
 
 ```bash
 git fetch origin

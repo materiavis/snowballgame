@@ -74,11 +74,13 @@ On the actual implementation revision, require all applicable checks:
 stylua --check src
 selene src
 mkdir -p build
-rojo build -o build/test.rbxl
+rojo build places/<place>.project.json -o build/test.rbxl
 ```
 
-Use the approved ADR's explicit project file and distinct output for each
-affected Place in a multi-Place project; do not assume the default covers them.
+Run the build once for each affected Place (`lobby`, `world1`, `arena`), one
+after another into `build/test.rbxl`, with that Place's explicit project file;
+do not assume `default.project.json` covers them. CI's separate per-Place
+outputs do not replace this local check.
 The agent may format scoped files with StyLua, then rerun the check. Include
 relevant existing tests where appropriate. Record commands, exit results and
 full commit SHA. Missing tools are BLOCKED, never PASS. A tooling/docs-only
