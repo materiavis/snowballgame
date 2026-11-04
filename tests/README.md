@@ -23,6 +23,7 @@ The runner exits non-zero if any test fails, a spec cannot load, or no test runs
 | `tests/helpers/FakeClock.luau` | Hand-driven clock for code that takes a `() -> number` clock (e.g. `Net.RateLimiter`). |
 | `tests/examples/` | **Examples only.** Fixtures and specs that show the formula, RNG and trade-state-machine patterns. They are not game code and their numbers are not design values. |
 | `tests/shared/` | Specs for real modules in `src/shared/`. |
+| `tests/server/DataService/` | DataService specs (ADR 0006): save rules, session lock between simulated servers, erase, store selection. `Harness.luau` builds servers that share one `FakeStore`, with a `FakeClock` and injected JobIds. |
 
 Put a spec for `src/<area>/Foo.luau` in `tests/<area>/Foo.spec.luau`.
 
