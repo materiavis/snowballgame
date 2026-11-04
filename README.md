@@ -12,7 +12,8 @@ Roblox game by Materiavis. Roll a snowball, make it huge, sell it, upgrade, repe
    ```sh
    rokit install
    ```
-   This installs the pinned versions of Rojo, Selene and StyLua from `rokit.toml`.
+   This installs the pinned versions of Rojo, Selene, StyLua and Lune from `rokit.toml`.
+   When Rokit reports a tool as not trusted, run `rokit trust <owner/tool>` for it once, then `rokit install` again.
 2. Install the Rojo plugin in Roblox Studio:
    ```sh
    rojo plugin install
@@ -39,6 +40,11 @@ Lint and format:
 ```sh
 stylua src
 selene src
+```
+
+Unit tests (headless, also run in CI). See [`tests/README.md`](tests/README.md):
+```sh
+lune run tests
 ```
 ## Concept intake
 

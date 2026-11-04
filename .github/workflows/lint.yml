@@ -1,7 +1,8 @@
 name: "Lint"
 
 # Runs the automatable checks from the PR template on every pull request
-# and on pushes to main. Tool versions come from rokit.toml (single source of truth).
+# and on pushes to main, plus the headless unit tests. Tool versions come from rokit.toml
+# (single source of truth).
 
 on:
   pull_request:
@@ -30,10 +31,19 @@ jobs:
           cache: true
 
       - name: "StyLua (format check)"
-        run: stylua --check src
+        run: stylua --check src tests
 
       - name: "Selene (lint)"
         run: selene src
+
+      # Tests run under Lune, so they use their own config with plain Luau globals.
+      - name: "Selene (lint tests)"
+        run: selene --config tests/selene.toml tests
+
+      # Kept in this job on purpose: its name is the required status check in the main
+      # ruleset, so a failing test blocks the merge. A separate job would not.
+      - name: "Unit tests (Lune)"
+        run: lune run tests
 
       - name: "Rojo build (every Place)"
         shell: bash

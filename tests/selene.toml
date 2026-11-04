@@ -1,0 +1,4 @@
+# Tests run under Lune, not Roblox: plain Luau globals, so a stray `game` or `workspace`
+# in a test is reported instead of failing only at runtime.
+# Run from the repository root: selene --config tests/selene.toml tests
+std = "luau"
