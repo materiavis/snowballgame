@@ -17,4 +17,4 @@ Name files `NNNN-short-title.md`, e.g. `0001-server-authoritative-ball-size.md`:
 | 0003 | [Snow Rush technical intake](0003-snow-rush-intake.md) | Accepted |
 | 0004 | [Multi-Place Rojo setup](0004-multi-place-rojo.md) | Proposed |
 | 0005 | [Net layer for remotes](0005-net-remotes.md) | Proposed |
-| 0006 | [DataService, player data and session locking](0006-player-data.md) | Accepted with merge of PR #NN |
+| 0006 | [DataService, player data and session locking](0006-player-data.md) | Accepted with merge of PR #84 |

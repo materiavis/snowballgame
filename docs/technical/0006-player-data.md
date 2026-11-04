@@ -1,6 +1,6 @@
 # 0006: DataService, player data and session locking
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #84.
 
 Implements `12.1-player-data` (#26) from the "Data model and failure behaviour" section of [ADR 0003](0003-snow-rush-intake.md) (plan revision 2, D1: in-house `UpdateAsync` lock) and records what that section left to the implementation.
 
