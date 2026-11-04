@@ -1,36 +1,49 @@
 --!strict
--- Example: exact-formula tests (concept 7.5). The inputs are arbitrary test values chosen to
--- be exactly representable as doubles, so `==` is a fair check; they are not game numbers.
+-- Example: exact-formula tests (concept 7.5), additive bonus stacking per ADR 0003 plan
+-- revision 2 (docs/technical/0003-snow-rush-intake.md, line 375). Bases other than the
+-- plan's own case are arbitrary test values, not game numbers. All checks use `==`.
 
 local T = require("../TestKit")
 local ExampleFormula = require("./fixtures/ExampleFormula")
 
-return T.suite("Example formula (multiplicative bonuses)", function(test)
+return T.suite("Example formula (additive bonus stacking)", function(test)
 	test("no bonus returns the base unchanged", function()
-		T.equal(ExampleFormula.applyMultipliers(250, {}), 250)
+		T.equal(ExampleFormula.stackBonusesBp({}), 10000)
+		T.equal(ExampleFormula.applyBonuses(250, {}), 250)
 	end)
 
-	test("several bonuses multiply exactly", function()
-		T.equal(ExampleFormula.applyMultipliers(100, { 2, 1.5, 4 }), 1200)
-		T.equal(ExampleFormula.applyMultipliers(64, { 0.5, 0.25 }), 8)
+	test("ADR case: ×1.4 + ×2.0 + ×3.0 stacks to exactly ×4.4", function()
+		T.equal(ExampleFormula.stackBonusesBp({ 14000, 20000, 30000 }), 44000)
+		T.equal(ExampleFormula.applyBonuses(100, { 14000, 20000, 30000 }), 440)
+		T.equal(ExampleFormula.applyBonuses(2500, { 14000, 20000, 30000 }), 11000)
+	end)
+
+	test("a single bonus applies as itself", function()
+		T.equal(ExampleFormula.applyBonuses(100, { 14000 }), 140)
+		T.equal(ExampleFormula.applyBonuses(100, { 30000 }), 300)
 	end)
 
 	test("bonus order does not change the result", function()
-		local a = ExampleFormula.applyMultipliers(40, { 1.25, 3, 2 })
-		local b = ExampleFormula.applyMultipliers(40, { 2, 1.25, 3 })
+		local a = ExampleFormula.applyBonuses(100, { 14000, 20000, 30000 })
+		local b = ExampleFormula.applyBonuses(100, { 30000, 14000, 20000 })
 		T.equal(a, b)
-		T.equal(a, 300)
 	end)
 
 	test("invalid input is rejected, not clamped", function()
 		T.throws(function()
-			ExampleFormula.applyMultipliers(-1, {})
+			ExampleFormula.applyBonuses(-1, {})
 		end, "base must be")
 		T.throws(function()
-			ExampleFormula.applyMultipliers(10, { 2, 0 })
-		end, "multiplier 2 must be positive")
-		T.throws(function()
-			ExampleFormula.applyMultipliers(0 / 0, {})
+			ExampleFormula.applyBonuses(0 / 0, {})
 		end, "base must be")
+		T.throws(function()
+			ExampleFormula.applyBonuses(10, { 20000, 0 })
+		end, "bonus 2 must be a positive whole number")
+		T.throws(function()
+			ExampleFormula.applyBonuses(10, { 1.4 })
+		end, "bonus 1 must be a positive whole number")
+		T.throws(function()
+			ExampleFormula.applyBonuses(10, { 2000, 2000 })
+		end, "stacked multiplier must be positive")
 	end)
 end)
