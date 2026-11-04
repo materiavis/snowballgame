@@ -91,7 +91,8 @@ explicit base and linked issue. A draft PR may record failures or a pending
 playtest; it is not merge-ready. Read the diff yourself rather than accepting
 the agent's summary. Review scope, repository rules, applicable ADRs and every
 AC, recording evidence and PASS/FAIL or pending runtime verification per AC.
-Technical or review failures enter section 5. Proceed to playtesting only once
+A new ADR in the PR must read `**Status:** Accepted with merge of PR #NN.` with
+the actual PR number (`docs/technical/README.md`). Technical or review failures enter section 5. Proceed to playtesting only once
 those checks pass. Never weaken criteria to get a green result.
 
 ## 4. Studio playtester handoff
