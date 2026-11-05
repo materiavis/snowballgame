@@ -19,3 +19,4 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0003 | [Snow Rush technical intake](0003-snow-rush-intake.md) | Accepted |
 | 0004 | [Multi-Place Rojo setup](0004-multi-place-rojo.md) | Proposed |
 | 0005 | [Net layer for remotes](0005-net-remotes.md) | Accepted (PR #81) |
+| 0006 | [DataService, player data and session locking](0006-player-data.md) | Accepted with merge of PR #84 |
