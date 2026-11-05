@@ -1,6 +1,6 @@
 # 0004: Multi-Place Rojo setup
 
-**Status:** Proposed in the PR for #23; humans decide by reviewing it, because it changes repository rules.
+**Status:** Accepted with merge of PR #76 on 2026-11-02.
 
 Implements the "Places, Rojo and world assets" section of [ADR 0003](0003-snow-rush-intake.md) and records what that section left open.
 
