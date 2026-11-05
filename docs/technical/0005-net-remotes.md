@@ -1,6 +1,6 @@
 # 0005: Net layer for remotes
 
-**Status:** Proposed in the PR for #24.
+**Status:** Accepted with merge of PR #81 on 2026-11-04.
 
 Implements the "Networking" principle of [ADR 0003](0003-snow-rush-intake.md) (`x-net-remotes`) and records what it left to the implementation (API shape and schema format).
 
@@ -27,5 +27,6 @@ CLAUDE.md §6 requires every remote handler to validate type, range and rate, an
 - Adding a remote means one entry in `Net/Remotes` and one in `Config.Net.RateLimits`, then `NetService.handle(name, fn)` on the server and `Net.waitForRemote(name)` on the client. Nothing else may create a remote or connect `OnServerEvent` / `OnServerInvoke`.
 - `ReplicatedStorage.Remotes` must not be mapped by any Rojo project; `NetService` refuses to start if it already exists.
 - Server start counts grow by two (`NetService`, `NetExampleService`): 4 in Lobby and World 1, 3 in Arena (ADR 0004 recorded 2 and 1 before this change).
+- No `InvokeClient`. The server never calls `RemoteFunction:InvokeClient`: a client can reply late, never, or with an error, and the waiting server thread would hang or break. The server sends with `FireClient` / `FireAllClients`; if it needs an answer, the client sends it back through its own declared remote, which the guard checks like any other call.
 - Server-to-client traffic (`FireClient`) is not validated by `Net`; the server trusts its own values. Whether server-only events also need declared schemas is open.
 - Not save-relevant: `Net` reads and writes no player data.
