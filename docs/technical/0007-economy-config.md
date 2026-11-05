@@ -1,6 +1,6 @@
 # 0007: Economy config, formulas, number format, rarity, RNG and CurrencyService
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #87.
 
 Implements `8.3-economy-config` (#27) from the "Configuration" principle and the `Config/*`, `Formulas/*`, `NumberFormat`, `Rarity`, `Rng` and `CurrencyService` rows of [ADR 0003](0003-snow-rush-intake.md) (plan revision 2). It records what that plan left to the implementation.
 
