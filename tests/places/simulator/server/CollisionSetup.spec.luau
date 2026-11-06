@@ -40,7 +40,8 @@ local function fakePhysics()
 	end
 end
 
--- ADR 0003 rev. 2, "Ball collisions with foreign characters".
+-- ADR 0003 rev. 2, "Ball collisions with foreign characters", then the OtherCharacters
+-- extension of ADR 0002 (concept 7.3 ✅: nobody can block anyone).
 local ADR_TABLE = {
 	{ "OwnCharacter", "OwnBall", true },
 	{ "OwnCharacter", "Balls", false },
@@ -49,17 +50,35 @@ local ADR_TABLE = {
 	{ "OwnCharacter", "Default", true },
 	{ "OwnBall", "Default", true },
 	{ "Balls", "Default", true },
+	{ "OwnBall", "OtherCharacters", false },
+	{ "OwnCharacter", "OtherCharacters", false },
+	{ "Balls", "OtherCharacters", false },
+	{ "OtherCharacters", "OtherCharacters", false },
+	{ "OtherCharacters", "Default", true },
 }
 
-return T.suite("Simulator ball collision groups (ADR 0003 rev. 2)", function(test)
-	test("the config holds exactly the three global groups", function()
+return T.suite("Simulator ball collision groups (ADR 0003 rev. 2 + ADR 0002)", function(test)
+	test("the config holds exactly the four global groups", function()
 		local names = {}
 		for key, name in BallConfig.CollisionGroups do
 			T.equal(key, name, "key and group name match")
 			table.insert(names, name)
 		end
 		table.sort(names)
-		T.equal(table.concat(names, ","), "Balls,OwnBall,OwnCharacter")
+		T.equal(table.concat(names, ","), "Balls,OtherCharacters,OwnBall,OwnCharacter")
+	end)
+
+	test("the own ball collides only with the own character and the world", function()
+		local physics = fakePhysics()
+		CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)
+		local g = BallConfig.CollisionGroups
+		T.equal(physics.areCollidable(g.OwnBall, g.OwnCharacter), true, "own character")
+		T.equal(physics.areCollidable(g.OwnBall, "Default"), true, "world")
+		T.equal(physics.areCollidable(g.OwnBall, g.OtherCharacters), false, "foreign characters cannot block it")
+		T.equal(physics.areCollidable(g.OwnBall, g.Balls), false, "foreign balls")
+		T.equal(physics.areCollidable(g.OwnCharacter, g.OtherCharacters), false, "nobody blocks anyone")
+		T.equal(physics.areCollidable(g.OwnCharacter, g.Balls), false, "walk through foreign balls")
+		T.equal(physics.areCollidable(g.OtherCharacters, "Default"), true, "foreign characters stand on the world")
 	end)
 
 	test("the config rules are the ADR table", function()
@@ -75,7 +94,7 @@ return T.suite("Simulator ball collision groups (ADR 0003 rev. 2)", function(tes
 	test("apply registers the groups and every rule holds afterwards", function()
 		local physics, registrations = fakePhysics()
 		CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)
-		T.equal(registrations(), 3, "three groups registered")
+		T.equal(registrations(), 4, "four groups registered")
 		local ok, text = CollisionSetup.check(physics, BallConfig.CollisionRules)
 		T.isTrue(ok, text)
 		T.isTrue(string.find(text, "OwnCharacter<->Balls=false", 1, true) ~= nil, text)
@@ -87,7 +106,7 @@ return T.suite("Simulator ball collision groups (ADR 0003 rev. 2)", function(tes
 		local physics, registrations = fakePhysics()
 		CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)
 		CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)
-		T.equal(registrations(), 3)
+		T.equal(registrations(), 4)
 		T.isTrue((CollisionSetup.check(physics, BallConfig.CollisionRules)))
 	end)
 
@@ -113,7 +132,10 @@ return T.suite("Simulator ball collision groups (ADR 0003 rev. 2)", function(tes
 		local wrapped = CollisionSetup.fromPhysicsService(service)
 		CollisionSetup.apply(wrapped, BallConfig.CollisionGroups, BallConfig.CollisionRules)
 		T.isTrue((CollisionSetup.check(wrapped, BallConfig.CollisionRules)))
-		T.equal(table.concat(calls, ","), "is:Balls,reg:Balls,is:OwnBall,reg:OwnBall,is:OwnCharacter,reg:OwnCharacter")
+		T.equal(
+			table.concat(calls, ","),
+			"is:Balls,reg:Balls,is:OtherCharacters,reg:OtherCharacters,is:OwnBall,reg:OwnBall,is:OwnCharacter,reg:OwnCharacter"
+		)
 	end)
 
 	test("check reports a rule that does not hold", function()

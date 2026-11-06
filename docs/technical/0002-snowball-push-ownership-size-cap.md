@@ -12,7 +12,7 @@ Pure collision pushing (the character walks into the ball) breaks down once the 
 
 ## Decision
 
-**Layout (Simulator only).** `src/places/simulator/server/` holds `BallService` (spawn, ownership, collision groups, size) and `MovementService` (walk speed, no jump). `src/places/simulator/client/` holds `BallController` (hold and roll), `CameraController` (auto zoom), `CollisionController` (local collision groups) and `MovementController` (jump state off). Each keeps its rules in a pure child module tested with `lune run tests`: `BallService/BallCore`, `BallService/CollisionSetup`, `BallController/HoldMath`, `CameraController/CameraFit`, `CollisionController/CollisionAssign`. The Studio switches are in `BallService/StudioSwitches`. PR #7's `BallConfig` is merged into `Config/Ball`; zone optics stay in `Config/Zones` and `Formulas.Zones.zoneOptics`. The `SimulatorSkeleton*` placeholders are removed. Lobby and Arena are unchanged and keep Roblox default jumping.
+**Layout (Simulator only).** `src/places/simulator/server/` holds `BallService` (spawn, ownership, collision groups, size) and `MovementService` (walk speed, no jump). `src/places/simulator/client/` holds `BallController` (hold and roll), `CameraController` (auto zoom), `CollisionController` (local collision groups) and `MovementController` (jump state off). Each keeps its rules in a pure child module tested with `lune run tests`: `BallService/BallCore`, `BallService/CollisionSetup`, `BallController/HoldMath`, `CameraController/CameraFit`, `CollisionController/CollisionAssign`. The Studio switches are in `BallService/StudioSwitches`, part creation and spawn placement (look, material and spawn ray from `Config.Ball`) in `BallService/BallPart`. PR #7's `BallConfig` is merged into `Config/Ball`; zone optics stay in `Config/Zones` and `Formulas.Zones.zoneOptics`. The `SimulatorSkeleton*` placeholders are removed. Lobby and Arena are unchanged and keep Roblox default jumping.
 
 **Holding the ball in front (client).** `BallController` puts a sideways-only `VectorForce` on its own ball and sets it every `PreSimulation`. Gravity and ground friction make the ball roll. The controller works in polar coordinates around the `HumanoidRootPart`:
 - the hold direction is the last walking direction (`Humanoid.MoveDirection`), so steering is walking;
@@ -36,17 +36,30 @@ Pure collision pushing (the character walks into the ball) breaks down once the 
 
 **Recovery (does not get stuck).** The server puts the ball back in front of the character on spawn, on every respawn, when it falls below `ResetBelowY`, and when it stays more than `LeashDistance` beyond the hold distance for `LeashTime` seconds (stuck behind an obstacle). The ball's `Recoveries` attribute counts it.
 
-**Collision groups (ADR 0003 rev. 2).** `BallService` registers three global groups once and applies the table in `Config.Ball.CollisionRules`:
+**Collision groups (ADR 0003 rev. 2, extended here).** `BallService` registers four global groups once and applies the table in `Config.Ball.CollisionRules`. The first five rows are the ADR 0003 rev. 2 table. The `OtherCharacters` rows extend it; ADR 0003 itself is unchanged.
 
-| Pair | Collides |
-|---|---|
-| `OwnCharacter` ↔ `OwnBall` | yes |
-| `OwnCharacter` ↔ `Balls` | no |
-| `OwnBall` ↔ `Balls` | no |
-| `Balls` ↔ `Balls` | no |
-| any of them ↔ `Default` | yes |
+| Pair | Collides | Source |
+|---|---|---|
+| `OwnCharacter` ↔ `OwnBall` | yes | ADR 0003 rev. 2 (pushing) |
+| `OwnCharacter` ↔ `Balls` | no | ADR 0003 rev. 2 (walk through foreign balls) |
+| `OwnBall` ↔ `Balls` | no | ADR 0003 rev. 2 (concept 7.3 ✅) |
+| `Balls` ↔ `Balls` | no | ADR 0003 rev. 2 |
+| `OwnCharacter`, `OwnBall`, `Balls` ↔ `Default` | yes | ADR 0003 rev. 2 (world) |
+| `OwnBall` ↔ `OtherCharacters` | no | extension: nobody can push or block my ball |
+| `OwnCharacter` ↔ `OtherCharacters` | no | extension: nobody can block anyone in the Simulator |
+| `Balls` ↔ `OtherCharacters` | no | extension |
+| `OtherCharacters` ↔ `OtherCharacters` | no | extension |
+| `OtherCharacters` ↔ `Default` | yes | extension (world) |
 
-Server view: every ball is in `Balls`, characters stay in `Default`. Each client's `CollisionController` assigns locally from its own view: own character parts (including respawns and parts added later) to `OwnCharacter`, own ball to `OwnBall`, every other ball (also when it streams in again) to `Balls`. Local `CollisionGroup` changes do not replicate. No ball gets `CanCollide = false`; a source scan in the tests keeps it that way.
+Why the extension: in the rev. 2 table, foreign characters stay in `Default` on every client. That makes `OwnBall` ↔ `Default` = yes, so another player's character could push or block my ball on my screen. Concept 7.3 ✅ says "Figuren laufen durch fremde Bälle hindurch, niemand kann andere blockieren". The fourth group closes this gap. Development decided this (DM decision in the #33 review, round 1); the concept settles the rule.
+
+Server view (unchanged): every ball is in `Balls`, characters stay in `Default`. Each client's `CollisionController` assigns groups locally from its own view:
+- own character parts (including respawns and parts added later) → `OwnCharacter`;
+- every part of every other character → `OtherCharacters`. This covers join, respawn, parts added later and parts or models streaming back in; connections are cleaned up on respawn, destroy and leave;
+- own ball → `OwnBall`;
+- every other ball (also when it streams in again) → `Balls`.
+
+Local `CollisionGroup` changes do not replicate. No part gets `CanCollide = false`, and a source scan in the tests keeps it that way.
 
 **No jumping.** `MovementService` sets `WalkSpeed = Config.Ball.WalkSpeed` and, while `Config.Ball.JumpEnabled` is false, `JumpPower = 0` and `JumpHeight = 0` on every Simulator character; the default touch controls then hide the jump button. `MovementController` turns off the `Jumping` humanoid state on the client, which simulates its own character.
 
@@ -54,9 +67,13 @@ Server view: every ball is in `Balls`, characters stay in `Default`. Each client
 
 ## Playtest hooks
 
-- Startup lines: `[BallService] started collisions=ok OwnCharacter<->OwnBall=true OwnCharacter<->Balls=false OwnBall<->Balls=false Balls<->Balls=false OwnCharacter<->Default=true OwnBall<->Default=true Balls<->Default=true studioSwitches=true`, `[MovementService] started walkSpeed=16 jumpEnabled=false`, `[BallController] started ownBall=…`, `[CameraController] started minZoom=…`, `[MovementController] started jumpEnabled=false`, `[CollisionController] started rules=ok …` (read back on the client) and `[CollisionController] character parts=N -> OwnCharacter` per spawn.
+- Startup lines:
+  - `[BallService] started collisions=ok OwnCharacter<->OwnBall=true OwnCharacter<->Balls=false OwnBall<->Balls=false Balls<->Balls=false OwnCharacter<->Default=true OwnBall<->Default=true Balls<->Default=true OwnBall<->OtherCharacters=false OwnCharacter<->OtherCharacters=false Balls<->OtherCharacters=false OtherCharacters<->OtherCharacters=false OtherCharacters<->Default=true studioSwitches=true`
+  - `[CollisionController] started rules=ok …`: the same twelve pairs, read back on the client.
+  - `[MovementService] started walkSpeed=16 jumpEnabled=false`, `[BallController] started ownBall=…`, `[CameraController] started minZoom=…`, `[MovementController] started jumpEnabled=false`.
+  - `[CollisionController] character <name> parts=N -> OwnCharacter|OtherCharacters`, once per tracked character model.
 - Ball part `Workspace.SnowBalls.Ball_<UserId>` attributes (server, replicated): `OwnerUserId`, `Zone`, `SizeFraction` (3 decimals), `VisualDiameter` (studs, equals `Size.X`), `Recoveries`.
-- Local player attributes (client view only): `CollisionRulesOk`, `CollisionOwnCharacterParts`, `CollisionOwnBallGroup` (expected `OwnBall`), `CollisionForeignBalls` (balls in `Balls`), `CameraMinZoom`.
+- Local player attributes (client view only): `CollisionRulesOk`, `CollisionOwnCharacterParts`, `CollisionForeignCharacterParts` (parts of other characters in `OtherCharacters`), `CollisionOwnBallGroup` (expected `OwnBall`), `CollisionForeignBalls` (balls in `Balls`), `CameraMinZoom`.
 - Studio switches on `ServerScriptService`, only in Studio at `game.PlaceId == 0`:
   - `BallTargetUserId` (number): player the switches act on; `0` = every player.
   - `BallSetZone` (number, idle `0`): sets the zone 1..50 and resizes at once; invalid values warn.
@@ -71,7 +88,8 @@ Server view: every ball is in `Balls`, characters stay in `Default`. Each client
 - An exploiting owner can move its own ball and its own character freely (it simulates both, including `WalkSpeed`). It still cannot grow faster than `MaxCountedSpeed × PrototypeFractionPerStud` per second, never while airborne, and cannot send a size. "Growth only while the character is near the ball" (#8) belongs to #34.
 - The server writes `Size`/`CFrame` on a client-owned part when it resizes. A short correction may be visible on the owner; check in playtest.
 - The ground check is one ray straight down, correct on flat ground. Slopes and ramps need a different check later (kits, #29).
-- On a client, foreign characters are in `Default`, so per the table they collide with the own ball (`OwnBall` ↔ `Default`). Another player can therefore bump or block my ball on my screen. The ADR table does not name this pair; it is listed as an open question in the PR.
+- Characters in the Simulator do not collide with each other either (`OwnCharacter` ↔ `OtherCharacters` = no). Lobby and Arena do not load these modules and keep Roblox defaults.
+- Four of the 32 collision groups are used.
 - The camera's occlusion handling (Popper) may pull the camera in when the own ball is between camera and character, despite the minimum zoom. Check in playtest.
 
 ## Playtest findings (to fill in)

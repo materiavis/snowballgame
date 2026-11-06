@@ -39,7 +39,7 @@ local function offenders(pattern: string): { string }
 	return found
 end
 
-return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2)", function(test)
+return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", function(test)
 	local groups = BallConfig.CollisionGroups
 
 	test("own ball -> OwnBall, every other ball -> Balls", function()
@@ -50,6 +50,13 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2)", function(test)
 	test("a ball without a valid owner is foreign", function()
 		T.equal(CollisionAssign.groupForBall(nil, 42, groups), "Balls")
 		T.equal(CollisionAssign.groupForBall("42", 42, groups), "Balls")
+	end)
+
+	test("own character -> OwnCharacter, every other character -> OtherCharacters", function()
+		T.equal(CollisionAssign.groupForCharacter(42, 42, groups), "OwnCharacter")
+		T.equal(CollisionAssign.groupForCharacter(7, 42, groups), "OtherCharacters")
+		T.equal(CollisionAssign.groupForCharacter(nil, 42, groups), "OtherCharacters")
+		T.equal(CollisionAssign.groupForCharacter("42", 42, groups), "OtherCharacters")
 	end)
 
 	test("no simulator code sets CanCollide on a part (rejected in review)", function()
