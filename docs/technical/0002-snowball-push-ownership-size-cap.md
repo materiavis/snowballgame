@@ -1,6 +1,6 @@
 # 0002: Snowball push, network ownership, collision groups and zone optics
 
-**Status:** Accepted with merge of PR #PR_NUMBER.
+**Status:** Accepted with merge of PR #89.
 
 First written for the ball prototype (#3, PR #7, never merged on its own). Issue #33 (`7.3-ball-push`) supersedes PR #7: it moves the prototype into the multi-place layout (ADR 0004) and reworks it to concept 7.3 and ADR 0003 rev. 2. This file records the result; the PR #7 version is in that PR's history.
 
