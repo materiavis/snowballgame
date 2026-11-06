@@ -22,7 +22,9 @@ The runner exits non-zero if any test fails, a spec cannot load, or no test runs
 | `tests/helpers/Distribution.luau` | Chance-table check in percentage points (concept 4.4). |
 | `tests/helpers/FakeClock.luau` | Hand-driven clock for code that takes a `() -> number` clock (e.g. `Net.RateLimiter`). |
 | `tests/examples/` | **Examples only.** Fixtures and specs that show the formula, RNG and trade-state-machine patterns. They are not game code and their numbers are not design values. |
-| `tests/shared/` | Specs for real modules in `src/shared/`. |
+| `tests/helpers/Economy.luau` | Binds the pure Formulas, NumberFormat, Rarity and Rng children to the real `Config/*`, like their Roblox `init.luau` files (ADR 0007). |
+| `tests/shared/` | Specs for real modules in `src/shared/`: `Formulas/` (concept 7.6, 7.8, 7.9, 8.3, 8.4 tables), `Rng/` (10,000 seeded rolls per table, ±1 pp), `NumberFormat`, `Rarity`, `ConfigEconomy`. |
+| `tests/server/CurrencyService/` | CurrencyService specs (ADR 0007): balance rules, save edge cases against DataService's `Harness` and fake store, and a source scan that no other module writes a balance. |
 | `tests/server/DataService/` | DataService specs (ADR 0006): save rules, session lock between simulated servers, erase, store selection. `Harness.luau` builds servers that share one `FakeStore`, with a `FakeClock` and injected JobIds. |
 
 Put a spec for `src/<area>/Foo.luau` in `tests/<area>/Foo.spec.luau`.
