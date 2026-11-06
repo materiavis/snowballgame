@@ -36,6 +36,10 @@ local Ball = {
 	-- diameter, so the solver sees a few resizes per second at most instead of one per sample.
 	ResizeStepFraction = 0.02,
 
+	-- Look of the ball. Plain values so this module also loads outside Roblox (Lune tests).
+	ColorRGB = { 245, 248, 255 },
+	MaterialName = "Snow", -- an Enum.Material name
+
 	-- Physical material of the ball
 	Density = 0.7,
 	Friction = 0.6,
@@ -45,6 +49,8 @@ local Ball = {
 
 	-- Spawning and recovery (server)
 	SpawnGroundSearchHeight = 50, -- ray starts this far above the character to find the ground
+	SpawnGroundSearchDepthFactor = 4, -- and reaches SpawnGroundSearchHeight * this downwards
+	SpawnFallbackGroundOffset = 3, -- no ground found: assume it this far below the root part
 	ResetBelowY = -100, -- the ball is put back in front of its owner below this height
 	-- The ball is put back in front of its owner if it stays this far (studs, beyond the hold
 	-- distance) from the character for LeashTime seconds, e.g. stuck behind an obstacle.
@@ -85,12 +91,15 @@ local Ball = {
 	VisualDiameterAttribute = "VisualDiameter",
 	RecoveriesAttribute = "Recoveries",
 
-	-- Collision groups and rules (ADR 0003 rev. 2, "Ball collisions with foreign characters").
-	-- The server registers the groups once; every client assigns them from its own view.
+	-- Collision groups and rules: ADR 0003 rev. 2 ("Ball collisions with foreign characters"),
+	-- extended in ADR 0002 by OtherCharacters (concept 7.3 ✅: characters walk through foreign
+	-- balls, nobody can block anyone). The server registers the groups once; every client
+	-- assigns them from its own view. The server keeps balls in Balls, characters in Default.
 	CollisionGroups = {
 		OwnCharacter = "OwnCharacter",
 		OwnBall = "OwnBall",
 		Balls = "Balls",
+		OtherCharacters = "OtherCharacters",
 	},
 	-- { groupA, groupB, collides }. Default is the world group every unassigned part is in.
 	CollisionRules = {
@@ -101,6 +110,11 @@ local Ball = {
 		{ "OwnCharacter", "Default", true },
 		{ "OwnBall", "Default", true },
 		{ "Balls", "Default", true },
+		{ "OwnBall", "OtherCharacters", false },
+		{ "OwnCharacter", "OtherCharacters", false },
+		{ "Balls", "OtherCharacters", false },
+		{ "OtherCharacters", "OtherCharacters", false },
+		{ "OtherCharacters", "Default", true },
 	},
 }
 
@@ -109,5 +123,6 @@ for _, rule in Ball.CollisionRules do
 end
 table.freeze(Ball.CollisionRules)
 table.freeze(Ball.CollisionGroups)
+table.freeze(Ball.ColorRGB)
 
 return table.freeze(Ball)

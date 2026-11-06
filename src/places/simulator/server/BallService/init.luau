@@ -23,6 +23,7 @@ local ZonesConfig = require(Config:WaitForChild("Zones")) :: any
 local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
 local BallCore = require(script:WaitForChild("BallCore"))
+local BallPart = require(script:WaitForChild("BallPart"))
 local CollisionSetup = require(script:WaitForChild("CollisionSetup"))
 local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
 
@@ -48,6 +49,7 @@ local states: { [Player]: BallState } = {}
 local ballsFolder: Folder
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Exclude
+local ballPart = BallPart.new(BallConfig, core.holdDistance, groundParams)
 
 local studioTools = RunService:IsStudio() and game.PlaceId == 0
 local growthPaused = false
@@ -75,20 +77,8 @@ local function assignOwner(state: BallState)
 	end
 end
 
--- Centre for a ball of the given diameter, on the ground at the hold distance in front of
--- the character, so it starts where the client holds it.
 local function spawnPosition(root: BasePart, diameter: number): Vector3
-	local look = flat(root.CFrame.LookVector)
-	if look.Magnitude < 1e-3 then
-		look = Vector3.new(0, 0, -1)
-	end
-	local radius = diameter / 2
-	local spot = root.Position + look.Unit * core.holdDistance(diameter)
-	local height = BallConfig.SpawnGroundSearchHeight
-	local origin = Vector3.new(spot.X, root.Position.Y + height, spot.Z)
-	local result = workspace:Raycast(origin, Vector3.new(0, -height * 4, 0), groundParams)
-	local groundY = if result then result.Position.Y else root.Position.Y - 3
-	return Vector3.new(spot.X, groundY + radius, spot.Z)
+	return ballPart.spawnPosition(root, diameter)
 end
 
 local function publish(state: BallState)
@@ -100,27 +90,8 @@ local function publish(state: BallState)
 end
 
 local function createPart(state: BallState, diameter: number, position: Vector3): Part
-	local part = Instance.new("Part")
-	part.Name = "Ball_" .. state.player.UserId
-	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.one * diameter
-	part.Material = Enum.Material.Snow
-	part.Color = Color3.fromRGB(245, 248, 255)
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.CustomPhysicalProperties = PhysicalProperties.new(
-		BallConfig.Density,
-		BallConfig.Friction,
-		BallConfig.Elasticity,
-		BallConfig.FrictionWeight,
-		BallConfig.ElasticityWeight
-	)
-	-- Server view: every ball is in Balls. Clients reassign locally (CollisionController).
-	part.CollisionGroup = BallConfig.CollisionGroups.Balls
-	part.CFrame = CFrame.new(position)
-	part:SetAttribute(BallConfig.OwnerAttribute, state.player.UserId)
+	local part = ballPart.create(state.player, diameter, position, ballsFolder)
 	part:SetAttribute(BallConfig.RecoveriesAttribute, state.recoveries)
-	part.Parent = ballsFolder
 	return part
 end
 
