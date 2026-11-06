@@ -91,6 +91,31 @@ return T.suite("Simulator ball collision groups (ADR 0003 rev. 2)", function(tes
 		T.isTrue((CollisionSetup.check(physics, BallConfig.CollisionRules)))
 	end)
 
+	test("fromPhysicsService forwards to the PhysicsService methods", function()
+		local physics = fakePhysics()
+		local calls = {}
+		local service = {
+			IsCollisionGroupRegistered = function(_self, name)
+				table.insert(calls, `is:{name}`)
+				return physics.isRegistered(name)
+			end,
+			RegisterCollisionGroup = function(_self, name)
+				table.insert(calls, `reg:{name}`)
+				physics.register(name)
+			end,
+			CollisionGroupSetCollidable = function(_self, a, b, collides)
+				physics.setCollidable(a, b, collides)
+			end,
+			CollisionGroupsAreCollidable = function(_self, a, b)
+				return physics.areCollidable(a, b)
+			end,
+		}
+		local wrapped = CollisionSetup.fromPhysicsService(service)
+		CollisionSetup.apply(wrapped, BallConfig.CollisionGroups, BallConfig.CollisionRules)
+		T.isTrue((CollisionSetup.check(wrapped, BallConfig.CollisionRules)))
+		T.equal(table.concat(calls, ","), "is:Balls,reg:Balls,is:OwnBall,reg:OwnBall,is:OwnCharacter,reg:OwnCharacter")
+	end)
+
 	test("check reports a rule that does not hold", function()
 		local physics = fakePhysics()
 		CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)

@@ -24,16 +24,9 @@ local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
 local BallCore = require(script:WaitForChild("BallCore"))
 local CollisionSetup = require(script:WaitForChild("CollisionSetup"))
+local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
 
 local MAX_PART_SIZE = 2048 -- Roblox engine limit per axis
-
--- Studio-only switch names (the playtest contract, ADR 0002).
-local TARGET_SWITCH = "BallTargetUserId"
-local ZONE_SWITCH = "BallSetZone"
-local FRACTION_SWITCH = "BallSetSizeFraction"
-local PAUSE_SWITCH = "BallGrowthPaused"
-local RECOVER_SWITCH = "BallRecover"
-local FRACTION_IDLE = -1
 
 type BallState = {
 	player: Player,
@@ -294,20 +287,7 @@ local function onPlayerRemoving(player: Player)
 end
 
 local function setUpCollisions(): (boolean, string)
-	local physics = {
-		isRegistered = function(name: string): boolean
-			return PhysicsService:IsCollisionGroupRegistered(name)
-		end,
-		register = function(name: string)
-			PhysicsService:RegisterCollisionGroup(name)
-		end,
-		setCollidable = function(a: string, b: string, collides: boolean)
-			PhysicsService:CollisionGroupSetCollidable(a, b, collides)
-		end,
-		areCollidable = function(a: string, b: string): boolean
-			return PhysicsService:CollisionGroupsAreCollidable(a, b)
-		end,
-	}
+	local physics = CollisionSetup.fromPhysicsService(PhysicsService)
 	CollisionSetup.apply(physics, BallConfig.CollisionGroups, BallConfig.CollisionRules)
 	return CollisionSetup.check(physics, BallConfig.CollisionRules)
 end
@@ -317,81 +297,39 @@ local function setZone(state: BallState, zone: number)
 	applyOptics(state, true)
 end
 
--- Studio switches. Targets: BallTargetUserId, or every player when it is 0.
-local function studioTargets(): { BallState }
-	local target = ServerScriptService:GetAttribute(TARGET_SWITCH)
-	local result: { BallState } = {}
-	for player, state in states do
-		if type(target) ~= "number" or target == 0 or player.UserId == target then
-			table.insert(result, state)
-		end
-	end
-	return result
-end
-
-local function describe(state: BallState): string
-	return `zone={state.zone} fraction={string.format("%.3f", state.fraction)} diameter={string.format(
-		"%.2f",
-		state.part.Size.X
-	)}`
-end
-
-local function bindSwitch(name: string, idle: any, action: (value: any) -> ())
-	if ServerScriptService:GetAttribute(name) == nil then
-		ServerScriptService:SetAttribute(name, idle)
-	end
-	ServerScriptService:GetAttributeChangedSignal(name):Connect(function()
-		local value = ServerScriptService:GetAttribute(name)
-		if value == idle or value == nil then
-			return
-		end
-		ServerScriptService:SetAttribute(name, idle)
-		action(value)
-	end)
-end
-
 local function setUpStudio()
-	if ServerScriptService:GetAttribute(TARGET_SWITCH) == nil then
-		ServerScriptService:SetAttribute(TARGET_SWITCH, 0)
-	end
-	bindSwitch(ZONE_SWITCH, 0, function(zone)
-		if not Formulas.Zones.isZone(zone) then
-			warn(`[BallService] {ZONE_SWITCH}: zone must be a whole number 1..{ZonesConfig.ZoneCount}, got {zone}`)
-			return
-		end
-		for _, state in studioTargets() do
-			setZone(state, zone)
-			print(`[BallService] {state.player.Name} {ZONE_SWITCH} -> {describe(state)}`)
-		end
-	end)
-	bindSwitch(FRACTION_SWITCH, FRACTION_IDLE, function(fraction)
-		if not core.isFraction(fraction) then
-			warn(`[BallService] {FRACTION_SWITCH}: fraction must be a number 0..1, got {fraction}`)
-			return
-		end
-		for _, state in studioTargets() do
+	StudioSwitches.bind(ServerScriptService, {
+		targets = function(targetUserId: number): { any }
+			local result = {}
+			for player, state in states do
+				if targetUserId == 0 or player.UserId == targetUserId then
+					table.insert(result, state)
+				end
+			end
+			return result
+		end,
+		isZone = Formulas.Zones.isZone,
+		isFraction = core.isFraction,
+		zoneCount = ZonesConfig.ZoneCount,
+		setZone = setZone,
+		setFraction = function(state: BallState, fraction: number)
 			state.fraction = fraction
 			applyOptics(state, true)
-			print(`[BallService] {state.player.Name} {FRACTION_SWITCH} -> {describe(state)}`)
-		end
-	end)
-	bindSwitch(RECOVER_SWITCH, false, function(value)
-		if value ~= true then
-			return
-		end
-		for _, state in studioTargets() do
+		end,
+		recover = function(state: BallState)
 			if state.root and state.root.Parent then
 				recover(state, state.root, "switch")
 			end
-		end
-	end)
-	if ServerScriptService:GetAttribute(PAUSE_SWITCH) == nil then
-		ServerScriptService:SetAttribute(PAUSE_SWITCH, false)
-	end
-	ServerScriptService:GetAttributeChangedSignal(PAUSE_SWITCH):Connect(function()
-		growthPaused = ServerScriptService:GetAttribute(PAUSE_SWITCH) == true
-		print(`[BallService] {PAUSE_SWITCH}={growthPaused}`)
-	end)
+		end,
+		setPaused = function(paused: boolean)
+			growthPaused = paused
+		end,
+		describe = function(state: BallState): string
+			local fraction = string.format("%.3f", state.fraction)
+			local diameter = string.format("%.2f", state.part.Size.X)
+			return `{state.player.Name} zone={state.zone} fraction={fraction} diameter={diameter}`
+		end,
+	})
 end
 
 function BallService.Start()

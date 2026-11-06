@@ -16,6 +16,24 @@ local DEFAULT_GROUP = "Default"
 
 local CollisionSetup = {}
 
+-- Wraps Roblox's PhysicsService (passed in, so this module stays loadable under Lune).
+function CollisionSetup.fromPhysicsService(service: any): Physics
+	return {
+		isRegistered = function(name: string): boolean
+			return service:IsCollisionGroupRegistered(name)
+		end,
+		register = function(name: string)
+			service:RegisterCollisionGroup(name)
+		end,
+		setCollidable = function(a: string, b: string, collides: boolean)
+			service:CollisionGroupSetCollidable(a, b, collides)
+		end,
+		areCollidable = function(a: string, b: string): boolean
+			return service:CollisionGroupsAreCollidable(a, b)
+		end,
+	}
+end
+
 -- Registers every group that is not registered yet, then sets every rule. Running it twice
 -- changes nothing, so a restarted service is harmless.
 function CollisionSetup.apply(physics: Physics, groups: { [string]: string }, rules: { Rule })
