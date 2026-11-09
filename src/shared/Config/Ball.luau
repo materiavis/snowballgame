@@ -79,9 +79,17 @@ local Ball = {
 	MoveDeadzone = 0.1, -- Humanoid.MoveDirection below this counts as standing still
 
 	-- Camera (client): the zoom is kept at least so far that the whole ball fits in the
-	-- narrower field of view, times CameraFitMargin. Only lifted while the ball needs it.
-	CameraFitMargin = 1.25,
+	-- narrower field of view on every bearing around the camera focus, times CameraFitMargin.
+	-- Only lifted while the ball needs it.
+	CameraFitMargin = 1.1,
 	CameraMaxZoomExtra = 20, -- studs of player zoom room above the required distance
+	-- Camera focus above the ground the ball rests on (Roblox aims about 1.5 above the root part).
+	CameraFocusHeightMin = 3,
+	CameraFocusHeightMax = 6,
+	-- The push back after the default occlusion: skipped within this many studs of the required
+	-- distance, and stops this many studs before a real wall.
+	CameraPushTolerance = 0.05,
+	CameraWallClearance = 0.5,
 
 	-- Names shared by server and client
 	FolderName = "SnowBalls",
