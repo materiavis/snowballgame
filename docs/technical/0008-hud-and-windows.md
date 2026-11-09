@@ -1,6 +1,6 @@
 # 0008: HUD, window stack and input device tracking
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #92.
 
 Implements the Prototyp slice of `10.2-hud-menus` (#35, owner decision 2026-11-09, Variante B) from the `InputController`, `HudController` and `MenuController` rows of [ADR 0003](0003-snow-rush-intake.md). The Lobby HUD and last-device prompts are #90; the Arena HUD, settings and the other windows are #91.
 
