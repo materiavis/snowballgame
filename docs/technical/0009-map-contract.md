@@ -60,11 +60,11 @@ Constraints: StreamingEnabled is on in every Place, so a client may not have a p
 
 | What | Closed while | Opens when | Decided by |
 |---|---|---|---|
-| Barrier at the end of zone n | this Place has no valid zone area with `ZoneIndex == n + 1` and exactly one `ZoneStart` | that zone area lands in the map (end of zone 5: Zone06 with #104/#105) | #39 (zones 1–5), #105 (zones 5–10). If the owners want it closed although Zone06 is already in the map, #105 adds a Config cap instead. |
+| Barrier at the end of zone n | always, unless both hold: (a) this Place has a valid zone area with `ZoneIndex == n + 1` and exactly one `ZoneStart`, and (b) `n + 1 ≤ Config.Zones.HighestOpenZone` (number, Vertical Slice 5). The cap does not exist yet. If it is missing or invalid (not a whole number from 1 to `ZoneCount`), every barrier stays closed and only zones the player already unlocked stay reachable | the zone area is in the map **and** a reviewed PR raises the cap to at least n + 1 | #39 adds the cap with value 5 (zones 1–5), #105 raises it (10 at Launch) |
 | World gate at the end of zone 10 | `Config.Places.Worlds[WorldIndex + 1]` is missing or `0` (concept: "solange die nächste Welt noch nicht erschienen ist") | humans fill the World 2 PlaceId at publish (#65) | #105; sign text is #105's (7.6 Spielraum) |
 | Multiplayer portal | no countdown, no teleport in the Vertical Slice | #91 adds the mode window | #37 builds it closed, #91 opens it in code. No map attribute, because opening needs new code anyway. |
 
-A closed station keeps its Model and collision, shows its label and creates no purchase prompt or window.
+A closed station keeps its Model and collision, shows its label and creates no purchase prompt or window. The zone teleport lists only zones the player has unlocked, so the cap matters only for barriers.
 
 ### Lobby (7.1)
 
@@ -98,7 +98,7 @@ The feature issues put the names they use into `src/shared/Config/*`, not this A
 
 - Builders tag stations, anchors and areas without code changes, and code works with streamed parts.
 - Design values exist only in Config and Formulas, so a price or egg change never touches a map file.
-- The end-of-zone-5 barrier and the world gate open through map and Config content (Zone06, a World 2 PlaceId), not through a per-Place code switch. Merging Zone06 before #105 is ready would make that barrier buyable if #105's code is already in; #104 and #105 must land in that order or #105 adds a Config cap.
+- A built zone in `main` stays closed until the cap is raised in a reviewed PR, so #104 can merge before #105 without opening zone 6.
 - `Placeholder` has no `ZoneIndex`. It keeps working for surfaces, obstacles and `ScaleAnchor`; zone-bound features need real zone areas (#29) or a `ZoneIndex` on a test area.
 - The current `ScaleAnchor` lookup (`BallService/BallAttributes`) does not filter to `Workspace.Map`. Kit templates must not carry `ScaleAnchor` until #38 adds that filter.
 - Stations must be Models with `PrimaryPart` and `Atomic` streaming. An exported area that loses `PrimaryPart` shows up as a warning at start, not as a silent dead station.
