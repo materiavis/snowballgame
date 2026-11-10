@@ -1,11 +1,11 @@
 --!strict
--- BallService (Simulator only, concept 7.3, ADR 0002): every player's snowball. Spawns it in
--- front of the character, gives the owning client network ownership (the client holds and
+-- BallService (Simulator only, concept 7.3, 7.4, ADR 0002): every player's snowball. Spawns it
+-- in front of the character, gives the owning client network ownership (the client holds and
 -- rolls it, see BallController), registers the ball collision groups and decides the size.
 --
--- The size is never sent by a client. The server measures the ball's own movement, grows a
--- size fraction 0..1 within the current zone (interim until #34) and turns it into the part's
--- diameter through the zone optics. There is no remote.
+-- The size is never sent by a client. The server measures the ball's own movement and grows a
+-- size fraction 0..1 within the current zone (BallStep, GrowthRules), which the zone optics turn
+-- into the part's diameter and the concept's metres. There is no remote.
 --
 -- In Studio at PlaceId 0, switches on ServerScriptService set zone and size for playtests
 -- (ADR 0002 "Playtest hooks"). Live servers skip all of it.
@@ -22,42 +22,40 @@ local BallConfig = require(Config:WaitForChild("Ball")) :: any
 local ZonesConfig = require(Config:WaitForChild("Zones")) :: any
 local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
+local BallAttributes = require(script:WaitForChild("BallAttributes"))
 local BallCore = require(script:WaitForChild("BallCore"))
 local BallPart = require(script:WaitForChild("BallPart"))
+local BallStep = require(script:WaitForChild("BallStep"))
 local CollisionSetup = require(script:WaitForChild("CollisionSetup"))
+local GrowthModifiers = require(script:WaitForChild("GrowthModifiers"))
+local GrowthRules = require(script:WaitForChild("GrowthRules"))
+local ObstacleRules = require(script:WaitForChild("ObstacleRules"))
+local Obstacles = require(script:WaitForChild("Obstacles"))
 local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
+local SurfaceService = require(script.Parent:WaitForChild("SurfaceService"))
 
 local MAX_PART_SIZE = 2048 -- Roblox engine limit per axis
 
-type BallState = {
-	player: Player,
-	part: Part,
-	root: BasePart?,
-	zone: number,
-	fraction: number,
-	lastPosition: Vector3,
-	lastSampleTime: number,
-	wasGrounded: boolean,
-	outOfReachFor: number,
-	recoveries: number,
-}
+type BallState = BallStep.BallState
 
 local BallService = {}
 
+local studioTools = RunService:IsStudio() and game.PlaceId == 0
+
 local core = BallCore.new(BallConfig, ZonesConfig, Formulas.Zones.zoneOptics)
+local rules = GrowthRules.new(BallConfig, Formulas.Zones.maxSize)
+local modifiers = GrowthModifiers.new(Formulas.Upgrades.effect)
+local obstacleRules = ObstacleRules.new(BallConfig)
+local obstacles = Obstacles.new(BallConfig, obstacleRules, studioTools)
+local attributes = BallAttributes.new(BallConfig, rules, studioTools)
 local states: { [Player]: BallState } = {}
 local ballsFolder: Folder
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Exclude
 local ballPart = BallPart.new(BallConfig, core.holdDistance, groundParams)
 
-local studioTools = RunService:IsStudio() and game.PlaceId == 0
 local growthPaused = false
 local started = false
-
-local function flat(vector: Vector3): Vector3
-	return Vector3.new(vector.X, 0, vector.Z)
-end
 
 -- Server view (ADR 0003): ground rays ignore every ball and every character.
 local function refreshGroundFilter()
@@ -82,16 +80,13 @@ local function spawnPosition(root: BasePart, diameter: number): Vector3
 end
 
 local function publish(state: BallState)
-	local part = state.part
-	part:SetAttribute(BallConfig.ZoneAttribute, state.zone)
-	-- Rounded so the attribute does not replicate float noise; the server keeps the exact value.
-	part:SetAttribute(BallConfig.SizeFractionAttribute, math.round(state.fraction * 1000) / 1000)
-	part:SetAttribute(BallConfig.VisualDiameterAttribute, part.Size.X)
+	attributes.publish(state, os.clock(), true)
 end
 
 local function createPart(state: BallState, diameter: number, position: Vector3): Part
 	local part = ballPart.create(state.player, diameter, position, ballsFolder)
 	part:SetAttribute(BallConfig.RecoveriesAttribute, state.recoveries)
+	state.sentPart = {}
 	return part
 end
 
@@ -114,6 +109,8 @@ local function placeBall(state: BallState, root: BasePart)
 	state.lastSampleTime = os.clock()
 	state.wasGrounded = false
 	state.outOfReachFor = 0
+	-- Whatever the ball was placed on was not rolled into (ObstacleRules.evaluate).
+	state.contacts = nil
 	assignOwner(state)
 end
 
@@ -150,69 +147,29 @@ local function applyOptics(state: BallState, force: boolean)
 	publish(state)
 end
 
-local function isGrounded(part: BasePart): boolean
-	local radius = part.Size.X / 2
-	local length = radius + BallConfig.GroundCheckMargin + radius * BallConfig.GroundCheckMarginPerRadius
-	return workspace:Raycast(part.Position, Vector3.new(0, -length, 0), groundParams) ~= nil
-end
+local ballStep = BallStep.new({
+	config = BallConfig,
+	core = core,
+	rules = rules,
+	obstacleRules = obstacleRules,
+	obstacles = obstacles,
+	modifiers = modifiers,
+	surfaces = SurfaceService,
+	attributes = attributes,
+	groundParams = groundParams,
+	isPaused = function(): boolean
+		return growthPaused
+	end,
+	recover = recover,
+	applyOptics = applyOptics,
+})
 
-local function updateBall(state: BallState, now: number)
-	local part = state.part
-	local root = state.root
-	local rootAlive = root ~= nil and root.Parent ~= nil
-	if not part.Parent or part.Position.Y < BallConfig.ResetBelowY then
-		if root and rootAlive then
-			recover(state, root, if part.Parent then "fell" else "missing")
-		end
-		return
-	end
-
-	local position = part.Position
-	local elapsed = now - state.lastSampleTime
-
-	if root and rootAlive then
-		local horizontal = flat(position - root.Position).Magnitude
-		if core.isOutOfReach(horizontal, part.Size.X) then
-			state.outOfReachFor += elapsed
-			if core.leashExpired(state.outOfReachFor) then
-				recover(state, root, "out of reach")
-				return
-			end
-		else
-			state.outOfReachFor = 0
-		end
-	end
-
-	local grounded = isGrounded(part)
-	if not growthPaused then
-		local distance = (position - state.lastPosition).Magnitude
-		state.fraction = core.grow(state.fraction, distance, elapsed, grounded and state.wasGrounded)
-	end
-	state.lastPosition = position
-	state.lastSampleTime = now
-	state.wasGrounded = grounded
-
-	if grounded then
-		applyOptics(state, false)
-	end
-end
-
-local function spawnBall(player: Player, root: BasePart)
+local function spawnBall(player: Player, root: BasePart, humanoid: Humanoid?)
 	local zone = BallConfig.DefaultZone
 	local diameter = core.visualDiameter(zone, 0)
 	local position = spawnPosition(root, diameter)
-	local state: BallState = {
-		player = player,
-		part = nil :: any,
-		root = root,
-		zone = zone,
-		fraction = 0,
-		lastPosition = position,
-		lastSampleTime = os.clock(),
-		wasGrounded = false,
-		outOfReachFor = 0,
-		recoveries = 0,
-	}
+	local state = BallStep.newState(player, root, humanoid, zone, SurfaceService.newTrack())
+	state.lastPosition = position
 	state.part = createPart(state, diameter, position)
 	states[player] = state
 	publish(state)
@@ -222,16 +179,19 @@ end
 local function onPlayerAdded(player: Player)
 	local function onCharacter(character: Model)
 		local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+		local foundHumanoid = character:WaitForChild("Humanoid", 10)
 		if not root or player.Parent == nil or player.Character ~= character then
 			return
 		end
+		local humanoid = if foundHumanoid and foundHumanoid:IsA("Humanoid") then foundHumanoid else nil
 		refreshGroundFilter()
 		local state = states[player]
 		if state then
 			state.root = root
+			state.humanoid = humanoid
 			placeBall(state, root)
 		else
-			spawnBall(player, root)
+			spawnBall(player, root, humanoid)
 		end
 	end
 
@@ -240,6 +200,7 @@ local function onPlayerAdded(player: Player)
 		local state = states[player]
 		if state then
 			state.root = nil
+			state.humanoid = nil
 		end
 		task.defer(refreshGroundFilter)
 	end)
@@ -268,6 +229,14 @@ local function setZone(state: BallState, zone: number)
 	applyOptics(state, true)
 end
 
+local function setFraction(state: BallState, fraction: number)
+	state.fraction = fraction
+	-- A new measurement of the time to the maximum starts from here.
+	state.growthStartedAt = nil
+	state.measuredTimeToMax = nil
+	applyOptics(state, true)
+end
+
 local function setUpStudio()
 	StudioSwitches.bind(ServerScriptService, {
 		targets = function(targetUserId: number): { any }
@@ -283,10 +252,7 @@ local function setUpStudio()
 		isFraction = core.isFraction,
 		zoneCount = ZonesConfig.ZoneCount,
 		setZone = setZone,
-		setFraction = function(state: BallState, fraction: number)
-			state.fraction = fraction
-			applyOptics(state, true)
-		end,
+		setFraction = setFraction,
 		recover = function(state: BallState)
 			if state.root and state.root.Parent then
 				recover(state, state.root, "switch")
@@ -295,10 +261,30 @@ local function setUpStudio()
 		setPaused = function(paused: boolean)
 			growthPaused = paused
 		end,
+		simulateCollision = function(state: BallState)
+			ballStep.applyCollision(state, os.clock())
+			applyOptics(state, true)
+		end,
+		moveCharacterAway = function(state: BallState, studs: number)
+			local root = state.root
+			if not root or not root.Parent then
+				return
+			end
+			local away = root.Position - state.part.Position
+			local direction = Vector3.new(away.X, 0, away.Z)
+			if direction.Magnitude < 1e-3 then
+				direction = Vector3.new(0, 0, 1)
+			end
+			root.CFrame = root.CFrame + direction.Unit * studs
+		end,
+		clearTrack = function(state: BallState)
+			state.track.clear()
+		end,
 		describe = function(state: BallState): string
 			local fraction = string.format("%.3f", state.fraction)
 			local diameter = string.format("%.2f", state.part.Size.X)
-			return `{state.player.Name} zone={state.zone} fraction={fraction} diameter={diameter}`
+			local metres = string.format("%.2f", rules.sizeMetres(state.zone, state.fraction))
+			return `{state.player.Name} zone={state.zone} fraction={fraction} diameter={diameter} metres={metres}`
 		end,
 	})
 end
@@ -317,6 +303,8 @@ function BallService.Start()
 		"Config.Ball.WalkSpeed must be below MaxCountedSpeed, or base pushing would not grow the ball fully"
 	)
 	assert(BallConfig.HoldGap > 0, "Config.Ball.HoldGap must be positive")
+	-- Growth is checked at the hold distance, so the range has to include it.
+	assert(BallConfig.GrowthRange > BallConfig.HoldGap, "Config.Ball.GrowthRange must be above HoldGap")
 
 	local collisionsOk, collisionText = setUpCollisions()
 	if not collisionsOk then
@@ -328,6 +316,7 @@ function BallService.Start()
 	folder.Parent = workspace
 	ballsFolder = folder
 	refreshGroundFilter()
+	obstacles.start(folder)
 
 	if studioTools then
 		setUpStudio()
@@ -348,7 +337,7 @@ function BallService.Start()
 		accumulator = 0
 		local now = os.clock()
 		for _, state in states do
-			updateBall(state, now)
+			ballStep.update(state, now)
 		end
 	end)
 
@@ -373,10 +362,16 @@ function BallService.GetZone(player: Player): number?
 	return if state then state.zone else nil
 end
 
--- Size fraction 0..1 within the current zone, decided here (interim growth until #34).
+-- Size fraction 0..1 within the current zone, decided here.
 function BallService.GetSizeFraction(player: Player): number?
 	local state = states[player]
 	return if state then state.fraction else nil
+end
+
+-- Real size in metres (concept 7.4), the value selling (7.5) reads.
+function BallService.GetSizeMetres(player: Player): number?
+	local state = states[player]
+	return if state then rules.sizeMetres(state.zone, state.fraction) else nil
 end
 
 return BallService

@@ -1,6 +1,6 @@
 --!strict
--- BallCore (issue #33, ADR 0002): zone optics from the size fraction, growth counted only up
--- to MaxCountedSpeed, stepped resizes and the out-of-reach leash, against the real Config.
+-- BallCore (issue #33, ADR 0002): zone optics from the size fraction, stepped resizes and the
+-- out-of-reach leash, against the real Config. Growth itself is in GrowthRules.spec.
 
 local T = require("../../../TestKit")
 local E = require("../../../helpers/Economy")
@@ -50,31 +50,8 @@ return T.suite("Simulator BallCore (7.3)", function(test)
 		T.equal(core.isFraction(1), true)
 	end)
 
-	test("7.3 growth counts speed only up to MaxCountedSpeed", function()
-		local dt = BallConfig.SampleInterval
-		T.near(core.countedDistance(1, dt), 1, 1e-9, "10 studs/s counts fully")
-		T.near(core.countedDistance(4, dt), BallConfig.MaxCountedSpeed * dt, 1e-9, "40 studs/s capped")
-		T.near(core.countedDistance(1000, dt), BallConfig.MaxCountedSpeed * dt, 1e-9, "teleport capped")
-		T.equal(core.countedDistance(BallConfig.MinDistancePerSample / 2, dt), 0, "jitter")
-		T.equal(core.countedDistance(1, 0), 0, "no time passed")
-		T.equal(core.countedDistance(0 / 0, dt), 0, "NaN")
-		T.equal(core.countedDistance(math.huge, dt), 0, "inf")
-	end)
-
-	test("the ball grows only on the ground and stays within 0..1", function()
-		local dt = BallConfig.SampleInterval
-		T.equal(core.grow(0.2, 1, dt, false), 0.2, "airborne")
-		T.near(core.grow(0.2, 1, dt, true), 0.2 + BallConfig.PrototypeFractionPerStud, 1e-12, "rolled 1 stud")
-		T.equal(core.grow(0.999, 2, dt, true), 1, "clamped at 1")
-	end)
-
-	test("the base walk speed is counted fully; upgraded speed is capped", function()
+	test("the base walk speed is below the counted speed limit", function()
 		T.isTrue(BallConfig.WalkSpeed < BallConfig.MaxCountedSpeed, "WalkSpeed < MaxCountedSpeed")
-		local dt = BallConfig.SampleInterval
-		local base = core.grow(0, BallConfig.WalkSpeed * dt, dt, true)
-		local upgraded = core.grow(0, 40 * dt, dt, true)
-		T.near(base, BallConfig.WalkSpeed * dt * BallConfig.PrototypeFractionPerStud, 1e-12, "base")
-		T.near(upgraded, BallConfig.MaxCountedSpeed * dt * BallConfig.PrototypeFractionPerStud, 1e-12, "capped")
 	end)
 
 	test("resizes come in steps, with the last step at the ends of the range", function()
@@ -90,9 +67,10 @@ return T.suite("Simulator BallCore (7.3)", function(test)
 		local current = core.visualDiameter(1, 0)
 		local fraction = 0
 		local dt = BallConfig.SampleInterval
+		local perStud = 1 / (E.Config.Upgrades.Definitions.growth.Start * BallConfig.WalkSpeed)
 		local samples = 0
 		while fraction < 1 do
-			fraction = core.grow(fraction, BallConfig.WalkSpeed * dt, dt, true)
+			fraction = math.min(fraction + BallConfig.WalkSpeed * dt * perStud, 1)
 			samples += 1
 			local target = core.visualDiameter(1, fraction)
 			if core.shouldResize(current, target, fraction) then
