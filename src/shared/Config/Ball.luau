@@ -9,12 +9,12 @@ local Ball = {
 	WalkSpeed = 16, -- studs/s without upgrades (Walk speed upgrade goes to 32)
 	JumpEnabled = false, -- no jumping in the Simulator (✅)
 
+	-- The seconds to the maximum and the size lost per collision are upgrade effects: level 0
+	-- of Config/Upgrades `growth` (40 s) and `stability` (10 %) is their only source.
 	StartSizeFraction = 0.1, -- start size: 10 % of the current zone's maximum
-	TimeToMax = 40, -- seconds to the maximum on normal snow without upgrades
 	DeepSnowGrowthMultiplier = 2, -- deep snow grows twice as fast
 	TrackRegrowTime = 20, -- the own track regrows after this many seconds
 
-	CollisionSizeLoss = 0.1, -- an obstacle costs 10 % size (Stability upgrade down to 2 %)
 	CollisionProtection = 1, -- seconds without further loss after a collision
 	KnockOverSizeRatio = 3, -- a ball at least 3x a small obstacle knocks it over
 	KnockOverRespawn = 30, -- seconds until a knocked-over obstacle is back
@@ -24,17 +24,80 @@ local Ball = {
 	-- faster movement (upgrades, game pass, exploits) is counted at this speed.
 	SampleInterval = 0.1, -- seconds between server position samples
 	MaxCountedSpeed = 20,
+	-- The speed limit is a credit of counted studs, refilled at MaxCountedSpeed and held for at
+	-- most this many seconds. The position of a client-owned ball reaches the server in uneven
+	-- packets, so a limit per sample throws away real distance (ADR 0002 "Calibration").
+	CountedBurstWindow = 0.5,
 	MinDistancePerSample = 0.05, -- below this a sample is standing still / solver jitter
 	GroundCheckMargin = 0.5, -- ground ray length = radius + margin + radius * per-radius margin
 	GroundCheckMarginPerRadius = 0.02,
 
-	-- Interim growth until #34 (7.4) replaces it: the server grows a size fraction 0..1 within
-	-- the current zone by this much per counted stud. About 42 s at the base walk speed.
-	PrototypeFractionPerStud = 0.0015,
 	DefaultZone = 1, -- until ZoneService exists every ball is in zone 1
 	-- The part is resized only when the visual diameter changed by this share of the current
 	-- diameter, so the solver sees a few resizes per second at most instead of one per sample.
 	ResizeStepFraction = 0.02,
+
+	-- Character at the ball (7.4). The HumanoidRootPart counts as at the ball within GrowthRange
+	-- studs of the ball's edge, measured on the ground plane, so the same number works for every
+	-- ball size. Holding the ball puts the character HoldGap (1.5) from the edge; the rest is
+	-- room for turning and for character and ball arriving in different packets.
+	GrowthRange = 6,
+	-- And at most this far above or below the top or bottom of the ball.
+	GrowthVerticalRange = 8,
+
+	-- Surfaces (ADR 0003 D3): CollectionService tags on the ground parts. A part with several
+	-- of them counts as the first one in SurfacePriority.
+	Surfaces = { Snow = "Snow", DeepSnow = "DeepSnow", Ice = "Ice", Grass = "Grass" },
+	SurfacePriority = { "DeepSnow", "Snow", "Ice", "Grass" },
+
+	-- Track (per player, logical, ADR 0002 "Track"). A cell becomes track when the contact point
+	-- has left it. 4 studs: 2.5 samples at the base walk speed, and about the width of a full
+	-- zone 1 ball.
+	TrackCellSize = 4,
+	-- The contact point must be this far past a cell's edge before it changes cell, so rolling
+	-- straight along a cell border does not flip between two cells and hit its own track.
+	TrackCellHysteresis = 0.5,
+	-- Rolled studs that one cell yields. A straight crossing is at most about 6.7 (diagonal plus
+	-- hysteresis), so only rolling back and forth inside one cell reaches this.
+	TrackMaxRolledPerCell = 8,
+
+	-- Obstacles (7.4). All carry ObstacleTag. A small one also has the number attribute
+	-- KnockOverSizeAttribute: its size in studs, compared with the ball's visual diameter.
+	ObstacleTag = "Obstacle",
+	KnockOverSizeAttribute = "KnockOverSize",
+	CollisionContactMargin = 0.25, -- studs of slack on the server's view of the contact
+	KnockOverRetryInterval = 1, -- seconds between tries while a ball is where it would return
+
+	-- MAX feedback (7.4). The arrow points at the nearest instance with this tag.
+	ScaleAnchorTag = "ScaleAnchor",
+	-- Empty: no sound. Needs a licensed asset (open question on #34).
+	MaxSoundId = "",
+	MaxSoundVolume = 0.5,
+	MaxGlowColorRGB = { 255, 236, 150 },
+	MaxGlowBrightness = 3,
+	MaxGlowRangeMin = 12,
+	MaxGlowRangeMax = 60, -- the Roblox limit for a PointLight
+	MaxGlowRangePerDiameter = 1.5,
+	MaxGlowFillTransparency = 0.6,
+	MaxText = "MAX!",
+	MaxArrowColorRGB = { 255, 210, 60 },
+	MaxArrowAboveBall = 3, -- studs above the top of the ball
+	MaxArrowHeadLength = 2.5,
+	MaxArrowHeadRadius = 1.2,
+	MaxArrowShaftLength = 3,
+	MaxArrowShaftRadius = 0.4,
+
+	-- Minimal size label (top centre, 7.4) until the HUD integrates the published size.
+	SizeLabelWidth = 220,
+	SizeLabelHeight = 36,
+	SizeLabelTopOffset = 8,
+	MaxLabelHeight = 28,
+	SizeLabelTextRGB = { 255, 255, 255 },
+	MaxLabelTextRGB = { 255, 210, 60 },
+	SizeLabelTextStrokeTransparency = 0.5,
+
+	-- The published size and the Studio diagnostics are refreshed at this interval (seconds).
+	PublishInterval = 0.25,
 
 	-- Look of the ball. Plain values so this module also loads outside Roblox (Lune tests).
 	ColorRGB = { 245, 248, 255 },
@@ -98,6 +161,27 @@ local Ball = {
 	SizeFractionAttribute = "SizeFraction",
 	VisualDiameterAttribute = "VisualDiameter",
 	RecoveriesAttribute = "Recoveries",
+	SizeMetresAttribute = "SizeMetres", -- on the ball
+	IsMaxAttribute = "IsMax", -- on the ball
+	-- On the Player, so any HUD can read the size without finding the ball.
+	PlayerSizeMetresAttribute = "BallSizeMetres",
+	PlayerSizeFractionAttribute = "BallSizeFraction",
+	PlayerIsMaxAttribute = "BallIsMax",
+	PlayerScaleAnchorAttribute = "BallScaleAnchor", -- Vector3, set when the ball reaches MAX
+	-- Read-only diagnostics on the ball, written only in Studio at PlaceId 0.
+	DiagnosticAttributes = {
+		Surface = "Surface",
+		GrowthCounts = "GrowthCounts",
+		GrowthBlock = "GrowthBlock",
+		LastCollisionLoss = "LastCollisionLoss",
+		Collisions = "Collisions",
+		KnockOvers = "KnockOvers",
+		TrackCells = "TrackCells",
+		RolledStuds = "RolledStuds",
+		CountedStuds = "CountedStuds",
+		GrowthSeconds = "GrowthSeconds",
+		MeasuredTimeToMax = "MeasuredTimeToMax",
+	},
 
 	-- Collision groups and rules: ADR 0003 rev. 2 ("Ball collisions with foreign characters"),
 	-- extended in ADR 0002 by OtherCharacters (concept 7.3 ✅: characters walk through foreign
@@ -132,5 +216,12 @@ end
 table.freeze(Ball.CollisionRules)
 table.freeze(Ball.CollisionGroups)
 table.freeze(Ball.ColorRGB)
+table.freeze(Ball.Surfaces)
+table.freeze(Ball.SurfacePriority)
+table.freeze(Ball.MaxGlowColorRGB)
+table.freeze(Ball.MaxArrowColorRGB)
+table.freeze(Ball.SizeLabelTextRGB)
+table.freeze(Ball.MaxLabelTextRGB)
+table.freeze(Ball.DiagnosticAttributes)
 
 return table.freeze(Ball)

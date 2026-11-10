@@ -1,15 +1,12 @@
 --!strict
--- Pure ball rules for BallService (concept 7.3, ADR 0002): zone optics, interim growth of the
--- size fraction, when to resize the part and when a ball counts as lost. No Instances, so
--- `lune run tests` loads it; BallService/init.luau binds it to Config.Ball and Formulas.Zones.
+-- Pure ball rules for BallService (concept 7.3, ADR 0002): zone optics, when to resize the part
+-- and when a ball counts as lost. No Instances, so `lune run tests` loads it;
+-- BallService/init.luau binds it to Config.Ball and Formulas.Zones. How the ball grows is in
+-- GrowthRules.
 --
 -- The size fraction (0..1 within the current zone) is the single interface the optics read.
--- #34 (7.4) replaces the interim growth that produces it; the optics stay.
 
 export type BallConfig = {
-	MaxCountedSpeed: number,
-	MinDistancePerSample: number,
-	PrototypeFractionPerStud: number,
 	ResizeStepFraction: number,
 	HoldGap: number,
 	LeashDistance: number,
@@ -23,8 +20,6 @@ export type OpticsConfig = {
 export type BallCore = {
 	isFraction: (value: any) -> boolean,
 	visualDiameter: (zone: number, fraction: number) -> number,
-	countedDistance: (distance: number, elapsed: number) -> number,
-	grow: (fraction: number, distance: number, elapsed: number, grounded: boolean) -> number,
 	shouldResize: (currentDiameter: number, targetDiameter: number, fraction: number) -> boolean,
 	holdDistance: (diameter: number) -> number,
 	isOutOfReach: (horizontalDistance: number, diameter: number) -> boolean,
@@ -57,27 +52,6 @@ function BallCoreModule.new(config: BallConfig, optics: OpticsConfig, zoneOptics
 		return zoneOptics(zone) * (start + (1 - start) * fraction)
 	end
 
-	-- Concept 7.3: growth counts speed only up to MaxCountedSpeed. Faster movement (upgrades,
-	-- teleports, an exploiting owner) is counted at that speed, never more.
-	local function countedDistance(distance: number, elapsed: number): number
-		if not isFinite(distance) or not isFinite(elapsed) or elapsed <= 0 then
-			return 0
-		end
-		if distance < config.MinDistancePerSample then
-			return 0
-		end
-		return math.min(distance, config.MaxCountedSpeed * elapsed)
-	end
-
-	-- `grounded` means both samples of this step were on the ground.
-	local function grow(fraction: number, distance: number, elapsed: number, grounded: boolean): number
-		if not grounded then
-			return fraction
-		end
-		local grown = fraction + countedDistance(distance, elapsed) * config.PrototypeFractionPerStud
-		return math.clamp(grown, 0, 1)
-	end
-
 	-- Resizing in steps keeps the solver from seeing a new size every sample. At the ends of
 	-- the range (0 and 1) the last small step is still applied so the ball reaches its size.
 	local function shouldResize(currentDiameter: number, targetDiameter: number, fraction: number): boolean
@@ -104,8 +78,6 @@ function BallCoreModule.new(config: BallConfig, optics: OpticsConfig, zoneOptics
 	return table.freeze({
 		isFraction = isFraction,
 		visualDiameter = visualDiameter,
-		countedDistance = countedDistance,
-		grow = grow,
 		shouldResize = shouldResize,
 		holdDistance = holdDistance,
 		isOutOfReach = isOutOfReach,

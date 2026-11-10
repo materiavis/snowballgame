@@ -63,5 +63,189 @@
 				<token name="BottomSurface">0</token>
 			</Properties>
 		</Item>
+		<Item class="Part" referent="RBX3">
+			<Properties>
+				<string name="Name">DeepSnowPatch</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<CoordinateFrame name="CFrame">
+					<X>45</X>
+					<Y>-0.05</Y>
+					<Z>-150</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>30</X>
+					<Y>0.2</Y>
+					<Z>400</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4292407551</Color3uint8>
+				<token name="Material">1328</token>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">RGVlcFNub3c=</BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX4">
+			<Properties>
+				<string name="Name">IcePatch</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<CoordinateFrame name="CFrame">
+					<X>-45</X>
+					<Y>-0.05</Y>
+					<Z>0</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>30</X>
+					<Y>0.2</Y>
+					<Z>30</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4289255679</Color3uint8>
+				<token name="Material">1536</token>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">SWNl</BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX5">
+			<Properties>
+				<string name="Name">GrassPatch</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<CoordinateFrame name="CFrame">
+					<X>-45</X>
+					<Y>-0.05</Y>
+					<Z>-40</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>30</X>
+					<Y>0.2</Y>
+					<Z>30</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4284263260</Color3uint8>
+				<token name="Material">1280</token>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">R3Jhc3M=</BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX6">
+			<Properties>
+				<string name="Name">LargeObstacle</string>
+				<bool name="Anchored">true</bool>
+				<CoordinateFrame name="CFrame">
+					<X>20</X>
+					<Y>4</Y>
+					<Z>-30</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>8</X>
+					<Y>8</Y>
+					<Z>8</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4285427310</Color3uint8>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">T2JzdGFjbGU=</BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX7">
+			<Properties>
+				<string name="Name">SmallObstacle</string>
+				<bool name="Anchored">true</bool>
+				<CoordinateFrame name="CFrame">
+					<X>-20</X>
+					<Y>0.5</Y>
+					<Z>-30</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>1</X>
+					<Y>1</Y>
+					<Z>1</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4290797616</Color3uint8>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">T2JzdGFjbGU=</BinaryString>
+				<BinaryString name="AttributesSerialize">AQAAAA0AAABLbm9ja092ZXJTaXplBgAAAAAAAPA/</BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX8">
+			<Properties>
+				<string name="Name">ScaleAnchorPlaceholder</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<CoordinateFrame name="CFrame">
+					<X>0</X>
+					<Y>2</Y>
+					<Z>60</Z>
+					<R00>1</R00>
+					<R01>0</R01>
+					<R02>0</R02>
+					<R10>0</R10>
+					<R11>1</R11>
+					<R12>0</R12>
+					<R20>0</R20>
+					<R21>0</R21>
+					<R22>1</R22>
+				</CoordinateFrame>
+				<Vector3 name="size">
+					<X>6</X>
+					<Y>4</Y>
+					<Z>6</Z>
+				</Vector3>
+				<Color3uint8 name="Color3uint8">4294955072</Color3uint8>
+				<token name="Material">288</token>
+				<float name="Transparency">0.4</float>
+				<token name="TopSurface">0</token>
+				<token name="BottomSurface">0</token>
+				<BinaryString name="Tags">U2NhbGVBbmNob3I=</BinaryString>
+			</Properties>
+		</Item>
 	</Item>
 </roblox>

@@ -6,6 +6,10 @@
 --   BallSetSizeFraction number, idle -1: size fraction 0..1, applied at once
 --   BallGrowthPaused    bool: hold the current size while walking
 --   BallRecover         bool: put the ball back in front now
+--   BallSimulateCollision bool: one obstacle collision now (respects the protection time)
+--   BallMoveCharacterAway number, idle 0: moves the character this many studs away from the
+--                       ball, because the hold keeps the ball at the character otherwise
+--   BallClearTrack      bool: forget the track of the target
 -- A value switch runs once and resets itself to idle. Invalid values only warn.
 
 export type Hooks = {
@@ -18,7 +22,10 @@ export type Hooks = {
 	setFraction: (state: any, fraction: number) -> (),
 	recover: (state: any) -> (),
 	setPaused: (paused: boolean) -> (),
-	describe: (state: any) -> string, -- "<name> zone=… fraction=… diameter=…"
+	simulateCollision: (state: any) -> (),
+	moveCharacterAway: (state: any, studs: number) -> (),
+	clearTrack: (state: any) -> (),
+	describe: (state: any) -> string, -- "<name> zone=… fraction=… diameter=… metres=…"
 }
 
 local TARGET_SWITCH = "BallTargetUserId"
@@ -26,8 +33,12 @@ local ZONE_SWITCH = "BallSetZone"
 local FRACTION_SWITCH = "BallSetSizeFraction"
 local PAUSE_SWITCH = "BallGrowthPaused"
 local RECOVER_SWITCH = "BallRecover"
+local COLLISION_SWITCH = "BallSimulateCollision"
+local MOVE_AWAY_SWITCH = "BallMoveCharacterAway"
+local CLEAR_TRACK_SWITCH = "BallClearTrack"
 local ZONE_IDLE = 0
 local FRACTION_IDLE = -1
+local MOVE_AWAY_IDLE = 0
 
 local StudioSwitches = {}
 
@@ -83,6 +94,35 @@ function StudioSwitches.bind(host: Instance, hooks: Hooks)
 		if value == true then
 			for _, state in targets() do
 				hooks.recover(state)
+			end
+		end
+	end)
+
+	bindValue(COLLISION_SWITCH, false, function(value)
+		if value == true then
+			for _, state in targets() do
+				hooks.simulateCollision(state)
+				print(`[BallService] {COLLISION_SWITCH} -> {hooks.describe(state)}`)
+			end
+		end
+	end)
+
+	bindValue(MOVE_AWAY_SWITCH, MOVE_AWAY_IDLE, function(studs)
+		if type(studs) ~= "number" or studs <= 0 or studs ~= studs or studs == math.huge then
+			warn(`[BallService] {MOVE_AWAY_SWITCH}: studs must be a positive number, got {studs}`)
+			return
+		end
+		for _, state in targets() do
+			hooks.moveCharacterAway(state, studs)
+			print(`[BallService] {MOVE_AWAY_SWITCH} -> {hooks.describe(state)}`)
+		end
+	end)
+
+	bindValue(CLEAR_TRACK_SWITCH, false, function(value)
+		if value == true then
+			for _, state in targets() do
+				hooks.clearTrack(state)
+				print(`[BallService] {CLEAR_TRACK_SWITCH} -> {hooks.describe(state)}`)
 			end
 		end
 	end)
