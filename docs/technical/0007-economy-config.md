@@ -16,7 +16,7 @@ Concept 1.2 and 8.3 say every number is a Startwert that lives in config modules
 |---|---|---|
 | `Config/*` | `Zones`, `Ball`, `Finds`, `Pets`, `Upgrades`, `Economy`, `Events`, `Lobby`, `Fight`, `Social`, `Monetization`, `Rarity`, `Display`, `Currency` | Every Startwert of chapters 7 to 9, one module per area, frozen all the way down. Comments name the concept section and the ✅/🟦 status. Robux asset ids are `0` placeholders that humans fill in at publish. |
 | `Formulas` | `Zones`, `Economy`, `Pets`, `Upgrades` | Zone size, ball value, expected strength, balls per barrier, barrier price, worlds and gates, zone optics. Also sell with bonuses, find value, rebirth cost, multiplier and rank, income per minute, minutes-of-income rewards and Snow Coins per match. Plus egg zone and price, pet bonus with variants, equip slots, the Q11 inventory expansion, and upgrade cost and effect. |
-| `NumberFormat` | `Formatter` | `number`, `signed` ("+3.4K") and `size` ("4.7 m" / "1.2 km"). |
+| `NumberFormat` | `Formatter` | `number` (balances), `signed` ("+3.4K"), `price` (costs, #88) and `size` ("4.7 m" / "1.2 km"). |
 | `Rarity` | `Tiers` | Name, rank, stars or symbol, RGB colour, `label` ("★★★ Rare"), plus `color3` in the binding. Load fails if a tier has neither stars nor a symbol. |
 | `Rng` | `Weighted`, `Odds` | Weighted pick on a roll in [0, 1). Egg tables (normal and luck boost, secret pet from egg 3), find tables (zones 1–5 of a world give Legendary's 1 % to Common, secret 1 in 2,000), `rollEgg` (rarity, then an independent Frosty roll), `rollFind`. `Rng.new(seed?)` wraps Roblox `Random` and takes any `{ next }` generator, so tests use `SeededRandom`. |
 | `CurrencyService` | `CurrencyCore` | The only writer of `sim.coins`, `sim.totalCoins` and `fight.snowCoins`. |
@@ -33,9 +33,12 @@ Concept 1.2 and 8.3 say every number is a Startwert that lives in config modules
 
 **Number format** (`Config.Display`). The concept fixes K, M, B, T, Qa, Qi, Sx from 1,000, and one decimal with a decimal point for sizes. Not fixed, so chosen here:
 - Abbreviated numbers have one decimal with a trailing ".0" dropped and no space: "1K", "3.4K", "4.6Sx". This follows the in-game examples "+3.4K" and "Zone 6 · 3.7M".
-- Values are **rounded down**, so a balance never looks larger than it is. 999,999 shows "999.9K", 3,755,901 "3.7M" (the concept table says "ca. 3.8M"), and the zone 5 maximum 4.88 m shows "4.8 m" (table: "4,9 m").
-- The suffix or unit is chosen after rounding, so "1000K" and "1000.0 m" never appear. Metres run up to 999.9 m, kilometres start at 1,000 m.
-- `Display.Rounding = "Nearest"` switches to round-half-up (tested too) if design prefers the table's rounding.
+- **Balances round down, prices round up** (owner decision 2026-11-06, open question 1 on PR #87, implemented in #88). Two settings:
+  - `Display.Rounding = "Floor"` for `number`, `signed` and `size`: a balance never looks larger than it is. 999,999 shows "999.9K", 3,755,901 "3.7M", and the zone 5 maximum 4.88 m shows "4.8 m" (table: "4,9 m").
+  - `Display.PriceRounding = "Ceil"` for `price`: a price never looks cheaper than it is. The zone 10 barrier 3,755,901 shows "3.8M" as in concept table 7.6, 1,001 shows "1.1K", 999,950 shows "1M". A whole price below 1,000 is shown exactly ("999"). Negative values mirror positive ones ("-3.8M"); NaN, ±inf and non-numbers are errors, as for `number`.
+  - Known effect: a player whose balance equals a price can see "3.7M" next to a "3.8M" price and still buy. UI must not compare the displayed texts; the server's affordability check decides.
+- The suffix or unit is chosen after rounding, so "1000K" and "1000.0 m" never appear, in either direction. Metres run up to 999.9 m, kilometres start at 1,000 m.
+- `Display.Rounding = "Nearest"` switches balances and sizes to round-half-up; `Display.PriceRounding` accepts `"Ceil"`, `"Floor"` or `"Nearest"`. All modes are tested.
 - Beyond Sx the suffix stays ("1500Sx").
 
 **CurrencyService.**
