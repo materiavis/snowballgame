@@ -94,6 +94,7 @@ local Ball = {
 	MaxLabelHeight = 28,
 	SizeLabelTextRGB = { 255, 255, 255 },
 	MaxLabelTextRGB = { 255, 210, 60 },
+	SizeLabelTextStrokeTransparency = 0.5,
 
 	-- The published size and the Studio diagnostics are refreshed at this interval (seconds).
 	PublishInterval = 0.25,

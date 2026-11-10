@@ -86,9 +86,10 @@ local function updateArrow()
 		local towards = Vector3.new(anchor.X - centre.X, 0, anchor.Z - centre.Z)
 		if towards.Magnitude > 1e-3 then
 			local direction = towards.Unit
-			-- Handle adornments extend along their +Z axis, CFrame.lookAt looks along -Z.
+			-- Observed in Studio: the cone needs its look vector pointing at the target, or it
+			-- shows reversed. The cylinder is symmetric, its frame only places it behind `centre`.
+			arrowHead.CFrame = CFrame.lookAt(centre, centre + direction)
 			local frame = CFrame.lookAt(centre, centre - direction)
-			arrowHead.CFrame = frame
 			arrowShaft.CFrame = frame * CFrame.new(0, 0, -BallConfig.MaxArrowShaftLength / 2)
 			visible = true
 		end
@@ -171,7 +172,7 @@ local function makeLabel(screen: ScreenGui, name: string, height: number, top: n
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.5
+	label.TextStrokeTransparency = BallConfig.SizeLabelTextStrokeTransparency
 	label.Parent = screen
 	return label
 end

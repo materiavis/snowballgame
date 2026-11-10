@@ -109,8 +109,11 @@ local function placeBall(state: BallState, root: BasePart)
 	state.lastSampleTime = os.clock()
 	state.wasGrounded = false
 	state.outOfReachFor = 0
-	-- Whatever the ball was placed on was not rolled into (ObstacleRules.evaluate).
+	-- Whatever the ball was placed on was not rolled into (ObstacleRules.evaluate). The first
+	-- sample may not see the contact yet, so protection covers the samples right after it: a
+	-- contact first seen while protected is remembered without a loss.
 	state.contacts = nil
+	state.protectedUntil = math.max(state.protectedUntil, os.clock() + BallConfig.CollisionProtection)
 	assignOwner(state)
 end
 
