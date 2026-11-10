@@ -1,6 +1,6 @@
 # 0009: Map contract, tags and attributes for World 1 zones and the Lobby
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #106.
 
 Implements #101. Extends the map section of [ADR 0003](0003-snow-rush-intake.md) ("Gameplay code binds to the maps only through CollectionService tags and named anchor attachments", D3, StreamingEnabled) and keeps the names of [ADR 0002](0002-snowball-push-ownership-size-cap.md). Builders (#29, #104, #37) and the station bindings (#36, #38, #39, #40, #41, #105) follow it.
 
