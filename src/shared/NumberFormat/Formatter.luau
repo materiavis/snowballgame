@@ -99,8 +99,13 @@ function Formatter.new(config: DisplayConfig): Formatter
 	end
 
 	-- Costs (Display.PriceRounding). Rounded up, a shown price is never less than the cost.
+	-- A negative price is a bug upstream and must not be shown silently (owner decision
+	-- 2026-11-10, #100). -0 is not below 0, so it still shows "0".
 	local function price(value: number): string
 		checkFinite(value, "price")
+		if value < 0 then
+			error(`NumberFormat: price must not be negative, got {value}`, 2)
+		end
 		return abbreviate(value, config.PriceRounding)
 	end
 
