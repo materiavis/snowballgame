@@ -31,7 +31,11 @@ local GrowthModifiers = require(script:WaitForChild("GrowthModifiers"))
 local GrowthRules = require(script:WaitForChild("GrowthRules"))
 local ObstacleRules = require(script:WaitForChild("ObstacleRules"))
 local Obstacles = require(script:WaitForChild("Obstacles"))
+local Recovery = require(script:WaitForChild("Recovery"))
+local RecoveryRules = require(script:WaitForChild("RecoveryRules"))
+local SafeSpot = require(script:WaitForChild("SafeSpot"))
 local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
+local TestGeometry = require(script:WaitForChild("TestGeometry"))
 local SurfaceService = require(script.Parent:WaitForChild("SurfaceService"))
 
 local MAX_PART_SIZE = 2048 -- Roblox engine limit per axis
@@ -46,6 +50,7 @@ local core = BallCore.new(BallConfig, ZonesConfig, Formulas.Zones.zoneOptics)
 local rules = GrowthRules.new(BallConfig, Formulas.Zones.maxSize)
 local modifiers = GrowthModifiers.new(Formulas.Upgrades.effect)
 local obstacleRules = ObstacleRules.new(BallConfig)
+local recoveryRules = RecoveryRules.new(BallConfig)
 local obstacles = Obstacles.new(BallConfig, obstacleRules, studioTools)
 local attributes = BallAttributes.new(BallConfig, rules, studioTools)
 local states: { [Player]: BallState } = {}
@@ -75,10 +80,6 @@ local function assignOwner(state: BallState)
 	end
 end
 
-local function spawnPosition(root: BasePart, diameter: number): Vector3
-	return ballPart.spawnPosition(root, diameter)
-end
-
 local function publish(state: BallState)
 	attributes.publish(state, os.clock(), true)
 end
@@ -90,41 +91,26 @@ local function createPart(state: BallState, diameter: number, position: Vector3)
 	return part
 end
 
--- Puts the ball back in front of the character: first spawn after a destroy, respawn of the
--- character, fell off the map or stuck out of reach.
-local function placeBall(state: BallState, root: BasePart)
-	local diameter = core.visualDiameter(state.zone, state.fraction)
-	local position = spawnPosition(root, diameter)
-	local part = state.part
-	if part.Parent then
-		part.AssemblyLinearVelocity = Vector3.zero
-		part.AssemblyAngularVelocity = Vector3.zero
-		part.Size = Vector3.one * diameter
-		part.CFrame = CFrame.new(position)
-	else
-		state.part = createPart(state, diameter, position)
-	end
-	publish(state)
-	state.lastPosition = position
-	state.lastSampleTime = os.clock()
-	state.wasGrounded = false
-	state.outOfReachFor = 0
-	-- Whatever the ball was placed on was not rolled into (ObstacleRules.evaluate). The first
-	-- sample may not see the contact yet, so protection covers the samples right after it: a
-	-- contact first seen while protected is remembered without a loss.
-	state.contacts = nil
-	state.protectedUntil = math.max(state.protectedUntil, os.clock() + BallConfig.CollisionProtection)
-	assignOwner(state)
-end
-
-local function recover(state: BallState, root: BasePart, why: string)
-	state.recoveries += 1
-	placeBall(state, root)
-	state.part:SetAttribute(BallConfig.RecoveriesAttribute, state.recoveries)
-	if studioTools then
-		print(`[BallService] {state.player.Name} ball put back in front ({why}), recoveries={state.recoveries}`)
-	end
-end
+-- Where the ball goes on spawn, respawn and every recovery (ADR 0002 "Recovery").
+local recovery = Recovery.new({
+	config = BallConfig,
+	recoveryRules = recoveryRules,
+	safeSpot = SafeSpot.new({
+		config = BallConfig,
+		recoveryRules = recoveryRules,
+		obstacleRules = obstacleRules,
+		growthRules = rules,
+		holdDistance = core.holdDistance,
+		fallback = ballPart.spawnPosition,
+		groundParams = groundParams,
+	}),
+	visualDiameter = core.visualDiameter,
+	createPart = createPart,
+	publish = publish,
+	assignOwner = assignOwner,
+	verbose = studioTools,
+})
+local recover = recovery.recover
 
 -- Applies the optics of the current zone and fraction to the part. `force` skips the step
 -- check (zone change, Studio switch).
@@ -155,6 +141,7 @@ local ballStep = BallStep.new({
 	core = core,
 	rules = rules,
 	obstacleRules = obstacleRules,
+	recoveryRules = recoveryRules,
 	obstacles = obstacles,
 	modifiers = modifiers,
 	surfaces = SurfaceService,
@@ -164,19 +151,15 @@ local ballStep = BallStep.new({
 		return growthPaused
 	end,
 	recover = recover,
+	updatePark = recovery.updatePark,
 	applyOptics = applyOptics,
 })
 
 local function spawnBall(player: Player, root: BasePart, humanoid: Humanoid?)
-	local zone = BallConfig.DefaultZone
-	local diameter = core.visualDiameter(zone, 0)
-	local position = spawnPosition(root, diameter)
-	local state = BallStep.newState(player, root, humanoid, zone, SurfaceService.newTrack())
-	state.lastPosition = position
-	state.part = createPart(state, diameter, position)
+	local state = BallStep.newState(player, root, humanoid, BallConfig.DefaultZone, SurfaceService.newTrack())
+	-- The state has no part yet, so placing it creates one.
+	recovery.place(state, root)
 	states[player] = state
-	publish(state)
-	assignOwner(state)
 end
 
 local function onPlayerAdded(player: Player)
@@ -192,7 +175,7 @@ local function onPlayerAdded(player: Player)
 		if state then
 			state.root = root
 			state.humanoid = humanoid
-			placeBall(state, root)
+			recovery.place(state, root)
 		else
 			spawnBall(player, root, humanoid)
 		end
@@ -282,6 +265,13 @@ local function setUpStudio()
 		end,
 		clearTrack = function(state: BallState)
 			state.track.clear()
+		end,
+		setTestGeometry = function(enabled: boolean): string
+			if enabled then
+				return TestGeometry.create(workspace)
+			end
+			TestGeometry.remove(workspace)
+			return "removed"
 		end,
 		describe = function(state: BallState): string
 			local fraction = string.format("%.3f", state.fraction)

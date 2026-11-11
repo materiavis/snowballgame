@@ -1,7 +1,7 @@
 --!strict
 -- One server sample of one ball for BallService (concept 7.3, 7.4, ADR 0002): recovery checks,
 -- surface, track, obstacles and growth. Roblox-facing glue; the rules are in the pure
--- BallCore, GrowthRules, ObstacleRules and SurfaceService/TrackGrid modules.
+-- BallCore, GrowthRules, ObstacleRules, RecoveryRules and SurfaceService/TrackGrid modules.
 
 export type BallState = {
 	player: Player,
@@ -15,6 +15,15 @@ export type BallState = {
 	wasGrounded: boolean,
 	outOfReachFor: number,
 	recoveries: number,
+	-- Recovery (#94): when the ball was last placed, recent recovery times for the bound, the
+	-- park end while the bound holds the ball, the stuck timer and the last spot it stayed at.
+	placedAt: number,
+	recentRecoveries: { number },
+	parkedUntil: number?,
+	stuck: any,
+	lastSafePosition: Vector3?,
+	lastRecovery: string,
+	recoverySpot: string,
 	credit: number,
 	track: any,
 	contacts: { [any]: boolean }?,
@@ -40,6 +49,7 @@ export type Deps = {
 	core: any,
 	rules: any,
 	obstacleRules: any,
+	recoveryRules: any,
 	obstacles: any,
 	modifiers: any,
 	surfaces: any,
@@ -47,6 +57,8 @@ export type Deps = {
 	groundParams: RaycastParams,
 	isPaused: () -> boolean,
 	recover: (state: BallState, root: BasePart, why: string) -> (),
+	-- Ends a park whose time is over; returns whether the ball is still parked.
+	updatePark: (state: BallState, now: number) -> boolean,
 	applyOptics: (state: BallState, force: boolean) -> (),
 }
 
@@ -56,6 +68,7 @@ export type BallStep = {
 }
 
 local AIR = "Air"
+local PARKED = "Parked" -- GrowthBlock while the recovery bound holds the ball (#94)
 
 local function flat(vector: Vector3): Vector3
 	return Vector3.new(vector.X, 0, vector.Z)
@@ -83,6 +96,13 @@ function BallStepModule.newState(
 		wasGrounded = false,
 		outOfReachFor = 0,
 		recoveries = 0,
+		placedAt = 0,
+		recentRecoveries = {},
+		parkedUntil = nil,
+		stuck = nil,
+		lastSafePosition = nil,
+		lastRecovery = "",
+		recoverySpot = "",
 		credit = 0,
 		track = track,
 		contacts = nil,
@@ -198,11 +218,63 @@ function BallStepModule.new(deps: Deps): BallStep
 		end
 	end
 
+	-- Whether a living character is in growth range of the ball at `position`.
+	local function characterInRange(state: BallState, position: Vector3): boolean
+		local root = livingRoot(state)
+		if root == nil then
+			return false
+		end
+		local offset = root.Position - position
+		return rules.inGrowthRange(flat(offset).Magnitude, offset.Y, state.part.Size.X)
+	end
+
+	-- Leash (far away for LeashTime), then stuck (#94 AC8: out of growth range without
+	-- progress for StuckTime). Returns whether the ball was put back.
+	local function checkReach(state: BallState, root: BasePart, position: Vector3, elapsed: number): boolean
+		local horizontal = flat(position - root.Position).Magnitude
+		if core.isOutOfReach(horizontal, state.part.Size.X) then
+			state.outOfReachFor += elapsed
+			if core.leashExpired(state.outOfReachFor) then
+				deps.recover(state, root, "out of reach")
+				return true
+			end
+		else
+			state.outOfReachFor = 0
+		end
+		if livingRoot(state) == nil then
+			state.stuck = nil
+			return false
+		end
+		local tracker, stuck = deps.recoveryRules.stuckStep(state.stuck, {
+			inRange = characterInRange(state, position),
+			distance = horizontal,
+			x = position.X,
+			z = position.Z,
+			elapsed = elapsed,
+		})
+		state.stuck = tracker
+		if stuck then
+			deps.recover(state, root, "stuck")
+			return true
+		end
+		return false
+	end
+
 	local function update(state: BallState, now: number)
+		if deps.updatePark(state, now) then
+			state.growthBlock = PARKED
+			deps.attributes.publish(state, now, false)
+			return
+		end
 		local part = state.part
 		local root = state.root
 		local rootAlive = root ~= nil and root.Parent ~= nil
 		if not part.Parent or part.Position.Y < config.ResetBelowY then
+			-- Right after a placement the owner's packets can still carry the old position, which
+			-- must not count as a new fall (#94).
+			if part.Parent and deps.recoveryRules.inGrace(now, state.placedAt) then
+				return
+			end
 			if root and rootAlive then
 				deps.recover(state, root, if part.Parent then "fell" else "missing")
 			end
@@ -212,17 +284,8 @@ function BallStepModule.new(deps: Deps): BallStep
 		local position = part.Position
 		local elapsed = now - state.lastSampleTime
 
-		if root and rootAlive then
-			local horizontal = flat(position - root.Position).Magnitude
-			if core.isOutOfReach(horizontal, part.Size.X) then
-				state.outOfReachFor += elapsed
-				if core.leashExpired(state.outOfReachFor) then
-					deps.recover(state, root, "out of reach")
-					return
-				end
-			else
-				state.outOfReachFor = 0
-			end
+		if root and rootAlive and checkReach(state, root, position, elapsed) then
+			return
 		end
 
 		local hit = groundHit(part)
@@ -239,6 +302,15 @@ function BallStepModule.new(deps: Deps): BallStep
 			distance = distance,
 			elapsed = elapsed,
 		}, now)
+
+		-- The last place the ball stayed on the ground, clear of obstacles, with the character at
+		-- it: the put-back spot when none is found around the character. SafeSpot checks it again.
+		local contacts = state.contacts
+		if grounded and state.wasGrounded and (contacts == nil or next(contacts) == nil) then
+			if characterInRange(state, position) then
+				state.lastSafePosition = position
+			end
+		end
 
 		state.lastPosition = position
 		state.lastSampleTime = now

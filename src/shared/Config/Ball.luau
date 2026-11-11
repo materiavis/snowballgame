@@ -116,9 +116,41 @@ local Ball = {
 	SpawnFallbackGroundOffset = 3, -- no ground found: assume it this far below the root part
 	ResetBelowY = -100, -- the ball is put back in front of its owner below this height
 	-- The ball is put back in front of its owner if it stays this far (studs, beyond the hold
-	-- distance) from the character for LeashTime seconds, e.g. stuck behind an obstacle.
+	-- distance) from the character for LeashTime seconds.
 	LeashDistance = 12,
 	LeashTime = 2,
+
+	-- Safe put-back position (#94, ADR 0002 "Recovery"). Proposals until the owner confirms them
+	-- after the playtest. Candidates lie around the character: straight in front first, then
+	-- every RecoveryBearingStepDegrees alternating left and right up to straight behind, each at
+	-- the hold distance plus every RecoveryRingSteps entry. 30° gives 12 bearings; +3 studs keeps
+	-- the ball's edge at HoldGap + 3 = 4.5, inside GrowthRange (6).
+	RecoveryBearingStepDegrees = 30,
+	RecoveryRingSteps = { 0, 3 },
+	-- Ground must also be found at four points this share of the radius from the centre, at
+	-- most RecoverySupportSlope × that offset above or below the centre's ground (1 = 45°), so
+	-- the ball does not sit on the rim of a cliff or hole.
+	RecoverySupportShare = 0.5,
+	RecoverySupportSlope = 1,
+	-- Studs between a put-back ball and an Obstacle, above CollisionContactMargin (0.25) so the
+	-- first sample after the placement sees no contact (#34 finding: placed 0.1 stud inside).
+	RecoveryObstacleClearance = 0.5,
+	-- Other block parts may touch the put-back ball by this much (the ground it rests on).
+	RecoveryPenetrationTolerance = 0.05,
+	-- No fall check for this long after a placement: owner packets sent before it can still
+	-- show the old position. A ball needs about 1 s to fall from the ground to ResetBelowY.
+	RecoveryGraceTime = 0.5,
+	-- At most RecoveryBurstLimit recoveries within RecoveryBurstWindow seconds. The next one in
+	-- the window still puts the ball back, then parks it (anchored) for RecoveryParkTime so it
+	-- cannot fall again at once. Run A of #33 had 5 within about 2 s; a ball pushed off an edge
+	-- by hand again and again needs about 4 s per round at diameter 50 (swing and fall).
+	RecoveryBurstLimit = 3,
+	RecoveryBurstWindow = 5,
+	RecoveryParkTime = 3,
+	-- Stuck (#94 AC8): out of the character's growth range for StuckTime seconds while the ball
+	-- neither moved StuckProgressStuds nor came that much closer, e.g. held behind an obstacle.
+	StuckTime = 4,
+	StuckProgressStuds = 2,
 
 	-- Holding the ball in front of the character (client, applied to the ball it owns).
 	-- Hold distance from the HumanoidRootPart centre to the ball centre = radius + HoldGap.
@@ -181,6 +213,10 @@ local Ball = {
 		CountedStuds = "CountedStuds",
 		GrowthSeconds = "GrowthSeconds",
 		MeasuredTimeToMax = "MeasuredTimeToMax",
+		LastRecovery = "LastRecovery", -- reason of the last recovery
+		RecoverySpot = "RecoverySpot", -- Front, Around, LastSafe or Unsafe
+		StuckFor = "StuckFor", -- seconds the stuck timer has run
+		Parked = "Parked", -- true while the recovery bound holds the ball
 	},
 
 	-- Collision groups and rules: ADR 0003 rev. 2 ("Ball collisions with foreign characters"),
@@ -223,5 +259,6 @@ table.freeze(Ball.MaxArrowColorRGB)
 table.freeze(Ball.SizeLabelTextRGB)
 table.freeze(Ball.MaxLabelTextRGB)
 table.freeze(Ball.DiagnosticAttributes)
+table.freeze(Ball.RecoveryRingSteps)
 
 return table.freeze(Ball)
