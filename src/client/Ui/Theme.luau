@@ -17,6 +17,7 @@ local Theme = {
 	SurfaceRaised = colour(UiConfig.Colours.SurfaceRaised),
 	Text = colour(UiConfig.Colours.Text),
 	TextMuted = colour(UiConfig.Colours.TextMuted),
+	Max = colour(UiConfig.Colours.Max),
 	FontRegular = (Enum.Font :: any)[UiConfig.Fonts.Regular] :: Enum.Font,
 	FontBold = (Enum.Font :: any)[UiConfig.Fonts.Bold] :: Enum.Font,
 }

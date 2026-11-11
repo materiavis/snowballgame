@@ -79,22 +79,12 @@ local Ball = {
 	MaxGlowRangeMax = 60, -- the Roblox limit for a PointLight
 	MaxGlowRangePerDiameter = 1.5,
 	MaxGlowFillTransparency = 0.6,
-	MaxText = "MAX!",
 	MaxArrowColorRGB = { 255, 210, 60 },
 	MaxArrowAboveBall = 3, -- studs above the top of the ball
 	MaxArrowHeadLength = 2.5,
 	MaxArrowHeadRadius = 1.2,
 	MaxArrowShaftLength = 3,
 	MaxArrowShaftRadius = 0.4,
-
-	-- Minimal size label (top centre, 7.4) until the HUD integrates the published size.
-	SizeLabelWidth = 220,
-	SizeLabelHeight = 36,
-	SizeLabelTopOffset = 8,
-	MaxLabelHeight = 28,
-	SizeLabelTextRGB = { 255, 255, 255 },
-	MaxLabelTextRGB = { 255, 210, 60 },
-	SizeLabelTextStrokeTransparency = 0.5,
 
 	-- The published size and the Studio diagnostics are refreshed at this interval (seconds).
 	PublishInterval = 0.25,
@@ -220,8 +210,6 @@ table.freeze(Ball.Surfaces)
 table.freeze(Ball.SurfacePriority)
 table.freeze(Ball.MaxGlowColorRGB)
 table.freeze(Ball.MaxArrowColorRGB)
-table.freeze(Ball.SizeLabelTextRGB)
-table.freeze(Ball.MaxLabelTextRGB)
 table.freeze(Ball.DiagnosticAttributes)
 
 return table.freeze(Ball)

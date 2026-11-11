@@ -84,6 +84,8 @@ local Ui = {
 		SurfaceRaised = table.freeze({ 56, 56, 62 }),
 		Text = table.freeze({ 255, 255, 255 }),
 		TextMuted = table.freeze({ 200, 200, 205 }),
+		-- The ball-size caption while the ball is at MAX (same yellow as the MAX arrow, 7.4).
+		Max = table.freeze({ 255, 210, 60 }),
 	},
 	PanelTransparency = 0.15,
 
@@ -118,8 +120,11 @@ local Ui = {
 		Close = "X",
 		-- Shown instead of a balance while the profile is not loaded (owner decision on #35).
 		Missing = "–",
-		-- Ball size placeholder until #34 delivers the real size.
+		-- Ball size before the server has published one (BallSizeMetres, #34).
 		BallSizePlaceholder = "– m",
+		-- Interim: replaces the "Size" caption while the ball is at MAX. Where and how long MAX!
+		-- shows for good is an open owner question (follow-up issue to #35).
+		BallSizeMax = "MAX!",
 		LoadFailed = "Your progress could not be loaded. Trying again…",
 	},
 

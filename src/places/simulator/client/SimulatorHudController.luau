@@ -1,8 +1,9 @@
 --!strict
 -- Simulator HUD (concept 10.2, issue #35 Prototyp slice, ADR 0008): Coins top left, ball size
 -- top centre, menu buttons down the left edge (only Upgrades for now) and the load hint.
--- Display only. Coins and DataLoadStatus are player attributes written by the server
--- (CurrencyService, DataService); this controller reads them and never decides a value.
+-- Display only. Coins, DataLoadStatus, BallSizeMetres and BallIsMax are player attributes
+-- written by the server on every server (CurrencyService, DataService, BallService); this
+-- controller reads them and never decides a value.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,12 +11,15 @@ local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent
 local UiFolder = Client:WaitForChild("Ui")
+local BallSize = require(UiFolder:WaitForChild("BallSize"))
 local Components = require(UiFolder:WaitForChild("Components"))
 local Layout = require(UiFolder:WaitForChild("Layout"))
 local LoadStatus = require(UiFolder:WaitForChild("LoadStatus"))
 local Theme = require(UiFolder:WaitForChild("Theme"))
 local MenuController = require(Client:WaitForChild("Controllers"):WaitForChild("MenuController"))
-local NumberFormat = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("NumberFormat")) :: any
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BallConfig = require(Shared:WaitForChild("Config"):WaitForChild("Ball")) :: any
+local NumberFormat = require(Shared:WaitForChild("NumberFormat")) :: any
 
 local Ui = Theme.Config
 
@@ -69,7 +73,6 @@ function SimulatorHudController.Start()
 	local coins = valuePanel("Coins", Ui.Text.Coins)
 	coins.frame.Parent = gui
 	local ballSize = valuePanel("BallSize", Ui.Text.BallSize)
-	ballSize.value.Text = Ui.Text.BallSizePlaceholder
 	ballSize.frame.Parent = gui
 
 	local hint = Components.label("LoadHint", "", Ui.TextSize.Hint, Ui.ZIndex.Hud + 1, { bold = true })
@@ -115,6 +118,14 @@ function SimulatorHudController.Start()
 		hint.Visible = hintText ~= nil
 	end
 
+	local function refreshBallSize()
+		ballSize.value.Text =
+			BallSize.valueText(player:GetAttribute(BallConfig.PlayerSizeMetresAttribute), NumberFormat.size, Ui)
+		local caption, isMax = BallSize.caption(player:GetAttribute(BallConfig.PlayerIsMaxAttribute), Ui)
+		ballSize.caption.Text = caption
+		ballSize.caption.TextColor3 = if isMax then Theme.Max else Theme.TextMuted
+	end
+
 	MenuController.register({
 		id = UPGRADES_WINDOW,
 		root = window.root,
@@ -135,8 +146,11 @@ function SimulatorHudController.Start()
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
 	player:GetAttributeChangedSignal(COINS_ATTRIBUTE):Connect(refreshBalances)
 	player:GetAttributeChangedSignal(STATUS_ATTRIBUTE):Connect(refreshBalances)
+	player:GetAttributeChangedSignal(BallConfig.PlayerSizeMetresAttribute):Connect(refreshBallSize)
+	player:GetAttributeChangedSignal(BallConfig.PlayerIsMaxAttribute):Connect(refreshBallSize)
 
 	refreshBalances()
+	refreshBallSize()
 	gui.Parent = playerGui
 	relayout()
 end
