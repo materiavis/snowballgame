@@ -35,11 +35,12 @@ Concept 1.2 and 8.3 say every number is a Startwert that lives in config modules
 - Abbreviated numbers have one decimal with a trailing ".0" dropped and no space: "1K", "3.4K", "4.6Sx". This follows the in-game examples "+3.4K" and "Zone 6 · 3.7M".
 - **Balances round down, prices round up** (owner decision 2026-11-06, open question 1 on PR #87, implemented in #88). Two settings:
   - `Display.Rounding = "Floor"` for `number`, `signed` and `size`: a balance never looks larger than it is. 999,999 shows "999.9K", 3,755,901 "3.7M", and the zone 5 maximum 4.88 m shows "4.8 m" (table: "4,9 m").
-  - `Display.PriceRounding = "Ceil"` for `price`: a price never looks cheaper than it is. The zone 10 barrier 3,755,901 shows "3.8M" as in concept table 7.6, 1,001 shows "1.1K", 999,950 shows "1M". A whole price below 1,000 is shown exactly ("999"). Negative values mirror positive ones ("-3.8M"); NaN, ±inf and non-numbers are errors, as for `number`.
+  - `Display.PriceRounding = "Ceil"` for `price`: a price never looks cheaper than it is. The zone 10 barrier 3,755,901 shows "3.8M" as in concept table 7.6, 1,001 shows "1.1K", 999,950 shows "1M". A whole price below 1,000 is shown exactly ("999"). **A negative price is an error** ("NumberFormat: price must not be negative, got …"), so a bug upstream is never shown silently as "-3.8M" (owner decision 2026-11-10, open question 1 on PR #99, implemented in #100). `-0` is not negative and shows "0". NaN, ±inf and non-numbers are errors, as for `number`; that check runs first.
+  - **Gains (`signed`) round down like balances** (owner decision 2026-11-10, open question on PR #99, #100): "+3.4K" uses `Display.Rounding`, not `PriceRounding`. `number` and `signed` still mirror negative values ("-3.7M"), and a negative `size` is an error.
   - Known effect: a player whose balance equals a price can see "3.7M" next to a "3.8M" price and still buy. UI must not compare the displayed texts; the server's affordability check decides.
 - The suffix or unit is chosen after rounding, so "1000K" and "1000.0 m" never appear, in either direction. Metres run up to 999.9 m, kilometres start at 1,000 m.
 - `Display.Rounding = "Nearest"` switches balances and sizes to round-half-up; `Display.PriceRounding` accepts `"Ceil"`, `"Floor"` or `"Nearest"`. All modes are tested.
-- Beyond Sx the suffix stays ("1500Sx").
+- Beyond Sx the suffix stays ("1500Sx"), for balances and prices alike, so a price that rounds up past 999.9Sx shows "1000Sx" (owner decision 2026-11-10, open question on PR #99, #100).
 
 **CurrencyService.**
 - **Generic core.** Currencies come from `Config.Currency`: profile path, optional total path and bounds. The core has no game words in it, so it can move to the Materiavis toolkit.

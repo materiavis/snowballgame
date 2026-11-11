@@ -79,11 +79,30 @@ return T.suite("NumberFormat prices (#88)", function(test)
 		T.equal(Format.price(999.95e21), "1000Sx")
 	end)
 
-	test("negative prices mirror positive ones, zero is 0", function()
-		T.equal(Format.price(-3755901), "-3.8M")
-		T.equal(Format.price(-999950), "-1M")
-		T.equal(Format.price(-999), "-999")
+	-- Owner decision 2026-11-10 (#100): a negative price is an error, not "-3.8M".
+	test("negative prices are errors, zero is 0", function()
+		for _, value in { -1, -999, -3755901, -999950, -0.5 } do
+			T.throws(function()
+				Format.price(value)
+			end, "price must not be negative", `price({value})`)
+		end
+		local message = T.throws(function()
+			Format.price(-3755901)
+		end)
+		T.isTrue(string.find(message, "got -3755901", 1, true), "message names the value")
+		T.equal(Format.price(0), "0")
+	end)
+
+	test("-0 is not negative and shows 0", function()
 		T.equal(Format.price(-0), "0")
+	end)
+
+	test("balances, gains and sizes keep their negative handling", function()
+		T.equal(Format.number(-3755901), "-3.7M")
+		T.equal(Format.signed(-3400), "-3.4K")
+		T.throws(function()
+			Format.size(-1)
+		end, "size must not be negative")
 	end)
 
 	test("non-numbers, NaN and infinity are errors", function()
