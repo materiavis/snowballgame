@@ -1,6 +1,6 @@
 # 0010: TravelService, server selection and PresenceStore
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #110.
 
 Implements `x-travel-teleports` (#28) from [ADR 0003](0003-snow-rush-intake.md) (module table rows TravelService and PresenceStore, "Places, Rojo and world assets", "Live PlaceIds", "Teleports in Studio", Rules: Session locking → Teleport, Load failure, Cross-server ephemeral state) on top of DataService ([ADR 0006](0006-player-data.md) "Teleport", "Loading"), the Net layer ([ADR 0005](0005-net-remotes.md)) and the world gate rule of [ADR 0009](0009-map-contract.md). Concept 4.3 leaves teleport and matchmaking technique to Development; this records those choices.
 
