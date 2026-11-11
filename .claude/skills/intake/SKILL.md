@@ -64,7 +64,9 @@ Translate all concept features into an implementable plan. Preserve confirmed
 rules, numbers and defaults; never invent gameplay. Explain architecture,
 Places and teleport boundaries, server services, client controllers, remotes and
 validation, shared code, configuration, data schema and save/failure behaviour.
-Plan mobile checks, automated checks and Studio playtests without running Studio.
+Plan mobile checks, automated checks, Studio playtests and the human END
+PLAYTEST of each milestone without running Studio. Plan a Studio switch for every
+state an acceptance criterion needs that the playtester could not otherwise reach.
 Identify existing implementations, open PRs and issues that already cover work.
 
 For multiple Places, specify **one Rojo project file per Place**, exact source
@@ -125,6 +127,12 @@ duplicate/partial-failure handling. Respect existing permission prompts.
   **Fix**, **Spielraum**, and the concept's **Fertig, wenn …** criteria. Reset
   acceptance checkboxes to unchecked; add technical checks without weakening
   product criteria. Use only existing labels/agents that fit the task.
+- Prefix an acceptance criterion with `[human]` only if it needs a person by
+  nature: `feel or look` (a subjective judgment), `device`, `gamepad` or
+  `multiple clients`, as defined in the build skill's
+  [Playtester handoff](../build/references/playtest.md). Everything measurable
+  stays with the playtester. Do not create END PLAYTEST issues here; the
+  end-playtest skill creates one per milestone on first need.
 - Preserve later features as later/backlog, never as launch work. Use a roadmap
   milestone only if it exists in the approved plan; otherwise leave it unset.
   Do not invent dates, assignees, launch commitments or start implementation.
