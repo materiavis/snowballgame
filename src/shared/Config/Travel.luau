@@ -51,7 +51,10 @@ local Travel = {
 
 	-- On-screen message (owner decision 2026-11-10: simple text, the popup is #91).
 	MessageSeconds = 4,
-	MessageWidth = 520,
+	-- Width is a share of the screen, so the label fits a phone in portrait; MessageMaxWidth
+	-- (pixels) keeps it from stretching across wide screens.
+	MessageWidthScale = 0.9,
+	MessageMaxWidth = 520,
 	MessageHeight = 44,
 	MessageTopOffset = 64,
 	MessageTextRGB = { 255, 255, 255 },

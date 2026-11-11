@@ -36,7 +36,7 @@ local function buildLabel(): TextLabel
 	text.Name = "Message"
 	text.AnchorPoint = Vector2.new(0.5, 0)
 	text.Position = UDim2.new(0.5, 0, 0, TravelConfig.MessageTopOffset)
-	text.Size = UDim2.fromOffset(TravelConfig.MessageWidth, TravelConfig.MessageHeight)
+	text.Size = UDim2.new(TravelConfig.MessageWidthScale, 0, 0, TravelConfig.MessageHeight)
 	text.BackgroundColor3 = rgb(TravelConfig.MessageBackgroundRGB)
 	text.BackgroundTransparency = TravelConfig.MessageBackgroundTransparency
 	text.TextColor3 = rgb(TravelConfig.MessageTextRGB)
@@ -45,6 +45,10 @@ local function buildLabel(): TextLabel
 	text.Text = ""
 	text.Visible = false
 	text.Parent = screen
+
+	local maxSize = Instance.new("UISizeConstraint")
+	maxSize.MaxSize = Vector2.new(TravelConfig.MessageMaxWidth, TravelConfig.MessageHeight)
+	maxSize.Parent = text
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, TravelConfig.MessageCornerRadius)
