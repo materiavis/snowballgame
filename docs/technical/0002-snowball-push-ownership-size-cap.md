@@ -119,6 +119,10 @@ Local `CollisionGroup` changes do not replicate. No part gets `CanCollide = fals
   - `BallClearTrack` (bool): forgets the target's track.
   Each action prints `[BallService] <name> <switch> -> zone=… fraction=… diameter=… metres=…`. `BallSetZone = 50` with `BallSetSizeFraction = 1` gives the 50-stud Visual Cap ball for camera and physics checks.
 
+## Open points
+
+- **`fell` recovery loop (issue #94, owner decision on PR #89).** Run A of #33 at `ff31254` saw 6 unplanned recoveries with the reason `fell` at diameter 50, 5 of them within about 2 s; the character ended at z = −949.7, near the edge of the 2048 × 2048 placeholder ground (±1024). The recovery log has no position, so the place of the fall is unknown. Not fixed in #33; investigated and fixed in #94.
+
 ## Consequences
 
 - Server start counts in World 1 grow from 6 to 8 (`BallService`, `MovementService` and `SurfaceService` replace `SimulatorSkeletonService`); client counts from 2 to 6 (`BallController`, `BallGrowthController`, `CameraController`, `CollisionController`, `MovementController` replace `SimulatorSkeletonController`). Lobby and Arena are unchanged and do not load these modules.
