@@ -29,6 +29,7 @@ This repo holds the code and technical docs only. It is **not** the place for ga
 - **ChatGPT, Creative/Product Manager:** decides *what* gets built and *why*. Writes feature specs in Notion.
 - **Claude Code main session, Development Manager:** decides *how*. Turns specs into issues, delegates to subagents, reviews PRs, integrates, writes reports.
 - **Subagents** (`.claude/agents/`): do one clearly scoped task each.
+- **Owners on GitHub:** `mcmateriavis` (Miguel), `janmateriavis` (Jan), `marcolecluse` (Marco), `YKITler` (Yowaldy). END PLAYTEST requests mention them.
 
 ## 4. Repository layout
 
@@ -78,6 +79,13 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - The Development Manager may merge PRs into branches other than `main` only after technical checks, acceptance review and applicable playtests pass for the current PR head. Recheck the live base and head before merging; bind the merge to the verified head SHA.
 - **Only humans merge PRs into `main`.** The Development Manager must hand off a ready PR and never merge it, enable auto-merge into `main`, or retarget it to bypass this rule. Subagents never merge any PR.
 - No force pushes, no history rewrites on shared branches.
+- **Branch cleanup is the Development Manager's job** (`/cleanup`), not a GitHub setting. It deletes its merged issue branches locally and on GitHub:
+  - directly after the merge, when no acceptance criterion of the PR waits for the END PLAYTEST;
+  - otherwise only after the milestone's END PLAYTEST issue is closed with every item PASS.
+
+  The agent worktree is removed directly after the merge in both cases. Every deletion and every kept branch is recorded on the Pull Request with reason and SHA, so owners can review the timing and restore a branch.
+- Deleting is only allowed with `git worktree remove` (never `--force`), `git branch -d` (never `-D`) and `git push origin --delete <branch>` for one issue branch per command. `.claude/hooks/guard-git-cleanup.sh` blocks every other deletion and every force push.
+- **Never deleted by the DM:** `main`, branches of open PRs, unmerged commits, branches of PRs closed without merge (unless an owner wrote `Owner decision: delete branch` on the PR), branches the DM did not create (e.g. `test/…`, integration branches) and the playtest worktree. Humans delete those themselves.
 
 ## 8. Worktrees and parallel work
 
@@ -90,7 +98,9 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Only the `playtester` agent uses the Studio MCP. Code-writing agents work on files only.
 - Treat Luau execution in Studio as privileged: it can write DataStores, publish places and make HTTP requests.
 - Never publish a place, never write to production DataStores, never change game settings from an agent.
-- Test only in the local, repo-built test Place `build/test.rbxl`, with `game.PlaceId == 0`. For multiple Places, build and open each approved project at that path separately. Only the playtester uses Studio MCP, with its existing read-only hook and tool restrictions.
+- Test only in the local test Place `build/test.rbxl` of the playtest worktree, built with `rojo build` at the tested SHA, with `game.PlaceId == 0`. For multiple Places, build and open each Place separately. No `rojo serve` during a playtest.
+- The playtester is started from the main checkout on `main`, so its definition and hook always come from `main`, never from a Pull Request state. During Play it may set the Studio switches documented in an ADR (`game.ServerScriptService:SetAttribute`) and nothing else; its hook blocks every other change.
+- If the playtester cannot reach a state an acceptance criterion needs through input, the implementation adds a documented Studio switch for it, so the criterion can be tested without a person.
 
 ## 10. Third-party assets
 
@@ -103,7 +113,7 @@ A task is done when:
 1. The code does what the issue asks, nothing more.
 2. `stylua --check src` and `selene src` pass.
 3. `rojo build places/<place>.project.json -o build/test.rbxl` succeeds for every affected Place (`lobby`, `world1`, `arena`).
-4. Every acceptance criterion has review/check evidence; relevant runtime behaviour has a Playtester PASS for the current PR head, with per-criterion evidence and no errors from game scripts. A tooling/docs-only change may explain why Studio is inapplicable. Unavailable Studio access leaves a feature pending, not passed.
+4. Every acceptance criterion has review/check evidence; relevant runtime behaviour has a Playtester PASS for the current PR head, with per-criterion evidence and no errors from game scripts. Criteria the playtester leaves as NEEDS HUMAN REVIEW are on the milestone's END PLAYTEST list instead; ERROR is never a pass. A tooling/docs-only change may explain why Studio is inapplicable. Unavailable Studio access leaves a feature pending, not passed.
 5. The PR is open, uses the template, links the issue and lists open questions.
 6. Technical docs in `docs/technical/` are updated if architecture changed.
 
@@ -114,7 +124,7 @@ For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio
 After a feature is merged, the Development Manager writes a short report to Notion:
 what was built, linked PRs, what was tested, open points, next steps. German is fine.
 
-Use `/report <PR-number-or-URL>` via [.claude/skills/report/SKILL.md](.claude/skills/report/SKILL.md), after verifying the actual merge. Repeated runs update the same report by repository/PR identity. Report missing or stale test evidence honestly; an integration-branch merge is not a release.
+Use `/report <PR-number-or-URL>` via [.claude/skills/report/SKILL.md](.claude/skills/report/SKILL.md), after verifying the actual merge. It also runs the END PLAYTEST milestone check and the cleanup from section 7. Repeated runs update the same report by repository/PR identity. Report missing or stale test evidence honestly; an integration-branch merge is not a release.
 
 Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b980748f41ce514835693e, discover and verify the actual container before writing. If missing or inaccessible, return a copy-ready report and the blocker instead of saving to a fallback destination.
 
@@ -124,8 +134,10 @@ Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b98
 - a change would alter core gameplay, monetisation or the save-data format,
 - something requires publishing, spending Robux or touching live data,
 - an agent is unsure whether something is allowed.
+- an acceptance criterion stays ERROR because it cannot be made testable for the playtester. Only an owner may move it to the END PLAYTEST list, recorded on the issue.
 - the `/build` loop still fails after **three correction rounds** following the initial implementation. Technical, review and playtest failures share this budget. Preserve the count on the issue across restarts; stop further fixes and merging until an owner resolves the blocker or explicitly authorizes a new budget.
 
-## 14. Releases
+## 14. Milestones and releases
 
+- Every milestone ends with an END PLAYTEST by a human: one issue `END PLAYTEST – <milestone>` (label `end-playtest`) that the Development Manager keeps with `/end-playtest`. It lists the milestone goals and every acceptance criterion left as NEEDS HUMAN REVIEW. A milestone is closed only after that issue is closed with every item PASS. Humans close the END PLAYTEST issue and the milestone; the DM never does.
 - Before any release, a mobile check issue assigned to Jan (label `mobile`) must exist for that release and be **closed**. Without it, the release is blocked.
