@@ -23,3 +23,4 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0006 | [DataService, player data and session locking](0006-player-data.md) | Accepted with merge of PR #84 |
 | 0007 | [Economy config, formulas, number format, rarity, RNG and CurrencyService](0007-economy-config.md) | Accepted with merge of PR #87 |
 | 0009 | [Map contract: tags and attributes for World 1 zones and the Lobby](0009-map-contract.md) | Accepted with merge of PR #106 |
+| 0010 | [TravelService, server selection and PresenceStore](0010-travel-service.md) | Accepted with merge of PR #NN |

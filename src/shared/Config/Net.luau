@@ -1,5 +1,5 @@
 --!strict
--- Per-remote rate limits and argument bounds for src/shared/Net.
+-- Per-remote rate limits for src/shared/Net.
 -- Every remote declared in Net/Remotes takes its limit from RateLimits by its own name, so a
 -- new remote without an entry here fails at startup instead of running unlimited.
 --
@@ -7,15 +7,11 @@
 
 local Net = {
 	RateLimits = table.freeze({
-		-- EXAMPLE ONLY (see Net/Remotes). Not a design value.
-		NetExample = table.freeze({ Burst = 5, RefillPerSecond = 2 }),
-	}),
-
-	-- EXAMPLE ONLY. Bounds for the example remote's arguments. Not design values.
-	Example = table.freeze({
-		MaxAmount = 10,
-		MaxValues = 3,
-		MaxValueMagnitude = 1000,
+		-- Simulator "Lobby" button (ADR 0010). A second press while travelling is refused anyway;
+		-- this only caps spam.
+		TravelRequestLobby = table.freeze({ Burst = 2, RefillPerSecond = 0.5 }),
+		-- Server -> client only. Clients never send on it, so the smallest budget is enough.
+		TravelNotice = table.freeze({ Burst = 1, RefillPerSecond = 0.1 }),
 	}),
 }
 
