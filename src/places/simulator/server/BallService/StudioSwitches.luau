@@ -10,6 +10,10 @@
 --   BallMoveCharacterAway number, idle 0: moves the character this many studs away from the
 --                       ball, because the hold keeps the ball at the character otherwise
 --   BallClearTrack      bool: forget the track of the target
+--   BallPlaceBehindObstacle bool: puts the ball behind the Obstacle next to the character
+--                       (PlaceBehind, #94 AC8); not a recovery
+--   BallRecoveryTestGeometry bool: true builds the temporary cliff and hole pier
+--                       (TestGeometry, #94), false removes them
 -- A value switch runs once and resets itself to idle. Invalid values only warn.
 
 export type Hooks = {
@@ -25,6 +29,10 @@ export type Hooks = {
 	simulateCollision: (state: any) -> (),
 	moveCharacterAway: (state: any, studs: number) -> (),
 	clearTrack: (state: any) -> (),
+	-- Prints its own line or warns (PlaceBehind).
+	placeBehindObstacle: (state: any) -> (),
+	-- Builds (true) or removes (false) the recovery test geometry; returns a log line.
+	setTestGeometry: (enabled: boolean) -> string,
 	describe: (state: any) -> string, -- "<name> zone=… fraction=… diameter=… metres=…"
 }
 
@@ -36,6 +44,8 @@ local RECOVER_SWITCH = "BallRecover"
 local COLLISION_SWITCH = "BallSimulateCollision"
 local MOVE_AWAY_SWITCH = "BallMoveCharacterAway"
 local CLEAR_TRACK_SWITCH = "BallClearTrack"
+local TEST_GEOMETRY_SWITCH = "BallRecoveryTestGeometry"
+local PLACE_BEHIND_SWITCH = "BallPlaceBehindObstacle"
 local ZONE_IDLE = 0
 local FRACTION_IDLE = -1
 local MOVE_AWAY_IDLE = 0
@@ -127,11 +137,25 @@ function StudioSwitches.bind(host: Instance, hooks: Hooks)
 		end
 	end)
 
+	bindValue(PLACE_BEHIND_SWITCH, false, function(value)
+		if value == true then
+			for _, state in targets() do
+				hooks.placeBehindObstacle(state)
+			end
+		end
+	end)
+
 	ensure(PAUSE_SWITCH, false)
 	host:GetAttributeChangedSignal(PAUSE_SWITCH):Connect(function()
 		local paused = host:GetAttribute(PAUSE_SWITCH) == true
 		hooks.setPaused(paused)
 		print(`[BallService] {PAUSE_SWITCH}={paused}`)
+	end)
+
+	ensure(TEST_GEOMETRY_SWITCH, false)
+	host:GetAttributeChangedSignal(TEST_GEOMETRY_SWITCH):Connect(function()
+		local enabled = host:GetAttribute(TEST_GEOMETRY_SWITCH) == true
+		print(`[BallService] {TEST_GEOMETRY_SWITCH}={enabled} {hooks.setTestGeometry(enabled)}`)
 	end)
 end
 

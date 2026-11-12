@@ -157,4 +157,65 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 		T.near(length(sim.bvx, sim.bvz), 0, 0.05, "at rest")
 		T.isTrue(frontError(sim, 1, 0) < 1, "still in front")
 	end)
+
+	-- #94 round 1: the playtest at f95545a. Character at (196, -1012.3) standing still, facing
+	-- the -Z map edge (z -1024, 11.7 studs ahead); the server put the ball back `Around` at
+	-- (219, -999). Relative to the character: (23, 13.3). The ball first still shows the fall
+	-- position for a few frames, as if the Recoveries attribute arrived before the new position.
+	local EDGE_Z = -11.7
+	local function afterRecovery(follow: boolean, seconds: number): (Sim, number)
+		local diameter = 50
+		local sim = newSim(diameter)
+		sim.bx, sim.bz = 0, -26.3 -- over the edge, before the put-back arrives
+		local recoveredAt = 0
+		local lowestZ = math.huge
+		for frame = 1, seconds * 60 do
+			if frame == 5 then
+				sim.bx, sim.bz, sim.bvx, sim.bvz = 23, 13.3, 0, 0
+			end
+			local now = (frame - 1) * DT
+			local followBall = follow and hold.followsBall(now, recoveredAt)
+			sim.hx, sim.hz = hold.nextHeldDirection(sim.hx, sim.hz, 0, 0, sim.bx, sim.bz, followBall)
+			stepSim(sim, diameter, 0, 0, BallConfig.WalkSpeed)
+			if frame >= 5 then
+				lowestZ = math.min(lowestZ, sim.bz)
+			end
+		end
+		return sim, lowestZ
+	end
+
+	test("#94: without the reset the old hold swings the put-back ball over the edge again", function()
+		local _, lowestZ = afterRecovery(false, 10)
+		T.isTrue(lowestZ < EDGE_Z, `reaches z {lowestZ} past the edge {EDGE_Z}`)
+	end)
+
+	test("#94: after a recovery the hold follows the ball and keeps it where the server put it", function()
+		local sim, lowestZ = afterRecovery(true, 10)
+		T.isTrue(lowestZ > EDGE_Z, `stays behind the edge: lowest z {lowestZ}`)
+		local bearing = math.deg(math.atan2(sim.bz, sim.bx))
+		T.near(bearing, math.deg(math.atan2(13.3, 23)), 2, "keeps the put-back bearing")
+		T.near(length(sim.bvx, sim.bvz), 0, 0.05, "at rest")
+	end)
+
+	test("#94: walking wins over the reset, so walking out over the edge again is a normal push", function()
+		local hx, hz = hold.nextHeldDirection(1, 0, 0, -1, 23, 13.3, true)
+		T.equal(hx, 0)
+		T.equal(hz, -1)
+		hx, hz = hold.nextHeldDirection(1, 0, 0.05, 0, 23, 13.3, false)
+		T.equal(hx, 1, "below the deadzone the old direction stays")
+		T.equal(hz, 0)
+	end)
+
+	test("#94: the reset window and the direction fallback", function()
+		local window = BallConfig.RecoveryHoldResetTime
+		T.equal(hold.followsBall(5, nil), false, "no recovery seen")
+		T.equal(hold.followsBall(10 + window / 2, 10), true)
+		T.equal(hold.followsBall(10 + window, 10), false)
+		local x, z = hold.directionTo(0, 0, 0, -1)
+		T.equal(x, 0, "ball on the character: fallback")
+		T.equal(z, -1)
+		x, z = hold.directionTo(3, 4, 0, -1)
+		T.near(x, 0.6, 1e-9)
+		T.near(z, 0.8, 1e-9)
+	end)
 end)

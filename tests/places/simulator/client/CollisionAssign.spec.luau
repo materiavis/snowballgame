@@ -60,7 +60,12 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	end)
 
 	test("no simulator code sets CanCollide on a part (rejected in review)", function()
-		local found = offenders("CanCollide%s*=")
+		-- The frontier keeps RespectCanCollide (a query option of SafeSpot, #94) out of the match.
+		local pattern = "%f[%w]CanCollide%s*="
+		T.isTrue(string.find("part.CanCollide = false", pattern) ~= nil, "still finds a part write")
+		T.isTrue(string.find("CanCollide=false", pattern) ~= nil, "still finds a bare write")
+		T.equal(string.find("params.RespectCanCollide = true", pattern), nil, "ignores the query option")
+		local found = offenders(pattern)
 		T.equal(#found, 0, table.concat(found, ", "))
 	end)
 
