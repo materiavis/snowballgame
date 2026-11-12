@@ -11,7 +11,7 @@ Name files `NNNN-short-title.md`, e.g. `0001-server-authoritative-ball-size.md`:
 - **Decision:** what we chose
 - **Consequences:** what this makes easier or harder
 
-An ADR written in the build loop gets its final status in its own PR: `**Status:** Accepted with merge of PR #NN.` (filled in once the PR exists). The human merge is the acceptance, so nothing changes after the playtests. If the PR closes unmerged, the ADR never reaches `main`.
+An ADR written in the build loop gets its final status in its own PR: `**Status:** Accepted with merge of PR #114.` (filled in once the PR exists). The human merge is the acceptance, so nothing changes after the playtests. If the PR closes unmerged, the ADR never reaches `main`.
 
 | # | Decision | Status |
 |---|---|---|
@@ -24,4 +24,4 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0007 | [Economy config, formulas, number format, rarity, RNG and CurrencyService](0007-economy-config.md) | Accepted with merge of PR #87 |
 | 0008 | [HUD, window stack and input device tracking](0008-hud-and-windows.md) | Accepted with merge of PR #92 |
 | 0009 | [Map contract: tags and attributes for World 1 zones and the Lobby](0009-map-contract.md) | Accepted with merge of PR #106 |
-| 0010 | [Upgrades, the UpgradeBuy remote and the upgrade stand](0010-upgrades.md) | Accepted with merge of PR #NN |
+| 0010 | [Upgrades, the UpgradeBuy remote and the upgrade stand](0010-upgrades.md) | Accepted with merge of PR #114 |

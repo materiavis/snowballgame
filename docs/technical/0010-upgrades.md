@@ -1,6 +1,6 @@
 # 0010: Upgrades, the UpgradeBuy remote and the upgrade stand
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #114.
 
 Implements `7.8-upgrades` (#36) from the `UpgradeService` and `sim.upgrades` rows of [ADR 0003](0003-snow-rush-intake.md). Uses the Net layer (ADR 0005), DataService (ADR 0006), CurrencyService and `Formulas.Upgrades` (ADR 0007), the window stack (ADR 0008) and the map contract (ADR 0009).
 
