@@ -1,11 +1,10 @@
 --!strict
--- BallGrowthController (Simulator only, concept 7.4, ADR 0002): shows the size the server
--- published and the MAX feedback of the own ball. Only ever reads attributes; this client sends
--- nothing. Everything here is for this one player, so it is built here (ADR 0003 R2) and
--- foreign balls get none of it.
+-- BallGrowthController (Simulator only, concept 7.4, ADR 0002): the MAX feedback of the own
+-- ball (glow, arrow, sound). Only ever reads attributes; this client sends nothing. Everything
+-- here is for this one player, so it is built here (ADR 0003 R2) and foreign balls get none of it.
 --
--- The top-centre label is deliberately minimal: the HUD (PR #92) replaces it with its own label
--- reading the same `BallSizeMetres` attribute.
+-- The size and the MAX! text are shown by the Simulator HUD (SimulatorHudController, ADR 0008),
+-- which reads the same `BallSizeMetres` and `BallIsMax` attributes.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +12,6 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BallConfig = require(Shared:WaitForChild("Config"):WaitForChild("Ball")) :: any
-local NumberFormat = require(Shared:WaitForChild("NumberFormat")) :: any
 
 local localPlayer = Players.LocalPlayer
 
@@ -22,8 +20,6 @@ local BallGrowthController = {}
 local started = false
 local myBall: BasePart? = nil
 local isMax = false
-local sizeLabel: TextLabel
-local maxLabel: TextLabel
 local glow: PointLight? = nil
 local highlight: Highlight? = nil
 local arrowHead: ConeHandleAdornment
@@ -32,13 +28,6 @@ local arrowStep: RBXScriptConnection? = nil
 
 local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
-end
-
-local function refreshLabel()
-	local metres = localPlayer:GetAttribute(BallConfig.PlayerSizeMetresAttribute)
-	if type(metres) == "number" then
-		sizeLabel.Text = NumberFormat.size(metres)
-	end
 end
 
 local function removeGlow()
@@ -123,7 +112,6 @@ end
 
 local function applyMaxState()
 	local ball = myBall
-	maxLabel.Visible = isMax
 	if isMax and ball then
 		showGlow(ball)
 		if arrowStep == nil then
@@ -161,39 +149,11 @@ local function onBallRemoved(child: Instance)
 	end
 end
 
-local function makeLabel(screen: ScreenGui, name: string, height: number, top: number, color: Color3): TextLabel
-	local label = Instance.new("TextLabel")
-	label.Name = name
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.new(0.5, 0, 0, top)
-	label.Size = UDim2.fromOffset(BallConfig.SizeLabelWidth, height)
-	label.BackgroundTransparency = 1
-	label.Text = ""
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = color
-	label.TextStrokeTransparency = BallConfig.SizeLabelTextStrokeTransparency
-	label.Parent = screen
-	return label
-end
-
 local function buildInterface()
 	local screen = Instance.new("ScreenGui")
 	screen.Name = "BallGrowthHud"
 	screen.ResetOnSpawn = false
 	screen.Parent = localPlayer:WaitForChild("PlayerGui")
-
-	local top = BallConfig.SizeLabelTopOffset
-	sizeLabel = makeLabel(screen, "SizeLabel", BallConfig.SizeLabelHeight, top, rgb(BallConfig.SizeLabelTextRGB))
-	maxLabel = makeLabel(
-		screen,
-		"MaxLabel",
-		BallConfig.MaxLabelHeight,
-		top + BallConfig.SizeLabelHeight,
-		rgb(BallConfig.MaxLabelTextRGB)
-	)
-	maxLabel.Text = BallConfig.MaxText
-	maxLabel.Visible = false
 
 	-- Handle adornments have no physics and need no asset. The Terrain is their world frame.
 	local color = rgb(BallConfig.MaxArrowColorRGB)
@@ -224,9 +184,7 @@ function BallGrowthController.Start()
 
 	buildInterface()
 
-	localPlayer:GetAttributeChangedSignal(BallConfig.PlayerSizeMetresAttribute):Connect(refreshLabel)
 	localPlayer:GetAttributeChangedSignal(BallConfig.PlayerIsMaxAttribute):Connect(onMaxChanged)
-	refreshLabel()
 
 	local folder = workspace:WaitForChild(BallConfig.FolderName)
 	folder.ChildAdded:Connect(onBallAdded)
