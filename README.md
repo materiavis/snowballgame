@@ -36,6 +36,8 @@ rojo build places/world1.project.json -o build/test.rbxl
 
 Without a project argument, `rojo serve` and `rojo build` use `default.project.json`, an alias of World 1.
 
+Playtests run differently: the playtester tests a separate playtest worktree built at the tested SHA, without `rojo serve`. See [Playtester handoff](.claude/skills/build/references/playtest.md).
+
 Lint and format:
 ```sh
 stylua src
