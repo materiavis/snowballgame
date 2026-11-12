@@ -1,6 +1,6 @@
 --!strict
 -- Places and puts back the ball for BallService (concept 7.3, ADR 0002 "Recovery", issue #94):
--- first spawn, character respawn, fell, missing, out of reach, stuck and the Studio switch.
+-- first spawn, character respawn, fell, missing, out of reach, stuck and the Studio switches.
 -- Roblox-facing; where the ball goes is SafeSpot, the bound and the timers are RecoveryRules.
 --
 -- The server alone decides the position, from the character's replicated root part and the
@@ -10,6 +10,8 @@ export type Recovery = {
 	-- Puts the ball at a safe spot without counting a recovery (spawn, respawn).
 	place: (state: any, root: BasePart) -> (),
 	recover: (state: any, root: BasePart, why: string) -> (),
+	-- Puts the ball at an exact position without counting a recovery (Studio switch).
+	moveTo: (state: any, position: Vector3) -> (),
 	-- Ends a park whose time is over; returns whether the ball is still parked.
 	updatePark: (state: any, now: number) -> boolean,
 }
@@ -38,11 +40,9 @@ function RecoveryModule.new(deps: Deps): Recovery
 	local config = deps.config
 	local recoveryRules = deps.recoveryRules
 
-	-- Returns the chosen spot. Ownership goes back to the player at the end, unless parked.
-	local function put(state: any, root: BasePart): any
-		local diameter = deps.visualDiameter(state.zone, state.fraction)
-		local spot = deps.safeSpot.find(root, diameter, state.lastSafePosition)
-		local position: Vector3 = spot.position
+	-- Moves (or creates) the ball at `position` and starts the sample state over. Ownership
+	-- goes back to the player at the end.
+	local function settle(state: any, position: Vector3, diameter: number)
 		local part: Part? = state.part
 		if part and part.Parent then
 			part.AssemblyLinearVelocity = Vector3.zero
@@ -53,7 +53,6 @@ function RecoveryModule.new(deps: Deps): Recovery
 			state.part = deps.createPart(state, diameter, position)
 		end
 		local now = os.clock()
-		state.recoverySpot = spot.kind
 		deps.publish(state)
 		state.lastPosition = position
 		state.lastSampleTime = now
@@ -67,7 +66,29 @@ function RecoveryModule.new(deps: Deps): Recovery
 		state.contacts = nil
 		state.protectedUntil = math.max(state.protectedUntil, now + config.CollisionProtection)
 		deps.assignOwner(state)
+	end
+
+	-- Returns the chosen spot.
+	local function put(state: any, root: BasePart): any
+		local diameter = deps.visualDiameter(state.zone, state.fraction)
+		local spot = deps.safeSpot.find(root, diameter, state.lastSafePosition)
+		state.recoverySpot = spot.kind
+		settle(state, spot.position, diameter)
 		return spot
+	end
+
+	-- The replicated count the client hold follows (with Recoveries), for server moves that are
+	-- not recoveries.
+	local function countPlacement(state: any)
+		state.placements += 1
+		state.part:SetAttribute(config.PlacementsAttribute, state.placements)
+	end
+
+	-- Puts the ball exactly at `position` (Studio switch BallPlaceBehindObstacle). Not a
+	-- recovery: no Recoveries, no bound, no recovery line.
+	local function moveTo(state: any, position: Vector3)
+		settle(state, position, state.part.Size.X)
+		countPlacement(state)
 	end
 
 	local function park(state: any, now: number)
@@ -103,6 +124,7 @@ function RecoveryModule.new(deps: Deps): Recovery
 
 	local function place(state: any, root: BasePart)
 		local spot = put(state, root)
+		countPlacement(state)
 		if spot.kind == "Unsafe" then
 			warn(
 				`[BallService] {state.player.Name} no safe spot for the ball at character {show(root.Position)}, placed in front at {show(
@@ -166,6 +188,7 @@ function RecoveryModule.new(deps: Deps): Recovery
 
 	return table.freeze({
 		place = place,
+		moveTo = moveTo,
 		recover = recover,
 		updatePark = updatePark,
 	})

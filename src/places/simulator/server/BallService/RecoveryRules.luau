@@ -1,8 +1,8 @@
 --!strict
 -- Pure recovery rules for BallService (concept 7.3, ADR 0002 "Recovery", issue #94): where to
 -- look for a safe put-back position, what makes one safe, how many recoveries may follow each
--- other (burst and same-place loop), and when a ball out of the character's range counts as stuck. No Instances, so
--- `lune run tests` loads it; SafeSpot and BallStep do the Roblox side.
+-- other (burst and same-place loop), and when a ball out of the character's range counts as
+-- stuck. No Instances, so `lune run tests` loads it; SafeSpot and BallStep do the Roblox side.
 
 export type RecoveryConfig = {
 	RecoveryBearingStepDegrees: number,
@@ -20,6 +20,9 @@ export type RecoveryConfig = {
 	RecoveryLoopRadiusPerDiameter: number,
 	StuckTime: number,
 	StuckProgressStuds: number,
+	StuckSlopeDegrees: number,
+	GrowthRange: number,
+	GrowthVerticalRange: number,
 }
 
 -- Offset of a candidate centre from the character on the ground plane. `bearing` is degrees
@@ -61,9 +64,12 @@ export type RecoveryRules = {
 	atLoopBound: (nearCount: number) -> boolean,
 	inGrace: (now: number, placedAt: number) -> boolean,
 	stuckStep: (tracker: StuckTracker?, facts: StuckFacts) -> (StuckTracker?, boolean),
+	restingHeight: (groundY: number, normalY: number, radius: number) -> number?,
+	heldOnSlope: (horizontal: number, ballGroundY: number?, characterGroundY: number?, diameter: number) -> boolean,
 }
 
 local SUPPORT_POINTS = 4 -- supportOffsets returns this many
+local MIN_NORMAL_Y = 0.1 -- steeper than about 84°: a wall, not ground to rest on
 
 local RecoveryRulesModule = {}
 
@@ -73,6 +79,11 @@ function RecoveryRulesModule.new(config: RecoveryConfig): RecoveryRules
 	assert(#config.RecoveryRingSteps >= 1, "Config.Ball.RecoveryRingSteps needs at least one ring")
 	assert(config.RecoveryBurstLimit >= 1, "Config.Ball.RecoveryBurstLimit must be at least 1")
 	assert(config.RecoveryLoopLimit >= 1, "Config.Ball.RecoveryLoopLimit must be at least 1")
+	assert(
+		config.StuckSlopeDegrees >= 0 and config.StuckSlopeDegrees < 90,
+		"Config.Ball.StuckSlopeDegrees must be in [0, 90)"
+	)
+	local slopeTan = math.tan(math.rad(config.StuckSlopeDegrees))
 	assert(
 		config.RecoveryLoopWindow >= config.RecoveryBurstWindow,
 		"Config.Ball.RecoveryLoopWindow must be at least RecoveryBurstWindow"
@@ -232,6 +243,39 @@ function RecoveryRulesModule.new(config: RecoveryConfig): RecoveryRules
 		return advanced, advanced.time >= config.StuckTime
 	end
 
+	-- Centre height of a ball resting on a plane through (·, groundY, ·) with the unit normal's
+	-- Y `normalY`, straight above the ray hit. On a slope the centre sits radius / cos(slope)
+	-- above the hit, not radius: placed at radius it would reach into the slope (#94 ramp). nil
+	-- for a wall or an overhang.
+	local function restingHeight(groundY: number, normalY: number, radius: number): number?
+		if not (normalY > MIN_NORMAL_Y) or normalY ~= normalY then
+			return nil
+		end
+		return groundY + radius / math.min(normalY, 1)
+	end
+
+	-- Reach for the stuck rule only (#94 round 2, owner rule): a ball held normally in front of
+	-- a character on a slope is not stuck, although the height difference puts it outside the
+	-- growth range. It counts as held when it is within the growth range on the ground plane
+	-- and the ground under it is at most GrowthVerticalRange plus a StuckSlopeDegrees slope
+	-- over that distance above or below the character's ground. A cliff is steeper, so a ball at
+	-- its foot still counts as stuck. nil grounds (in the air) do not count as held.
+	local function heldOnSlope(
+		horizontal: number,
+		ballGroundY: number?,
+		characterGroundY: number?,
+		diameter: number
+	): boolean
+		if ballGroundY == nil or characterGroundY == nil or horizontal ~= horizontal then
+			return false
+		end
+		if horizontal - diameter / 2 > config.GrowthRange then
+			return false
+		end
+		local allowed = config.GrowthVerticalRange + math.max(horizontal, 0) * slopeTan
+		return math.abs(ballGroundY - characterGroundY) <= allowed
+	end
+
 	return table.freeze({
 		candidates = candidates,
 		supportOffsets = supportOffsets,
@@ -245,6 +289,8 @@ function RecoveryRulesModule.new(config: RecoveryConfig): RecoveryRules
 		atLoopBound = atLoopBound,
 		inGrace = inGrace,
 		stuckStep = stuckStep,
+		restingHeight = restingHeight,
+		heldOnSlope = heldOnSlope,
 	})
 end
 

@@ -48,8 +48,9 @@ local function resetHeldDirection()
 	heldX, heldZ = hold.directionTo(offset.X, offset.Z, fallbackX, fallbackZ)
 end
 
--- The server wrote a new Recoveries count: it moved the ball. Only the server writes this
--- attribute, and it replicates on live servers too, so nothing is sent or decided here.
+-- The server wrote a new Recoveries or Placements count: it moved the ball. Only the server
+-- writes these attributes, and they replicate on live servers too, so nothing is sent or
+-- decided here.
 local function onRecovered()
 	recoveredAt = os.clock()
 	holdResets += 1
@@ -75,11 +76,14 @@ local function attachPushForce(ball: BasePart)
 	-- creates it and sets the count in the same frame, so no attribute change may arrive.
 	recoveredAt = os.clock()
 	resetHeldDirection()
-	ball:GetAttributeChangedSignal(BallConfig.RecoveriesAttribute):Connect(function()
+	local function onServerMove()
 		if ball == myBall then
 			onRecovered()
 		end
-	end)
+	end
+	ball:GetAttributeChangedSignal(BallConfig.RecoveriesAttribute):Connect(onServerMove)
+	-- Moves that are not recoveries (respawn, Studio switch BallPlaceBehindObstacle) as well.
+	ball:GetAttributeChangedSignal(BallConfig.PlacementsAttribute):Connect(onServerMove)
 end
 
 local function onBallAdded(child: Instance)

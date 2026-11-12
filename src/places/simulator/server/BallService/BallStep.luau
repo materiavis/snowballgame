@@ -15,6 +15,7 @@ export type BallState = {
 	wasGrounded: boolean,
 	outOfReachFor: number,
 	recoveries: number,
+	placements: number, -- server placements that are not recoveries (Placements attribute)
 	-- Recovery (#94): when the ball was last placed, recent recovery times for the bound, the
 	-- park end while the bound holds the ball, the stuck timer and the last spot it stayed at.
 	placedAt: number,
@@ -97,6 +98,7 @@ function BallStepModule.newState(
 		wasGrounded = false,
 		outOfReachFor = 0,
 		recoveries = 0,
+		placements = 0,
 		placedAt = 0,
 		recentRecoveries = {},
 		recentPutBacks = {},
@@ -230,6 +232,28 @@ function BallStepModule.new(deps: Deps): BallStep
 		return rules.inGrowthRange(flat(offset).Magnitude, offset.Y, state.part.Size.X)
 	end
 
+	-- Ground height straight below `origin` within `depth`, or nil.
+	local function groundBelow(origin: Vector3, depth: number): number?
+		local hit = workspace:Raycast(origin, Vector3.new(0, -depth, 0), deps.groundParams)
+		return if hit then hit.Position.Y else nil
+	end
+
+	-- In reach for the stuck rule: in growth range, or held on a slope (#94 round 2). The two
+	-- rays only run when the growth range says no.
+	local function heldForStuck(state: BallState, root: BasePart, position: Vector3, horizontal: number): boolean
+		if characterInRange(state, position) then
+			return true
+		end
+		local radius = state.part.Size.X / 2
+		local ballDepth = radius / math.cos(math.rad(config.StuckSlopeDegrees)) + config.GroundCheckMargin
+		return deps.recoveryRules.heldOnSlope(
+			horizontal,
+			groundBelow(position, ballDepth),
+			groundBelow(root.Position, config.GrowthVerticalRange),
+			state.part.Size.X
+		)
+	end
+
 	-- Leash (far away for LeashTime), then stuck (#94 AC8: out of growth range without
 	-- progress for StuckTime). Returns whether the ball was put back.
 	local function checkReach(state: BallState, root: BasePart, position: Vector3, elapsed: number): boolean
@@ -248,7 +272,7 @@ function BallStepModule.new(deps: Deps): BallStep
 			return false
 		end
 		local tracker, stuck = deps.recoveryRules.stuckStep(state.stuck, {
-			inRange = characterInRange(state, position),
+			inRange = heldForStuck(state, root, position, horizontal),
 			distance = horizontal,
 			x = position.X,
 			z = position.Z,

@@ -55,14 +55,15 @@ function SafeSpotModule.new(deps: Deps): SafeSpot
 		return CollectionService:HasTag(instance, config.ObstacleTag)
 	end
 
-	-- Ground height below (x, z) searched from `topY` down, or nil. The top of an obstacle is
-	-- not ground: a ball put there would count a collision on the first push.
-	local function groundAt(x: number, z: number, topY: number, depth: number): number?
+	-- Ground height below (x, z) searched from `topY` down and the Y of its surface normal, or
+	-- nil. The top of an obstacle is not ground: a ball put there would count a collision on
+	-- the first push.
+	local function groundAt(x: number, z: number, topY: number, depth: number): (number?, number)
 		local result = workspace:Raycast(Vector3.new(x, topY, z), Vector3.new(0, -depth, 0), rayParams)
 		if result == nil or isObstacle(result.Instance) then
-			return nil
+			return nil, 0
 		end
-		return result.Position.Y
+		return result.Position.Y, result.Normal.Y
 	end
 
 	-- Exact for obstacles (box rule, as in Obstacles) and plain blocks. Other shapes (wedges,
@@ -90,17 +91,22 @@ function SafeSpotModule.new(deps: Deps): SafeSpot
 	local function probe(x: number, z: number, searchY: number, diameter: number): Vector3?
 		local radius = diameter / 2
 		local height = config.SpawnGroundSearchHeight
-		local centreGround = groundAt(x, z, searchY + height, height * config.SpawnGroundSearchDepthFactor)
+		local centreGround, normalY = groundAt(x, z, searchY + height, height * config.SpawnGroundSearchDepthFactor)
 		if centreGround == nil then
 			return nil
 		end
-		local centreY = centreGround + radius
+		-- On a slope the centre is radius / cos(slope) above the hit; at radius it would reach
+		-- into the slope and the overlap check below would reject every spot on a ramp (#94).
+		local centreY = recoveryRules.restingHeight(centreGround, normalY, radius)
+		if centreY == nil then
+			return nil
+		end
 		-- Support rays start at the centre's height, so an overhang above cannot answer for them.
-		local depth = radius + radius * config.RecoverySupportShare * config.RecoverySupportSlope + 1
+		local depth = (centreY - centreGround) + radius * config.RecoverySupportShare * config.RecoverySupportSlope + 1
 		-- By index: a missing ground is a nil that table.insert would drop.
 		local supports: { [number]: number? } = {}
 		for index, offset in recoveryRules.supportOffsets(radius) do
-			supports[index] = groundAt(x + offset.x, z + offset.z, centreY, depth)
+			supports[index] = (groundAt(x + offset.x, z + offset.z, centreY, depth))
 		end
 		if not recoveryRules.isSupported(centreGround, supports, radius) then
 			return nil

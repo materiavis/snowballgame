@@ -41,8 +41,37 @@ return T.suite("Simulator recovery source (#94)", function(test)
 			string.find(source, "GetAttributeChangedSignal(BallConfig.RecoveriesAttribute)", 1, true) ~= nil,
 			"listens to the replicated count"
 		)
+		T.isTrue(
+			string.find(source, "GetAttributeChangedSignal(BallConfig.PlacementsAttribute)", 1, true) ~= nil,
+			"and to placements that are not recoveries"
+		)
 		T.isTrue(string.find(source, "hold.followsBall(", 1, true) ~= nil, "uses the reset window")
 		T.isTrue(string.find(source, "PlaceId", 1, true) == nil, "not limited to Studio")
+	end)
+
+	test("the stuck rule uses the slope reach, the growth rule stays as it is", function()
+		local source = read("BallStep.luau")
+		T.isTrue(string.find(source, "inRange = heldForStuck(", 1, true) ~= nil, "stuck uses heldForStuck")
+		T.isTrue(string.find(source, "recoveryRules.heldOnSlope(", 1, true) ~= nil)
+		T.isTrue(string.find(source, "inRange = rules.inGrowthRange(", 1, true) ~= nil, "growth unchanged")
+		T.isTrue(string.find(read("SafeSpot.luau"), "recoveryRules.restingHeight(", 1, true) ~= nil)
+	end)
+
+	test("BallPlaceBehindObstacle is Studio-only and no recovery", function()
+		local init = read("init.luau")
+		local setUp = string.find(init, "local function setUpStudio", 1, true)
+		local new = string.find(init, "PlaceBehind.new(", 1, true)
+		T.isTrue(setUp ~= nil and new ~= nil and (new :: number) > (setUp :: number), "built inside setUpStudio")
+		local source = read("PlaceBehind.luau")
+		for _, forbidden in { "recover(", "SetAttribute", "recentRecoveries", "recentPutBacks" } do
+			T.isTrue(string.find(source, forbidden, 1, true) == nil, `no {forbidden}`)
+		end
+		T.isTrue(string.find(source, "BallPlaceBehindObstacle", 1, true) ~= nil, "own log line")
+		local recovery = read("Recovery.luau")
+		local moveTo = string.find(recovery, "local function moveTo", 1, true) :: number
+		local body = string.sub(recovery, moveTo, moveTo + 200)
+		T.isTrue(string.find(body, "countPlacement(state)", 1, true) ~= nil, "counts a placement")
+		T.isTrue(string.find(body, "RecoveriesAttribute", 1, true) == nil, "not a recovery")
 	end)
 
 	test("the fall check skips the grace time after a placement", function()

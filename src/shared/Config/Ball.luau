@@ -169,6 +169,15 @@ local Ball = {
 	-- neither moved StuckProgressStuds nor came that much closer, e.g. held behind an obstacle.
 	StuckTime = 4,
 	StuckProgressStuds = 2,
+	-- Stuck reach on slopes (#94 round 2, proposal). Outside the growth range only by height, a
+	-- ball still counts as held (not stuck) when the ground under it is at most
+	-- GrowthVerticalRange plus a slope this steep over the ground-plane distance away from the
+	-- character's ground. 40° is above the 25° test ramp and the about 35° the hold can keep a
+	-- ball on (HoldMaxAcceleration), and far below a cliff: at the farthest held distance of a
+	-- 50-stud ball (radius + GrowthRange = 31) it allows 8 + 26 = 34 studs, the test cliff is 70.
+	-- The growth range itself (7.4) is unchanged. The character's ground is searched at most
+	-- GrowthVerticalRange below the root part; above it the character counts as airborne.
+	StuckSlopeDegrees = 40,
 
 	-- Holding the ball in front of the character (client, applied to the ball it owns).
 	-- Hold distance from the HumanoidRootPart centre to the ball centre = radius + HoldGap.
@@ -211,6 +220,10 @@ local Ball = {
 	SizeFractionAttribute = "SizeFraction",
 	VisualDiameterAttribute = "VisualDiameter",
 	RecoveriesAttribute = "Recoveries",
+	-- Server placements that are not recoveries (spawn, respawn, Studio switch
+	-- BallPlaceBehindObstacle).
+	-- The client hold follows the ball after a change, as after a Recoveries change.
+	PlacementsAttribute = "Placements",
 	SizeMetresAttribute = "SizeMetres", -- on the ball
 	IsMaxAttribute = "IsMax", -- on the ball
 	-- On the Player, so any HUD can read the size without finding the ball.

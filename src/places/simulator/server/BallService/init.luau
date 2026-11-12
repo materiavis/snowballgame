@@ -10,6 +10,7 @@
 -- In Studio at PlaceId 0, switches on ServerScriptService set zone and size for playtests
 -- (ADR 0002 "Playtest hooks"). Live servers skip all of it.
 
+local CollectionService = game:GetService("CollectionService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,6 +32,7 @@ local GrowthModifiers = require(script:WaitForChild("GrowthModifiers"))
 local GrowthRules = require(script:WaitForChild("GrowthRules"))
 local ObstacleRules = require(script:WaitForChild("ObstacleRules"))
 local Obstacles = require(script:WaitForChild("Obstacles"))
+local PlaceBehind = require(script:WaitForChild("PlaceBehind"))
 local Recovery = require(script:WaitForChild("Recovery"))
 local RecoveryRules = require(script:WaitForChild("RecoveryRules"))
 local SafeSpot = require(script:WaitForChild("SafeSpot"))
@@ -224,6 +226,18 @@ local function setFraction(state: BallState, fraction: number)
 end
 
 local function setUpStudio()
+	local placeBehind = PlaceBehind.new({
+		config = BallConfig,
+		obstacleRules = obstacleRules,
+		recoveryRules = recoveryRules,
+		growthRules = rules,
+		holdDistance = core.holdDistance,
+		groundParams = groundParams,
+		obstacles = function(): { Instance }
+			return CollectionService:GetTagged(BallConfig.ObstacleTag)
+		end,
+		moveTo = recovery.moveTo,
+	})
 	StudioSwitches.bind(ServerScriptService, {
 		targets = function(targetUserId: number): { any }
 			local result = {}
@@ -263,6 +277,7 @@ local function setUpStudio()
 			end
 			root.CFrame = root.CFrame + direction.Unit * studs
 		end,
+		placeBehindObstacle = placeBehind,
 		clearTrack = function(state: BallState)
 			state.track.clear()
 		end,
