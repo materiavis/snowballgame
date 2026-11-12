@@ -6,8 +6,9 @@
 -- Callers that need the change stored at once (barriers, rebirths, purchases) spend first and
 -- then call DataService.SaveNow(player, reason); see ADR 0007 for the pattern.
 --
--- In Studio at PlaceId 0 the balances are mirrored to player attributes and server switches
--- on ServerScriptService add, spend or reset (ADR 0007). Live servers skip all of it.
+-- Every server mirrors the balances to player attributes (`Coins`, `SnowCoins`), which the HUD
+-- reads (ADR 0008). In Studio at PlaceId 0 the totals and the last change are mirrored too, and
+-- server switches on ServerScriptService add, spend or reset (ADR 0007). Live servers skip those.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,11 +16,12 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local CurrencyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Currency"))
+local BalanceAttributes = require(script:WaitForChild("BalanceAttributes"))
 local CurrencyCore = require(script:WaitForChild("CurrencyCore"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 
 -- Studio-only names (the playtest contract, ADR 0007). Per currency id <C>: switches
--- CurrencyAdd<C>, CurrencySpend<C>, CurrencyReset<C>; player attributes <C> and Total<C>.
+-- CurrencyAdd<C>, CurrencySpend<C>, CurrencyReset<C>; player attribute Total<C>.
 local TARGET_ATTRIBUTE = "CurrencyTargetUserId"
 local LAST_CHANGE_ATTRIBUTE = "CurrencyLastChange"
 local REFUSALS_ATTRIBUTE = "CurrencyRefusals"
@@ -77,14 +79,16 @@ local function userIdOf(player: Player): number
 	return player.UserId
 end
 
+local balances = BalanceAttributes.new({
+	core = core,
+	getPlayer = function(userId: number): any
+		return Players:GetPlayerByUserId(userId)
+	end,
+	diagnostics = studioTools,
+})
+
 local function mirrorBalances(player: Player)
-	for _, currency in core.currencies() do
-		player:SetAttribute(currency, core.get(player.UserId, currency))
-		local total = core.getTotal(player.UserId, currency)
-		if total ~= nil then
-			player:SetAttribute(`Total{currency}`, total)
-		end
-	end
+	balances.mirror(player, player.UserId)
 end
 
 local function describe(event: Event): string
@@ -110,8 +114,6 @@ local function onStudioEvent(event: Event)
 	player:SetAttribute(LAST_CHANGE_ATTRIBUTE, text)
 	if event.kind == "Refused" then
 		player:SetAttribute(REFUSALS_ATTRIBUTE, ((player:GetAttribute(REFUSALS_ATTRIBUTE) :: number?) or 0) + 1)
-	else
-		mirrorBalances(player)
 	end
 end
 
@@ -164,17 +166,6 @@ end
 
 local function setUpStudio()
 	core.subscribe(onStudioEvent)
-	DataService.LoadStatusChanged:Connect(function(player: Player, status: string)
-		if status == "Loaded" then
-			mirrorBalances(player)
-		end
-	end)
-	for _, player in Players:GetPlayers() do
-		if DataService.GetProfile(player) ~= nil then
-			mirrorBalances(player)
-		end
-	end
-
 	if ServerScriptService:GetAttribute(TARGET_ATTRIBUTE) == nil then
 		ServerScriptService:SetAttribute(TARGET_ATTRIBUTE, 0)
 	end
@@ -194,6 +185,20 @@ local function setUp()
 		return
 	end
 	started = true
+
+	-- Every server: balances on load and after every change.
+	core.subscribe(balances.onEvent)
+	DataService.LoadStatusChanged:Connect(function(player: Player, status: string)
+		if status == "Loaded" then
+			mirrorBalances(player)
+		end
+	end)
+	for _, player in Players:GetPlayers() do
+		if DataService.GetProfile(player) ~= nil then
+			mirrorBalances(player)
+		end
+	end
+
 	if studioTools then
 		setUpStudio()
 	end

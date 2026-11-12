@@ -166,7 +166,7 @@ Because it changes repository rules, that PR needs human review.
 | `world/arena/SnowySquare.rbxmx`, `FrozenLake.rbxmx` | `ServerStorage.Arenas.*` | Mirrored bases, cover, power-up points, 2v2 barriers | One editor per arena |
 | `assets/stations/*.rbxmx`, `assets/pets/*.rbxmx`, … | `ReplicatedStorage.Assets.*` | Self-built signature assets (11) | Asset owner |
 
-Gameplay code binds to the maps only through CollectionService tags and named anchor attachments. Builders can then iterate without code changes, and code works with streamed parts.
+Gameplay code binds to the maps only through CollectionService tags and named anchor attachments. Builders can then iterate without code changes, and code works with streamed parts. The full list of tags and attributes is the map contract in [ADR 0009](0009-map-contract.md).
 
 **Terrain (decided, D3).** Gameplay ground is built from parts and meshes tagged `Snow`, `DeepSnow`, `Ice` or `Grass` inside each area `.rbxmx`, not from Roblox Terrain voxels. This has four benefits:
 

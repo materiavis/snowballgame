@@ -1,0 +1,75 @@
+--!strict
+-- Window stack (issue #35 AC5): open, close, toggle and closing the top window first.
+
+local T = require("../../TestKit")
+local WindowStack = require("../../../src/client/Ui/WindowStack")
+
+local function recorder(): ({ string }, (string, boolean) -> ())
+	local events: { string } = {}
+	return events,
+		function(id: string, isOpen: boolean)
+			table.insert(events, `{id}:{if isOpen then "open" else "closed"}`)
+		end
+end
+
+return T.suite("Ui WindowStack (10.2)", function(test)
+	test("starts empty; closeTop on an empty stack does nothing", function()
+		local events, onChange = recorder()
+		local stack = WindowStack.new(onChange)
+		T.equal(stack.count(), 0)
+		T.equal(stack.top(), nil)
+		T.equal(stack.closeTop(), nil)
+		T.equal(#events, 0)
+	end)
+
+	test("closeTop removes the most recently opened window first", function()
+		local events, onChange = recorder()
+		local stack = WindowStack.new(onChange)
+		stack.open("Upgrades")
+		stack.open("Shop")
+		T.equal(stack.top(), "Shop")
+		T.equal(stack.closeTop(), "Shop")
+		T.equal(stack.top(), "Upgrades")
+		T.equal(stack.closeTop(), "Upgrades")
+		T.equal(stack.count(), 0)
+		T.equal(table.concat(events, ","), "Upgrades:open,Shop:open,Shop:closed,Upgrades:closed")
+	end)
+
+	test("opening an open window moves it to the top without a second open event", function()
+		local events, onChange = recorder()
+		local stack = WindowStack.new(onChange)
+		stack.open("A")
+		stack.open("B")
+		T.equal(stack.open("A"), false)
+		T.equal(stack.top(), "A")
+		T.equal(table.concat(stack.list(), ","), "B,A")
+		T.equal(#events, 2)
+	end)
+
+	test("close by id (the X or menu key) removes only that window", function()
+		local stack = WindowStack.new()
+		stack.open("A")
+		stack.open("B")
+		T.equal(stack.close("A"), true)
+		T.equal(stack.close("A"), false)
+		T.equal(table.concat(stack.list(), ","), "B")
+	end)
+
+	test("toggle opens and closes (menu key U)", function()
+		local events, onChange = recorder()
+		local stack = WindowStack.new(onChange)
+		T.equal(stack.toggle("Upgrades"), true)
+		T.isTrue(stack.isOpen("Upgrades"))
+		T.equal(stack.toggle("Upgrades"), false)
+		T.equal(stack.isOpen("Upgrades"), false)
+		T.equal(table.concat(events, ","), "Upgrades:open,Upgrades:closed")
+	end)
+
+	test("list returns a copy", function()
+		local stack = WindowStack.new()
+		stack.open("A")
+		local list = stack.list()
+		table.insert(list, "X")
+		T.equal(stack.count(), 1)
+	end)
+end)

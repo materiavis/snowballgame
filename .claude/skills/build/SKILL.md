@@ -29,7 +29,8 @@ format are in [GitHub handoff and recovery](references/github.md).
   no invented game-concept approval.
 - Resolve dependencies before implementing dependent work. Do not reopen closed
   issues or replace already merged work. If already merged, verify its merge and
-  hand off that PR to `/report <PR-number-or-URL>` if reporting is pending. If
+  hand off that PR to `/report <PR-number-or-URL>` if reporting, the END
+  PLAYTEST milestone check or the cleanup is pending. If
   closed without a merge, ask for the intended action.
 - Find existing PRs (including closed/merged), issue progress comments and local
   worktrees before creating anything. Reuse the same issue branch and PR on
@@ -60,7 +61,7 @@ Verify the worktree path, branch and starting base. Use one issue branch
 the existing worktree/branch, never a fresh divergent implementation. The DM
 reviews; code-writing agents implement and never merge or use Studio MCP.
 
-Supply the full scope, criteria numbered AC1…ACn, Fix/Spielraum, dependency and
+Supply the full scope, criteria numbered AC1…ACn (keeping `[human]` markers), Fix/Spielraum, dependency and
 ADR links, base, branch/PR if existing, current correction number and any failure
 evidence. Request commits, branch, PR URL, head SHA, actual command results and
 remaining questions. Keep issue changes within scope; architectural or product
@@ -91,6 +92,13 @@ explicit base and linked issue. A draft PR may record failures or a pending
 playtest; it is not merge-ready. Read the diff yourself rather than accepting
 the agent's summary. Review scope, repository rules, applicable ADRs and every
 AC, recording evidence and PASS/FAIL or pending runtime verification per AC.
+Check that every runtime AC is testable by the playtester: reachable and
+observable with inputs, read-only state and the Studio switches documented under
+the ADR's playtest hooks. If a needed state can only be reached by hand, the
+implementation must add a documented Studio switch; that is a review finding,
+not a hand check. Only the five human categories in
+[Playtester handoff](references/playtest.md) may carry `[human]` or end as
+NEEDS HUMAN REVIEW.
 A new ADR in the PR must read `**Status:** Accepted with merge of PR #NN.` with
 the actual PR number (`docs/technical/README.md`). Technical or review failures enter section 5. Proceed to playtesting only once
 those checks pass. Never weaken criteria to get a green result.
@@ -98,29 +106,38 @@ those checks pass. Never weaken criteria to get a green result.
 ## 4. Studio playtester handoff
 
 Read [Playtester handoff](references/playtest.md) before scheduling the test.
-Only `.claude/agents/playtester.md` receives Studio MCP access. The tested setup
-uses a separate local terminal with `claude --agent playtester`; do not assume
-the VS Code extension or a nested agent loads its MCP server.
+Only `.claude/agents/playtester.md` receives Studio MCP access. It runs in its
+own session started from the control checkout on `main`, never as a nested
+subagent or in the VS Code extension, and tests a separate playtest worktree
+built at the handed-off SHA without `rojo serve`.
 
-Give the playtester the repo, issue/PR, branch, **full head SHA**, AC list and
-relevant check/review evidence. Run one Studio test at a time in the clean
-designated main checkout, with Rojo serving it and the repo-built test Place
-open. Require PlaceId 0, verified branch sync and the existing read-only hook.
-Never change MCP permissions, use a live Place or publish to unblock a test.
+Give the playtester the handoff prompt from the reference: repo, issue/PR,
+branch, base, **full head SHA**, Place, numbered ACs with their `[human]`
+markers, DM CHECK evidence for technical and documentation ACs, and hints. Run
+one Studio test at a time. Require PlaceId 0 and the agent's hook self-test and
+Studio-state check. Never change MCP permissions, use a live Place or publish to
+unblock a test.
 
-Wait for the playtest PR comment for that revision. It must cover every runtime
-criterion with evidence, Console errors/warnings and overall PASS/FAIL. Technical
-or documentation ACs retain their command/review evidence; they are not silently
-dropped from the overall coverage table. Unavailable Studio/tools, a partial
-test, wrong SHA or missing evidence is **WAITING_FOR_PLAYTEST/BLOCKED**, not PASS.
-Return the precise terminal handoff when local execution is required and resume
-with the same `/build <issue>` once the report is available.
+Until Phase 2, return the setup commands and the handoff prompt, record
+**WAITING_FOR_PLAYTEST** and resume with the same `/build <issue>` once the report
+is posted. Accept only the agent report for that SHA, covering every AC with
+evidence, Console errors/warnings and Overall. Then, as the reference describes:
 
-On FAIL, send findings to the implementation agent through section 5. Overall
-PASS requires every applicable AC satisfied and no errors from game scripts.
-For a tooling/docs-only change with no runtime behaviour, record why Studio is
-not applicable; do not exempt a game feature from playtesting merely because
-Studio is unavailable.
+- **PASS:** add every NEEDS HUMAN REVIEW AC to the milestone's END PLAYTEST list
+  with [the end-playtest skill](../end-playtest/SKILL.md). These ACs do not block
+  the PR.
+- **FAIL:** send the findings to the implementation agent through section 5.
+- **ERROR:** record **BLOCKED** with the cause. Testability gaps such as a missing
+  Studio switch are review findings for section 5; tool, MCP, hook or setup
+  problems are fixed before a rerun and use no round. Only an owner may move an
+  ERROR AC to the END PLAYTEST list, recorded on the issue.
+
+Unavailable Studio/tools, a partial test, wrong SHA or missing evidence is
+**WAITING_FOR_PLAYTEST/BLOCKED**, not PASS. Overall PASS requires every
+applicable AC satisfied or on the END PLAYTEST list, and no errors from game
+scripts. For a tooling/docs-only change with no runtime behaviour, record why
+Studio is not applicable; do not exempt a game feature from playtesting merely
+because Studio is unavailable.
 
 ## 5. Correct at most three times, then escalate
 
@@ -152,7 +169,8 @@ design conflicts and other `CLAUDE.md` limits immediately, without using up roun
 ## 6. Merge gate and final handoff
 
 Re-fetch live PR metadata, head and base immediately before any merge decision.
-Require checks, DM review and applicable playtest evidence for that exact head;
+Require checks, DM review and applicable playtest evidence for that exact head,
+with every NEEDS HUMAN REVIEW AC on the milestone's END PLAYTEST list;
 resolve conflicts, requested changes and required CI checks. A head change
 invalidates earlier results; a base change requires integration review and
 relevant rechecks. Respect repository protection and existing tool prompts.
@@ -168,8 +186,10 @@ relevant rechecks. Respect repository protection and existing tool prompts.
 
 Only after a verified merge, use [the report skill](../report/SKILL.md) through
 `/report <PR-number-or-URL>`, supplying issue, merge commit, changes, test evidence
-and open points. If the skill/Notion destination is unavailable, state reporting
+and open points, including ACs pending the milestone END PLAYTEST. `/report`
+then runs the END PLAYTEST milestone check. If the skill/Notion destination is unavailable, state reporting
 is pending; a copy-ready report is not proof it was saved in Notion.
 Return issue, branch/worktree, PR/base/head, correction count, check and AC
 results, current workflow state and the next required action. Preserve worktrees
-and branches while work or a human merge remains pending.
+and branches while work or a human merge remains pending; after the merge,
+`/report` hands them to `/cleanup` (`CLAUDE.md` section 7).
