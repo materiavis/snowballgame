@@ -10,6 +10,8 @@ export type Config = {
 	MaxLevel: number,
 	Order: { string },
 	Definitions: { [string]: Definition },
+	-- Ids that are shown but cannot be bought yet (owner decision 2026-11-12).
+	Locked: { [string]: boolean }?,
 }
 export type Formulas = {
 	cost: (id: string, level: number) -> number,
@@ -41,6 +43,7 @@ export type Deps = {
 export type Core = {
 	ids: () -> { string },
 	isUpgrade: (id: any) -> boolean,
+	isLocked: (id: string) -> boolean,
 	level: (userId: number, id: string) -> (number?, string?),
 	levelOrZero: (userId: number, id: string) -> number,
 	nextPrice: (userId: number, id: string) -> number?,
@@ -55,6 +58,7 @@ local BAD_LEVEL = "BadLevel"
 local BAD_PROFILE = "BadProfile"
 local NOT_LOADED = "NotLoaded"
 local MAX_LEVEL = "MaxLevel"
+local LOCKED = "Locked"
 
 local UpgradeCore = {}
 
@@ -64,6 +68,7 @@ UpgradeCore.Refusal = table.freeze({
 	BadProfile = BAD_PROFILE,
 	NotLoaded = NOT_LOADED,
 	MaxLevel = MAX_LEVEL,
+	Locked = LOCKED,
 })
 
 -- "<id> <level>" from the UpgradeSetLevel switch. Returns the id and the level as typed (a
@@ -111,6 +116,11 @@ function UpgradeCore.new(deps: Deps): Core
 
 	local function isUpgrade(id: any): boolean
 		return type(id) == "string" and config.Definitions[id] ~= nil
+	end
+
+	local function isLocked(id: string): boolean
+		local locked = config.Locked
+		return locked ~= nil and locked[id] == true
 	end
 
 	local function isLevel(value: any): boolean
@@ -166,6 +176,10 @@ function UpgradeCore.new(deps: Deps): Core
 		if not isUpgrade(id) then
 			return refuse(userId, id, reason, BAD_ID)
 		end
+		-- Before the profile is read and long before any coins are spent.
+		if isLocked(id) then
+			return refuse(userId, id, reason, LOCKED)
+		end
 		local upgrades, why = upgradesOf(userId)
 		if upgrades == nil then
 			return refuse(userId, id, reason, why :: string)
@@ -198,7 +212,8 @@ function UpgradeCore.new(deps: Deps): Core
 	end
 
 	-- Studio switch only (UpgradeSetLevel): sets a level without coins, with the same id, level
-	-- and profile checks as a purchase.
+	-- and profile checks as a purchase. Locked upgrades may be set (ADR 0010): that is how a
+	-- playtest checks their saving and the GetLevel/GetEffect seam for #38/#40.
 	local function setLevel(userId: number, id: any, target: any, reason: string): (boolean, any)
 		if not isUpgrade(id) then
 			return refuse(userId, id, reason, BAD_ID)
@@ -238,6 +253,7 @@ function UpgradeCore.new(deps: Deps): Core
 			return config.Order
 		end,
 		isUpgrade = isUpgrade,
+		isLocked = isLocked,
 		level = level,
 		levelOrZero = levelOrZero,
 		nextPrice = nextPrice,

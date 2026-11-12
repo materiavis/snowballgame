@@ -59,6 +59,8 @@ local Ui = {
 		BuyColumnFraction = 0.35,
 		BuyMinWidth = 80,
 		ScrollBarThickness = 6,
+		-- How long the "Need … more" message stays after a tap on a greyed buy button.
+		MissingMessageSeconds = 2,
 		-- Share of a row's info column for the name; the level takes the rest.
 		NameFraction = 0.65,
 	},
@@ -147,7 +149,11 @@ local Ui = {
 		Upgrades = "Upgrades",
 		-- Upgrades window (#36). The values next to them are separate, unlocalised labels.
 		UpgradeBuy = "Buy",
-		UpgradeTooFewCoins = "Need coins",
+		-- Shown briefly when a greyed buy button is tapped; {amount} is the missing price, e.g.
+		-- "Need 1.2K more" (owner decision 2026-11-12, like the barrier in 7.6).
+		UpgradeNeedMore = "Need {amount} more",
+		-- Locked upgrades (Config.Upgrades.Locked, owner decision 2026-11-12).
+		UpgradeComingSoon = "Coming soon",
 		UpgradeMax = "MAX",
 		-- Between the effect now and after the next level.
 		UpgradeArrow = " → ",

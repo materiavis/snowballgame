@@ -297,6 +297,12 @@ function UpgradeService.GetEffect(player: Player, id: string): number
 	return Formulas.Upgrades.effect(id, core.levelOrZero(player.UserId, id))
 end
 
+-- True while Config.Upgrades.Locked holds the id: shown as "Coming soon", purchases refused
+-- with Locked. The level and effect seams above work for locked ids too.
+function UpgradeService.IsLocked(id: string): boolean
+	return core.isLocked(id)
+end
+
 -- Price of the next level, or nil at the maximum or while not loaded.
 function UpgradeService.GetNextPrice(player: Player, id: string): number?
 	return core.nextPrice(player.UserId, id)

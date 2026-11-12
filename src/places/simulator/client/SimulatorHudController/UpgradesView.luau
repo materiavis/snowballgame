@@ -4,7 +4,7 @@
 -- spec checks every text. Display only: whether a purchase happens is decided on the server.
 
 export type Input = {
-	-- Config.Upgrades: Order, MaxLevel
+	-- Config.Upgrades: Order, MaxLevel, Locked
 	upgrades: any,
 	-- Formulas.Upgrades: cost(id, level), effect(id, level)
 	formulas: any,
@@ -20,9 +20,11 @@ export type Input = {
 	levels: { [string]: any },
 }
 
--- Buy: can be bought now. TooFewCoins: next level costs more than the balance. Max: at
--- MaxLevel. Unavailable: profile not loaded or no valid level yet.
-export type State = "Buy" | "TooFewCoins" | "Max" | "Unavailable"
+-- Buy: can be bought now. TooFewCoins: the next level costs more than the balance (button
+-- greyed, a tap shows missingText). Max: at MaxLevel. Locked: Config.Upgrades.Locked, shown as
+-- "Coming soon" without a buy button. Unavailable: profile not loaded, no valid level yet or no
+-- valid balance.
+export type State = "Buy" | "TooFewCoins" | "Max" | "Locked" | "Unavailable"
 
 export type Row = {
 	id: string,
@@ -34,6 +36,10 @@ export type Row = {
 	state: State,
 	-- True only for "Buy": the client sends the request only then.
 	canBuy: boolean,
+	-- TooFewCoins only: coins still needed (price - Coins) and its message, e.g.
+	-- "Need 1.2K more". Same price value as priceText, formatted with the same price rounding.
+	missing: number?,
+	missingText: string?,
 }
 
 local UpgradesView = {}
@@ -51,12 +57,21 @@ function UpgradesView.effectValue(format: any, effect: number): string
 	return `{format.Prefix}{string.format(`%.{format.Decimals}f`, effect * format.Scale)}`
 end
 
+-- Text.UpgradeNeedMore with {amount} replaced. The amount uses price rounding (up), so the
+-- message never shows less than is really missing.
+function UpgradesView.missingText(template: string, amountText: string): string
+	return (string.gsub(template, "{amount}", function()
+		return amountText
+	end))
+end
+
 function UpgradesView.row(input: Input, id: string): Row
 	local ui = input.ui
 	local text = ui.Text
 	local format = ui.UpgradeRows[id]
 	local maxLevel = input.upgrades.MaxLevel
 	local level = input.levels[id]
+	local locked = input.upgrades.Locked ~= nil and input.upgrades.Locked[id] == true
 
 	local row: Row = {
 		id = id,
@@ -67,12 +82,27 @@ function UpgradesView.row(input: Input, id: string): Row
 		buttonText = text.UpgradeBuy,
 		state = "Unavailable",
 		canBuy = false,
+		missing = nil,
+		missingText = nil,
 	}
-	if input.status ~= "Loaded" or not isLevel(level, maxLevel) then
+	local loaded = input.status == "Loaded" and isLevel(level, maxLevel)
+	if loaded then
+		row.levelText = `{level}/{maxLevel}`
+	end
+	if locked then
+		-- Visible, never buyable (the server refuses with Locked as well).
+		row.state = "Locked"
+		row.priceText = text.UpgradeComingSoon
+		row.buttonText = text.UpgradeComingSoon
+		if loaded then
+			row.effectText = `{UpgradesView.effectValue(format, input.formulas.effect(id, level))}{format.Unit}`
+		end
+		return row
+	end
+	if not loaded then
 		return row
 	end
 
-	row.levelText = `{level}/{maxLevel}`
 	local now = UpgradesView.effectValue(format, input.formulas.effect(id, level))
 	if level >= maxLevel then
 		row.effectText = `{now}{format.Unit}`
@@ -84,15 +114,22 @@ function UpgradesView.row(input: Input, id: string): Row
 
 	local after = UpgradesView.effectValue(format, input.formulas.effect(id, level + 1))
 	row.effectText = `{now}{text.UpgradeArrow}{after}{format.Unit}`
+	-- One price value feeds both the shown price and the missing amount.
 	local price = input.formulas.cost(id, level + 1)
 	row.priceText = input.formatPrice(price)
+	local coins = input.coins
+	if not isFinite(coins) or coins < 0 then
+		row.priceText = text.Missing
+		return row
+	end
 	-- The real coin check is on the server; this only says whether a click can succeed.
-	if isFinite(input.coins) and input.coins >= price then
+	if coins >= price then
 		row.state = "Buy"
 		row.canBuy = true
 	else
 		row.state = "TooFewCoins"
-		row.buttonText = text.UpgradeTooFewCoins
+		row.missing = price - coins
+		row.missingText = UpgradesView.missingText(text.UpgradeNeedMore, input.formatPrice(price - coins))
 	end
 	return row
 end

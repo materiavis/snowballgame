@@ -16,6 +16,14 @@ local Upgrades = {
 	-- Ids match the save format (sim.upgrades).
 	Order = table.freeze({ "growth", "walkSpeed", "magnet", "sellValue", "stability" }),
 
+	-- Shown in the menu as "Coming soon" and refused by the server (owner decision 2026-11-12,
+	-- concept 7.8): they have no effect in play until their consumer exists. Finds (#40) remove
+	-- `magnet`, selling (#38) removes `sellValue`.
+	Locked = table.freeze({
+		magnet = true,
+		sellValue = true,
+	} :: { [string]: boolean }),
+
 	Definitions = table.freeze({
 		-- Seconds to the maximum on normal snow: 40 s to 8 s.
 		growth = table.freeze({ BasePrice = 25, Factor = 1.35, Start = 40, End = 8 }),

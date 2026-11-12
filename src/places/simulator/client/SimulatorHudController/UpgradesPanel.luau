@@ -5,6 +5,7 @@
 --
 -- Display only. Levels, coins and the load status are server-written player attributes; the
 -- buy button sends only the upgrade id through the UpgradeBuy remote, and the server decides.
+-- Locked rows show "Coming soon"; a greyed button shows the missing amount instead of sending.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -39,7 +40,11 @@ type RowView = {
 	effect: TextLabel,
 	price: TextLabel,
 	buy: TextButton,
-	canBuy: boolean,
+	-- "Need … more", shown over the effect line for a moment after a tap on a greyed button.
+	missing: TextLabel,
+	row: UpgradesView.Row?,
+	-- Bumped on every tap, so only the latest tap hides the message.
+	missingToken: number,
 }
 
 local UpgradesPanel = {}
@@ -92,6 +97,14 @@ function UpgradesPanel.build(content: Frame): Panel
 		price.Parent = frame
 		local buy = Components.button("Buy", Ui.Text.UpgradeBuy, z + 1)
 		buy.Parent = frame
+		local missing = Components.label("MissingAmount", "", Ui.TextSize.Caption, z + 2, {
+			bold = true,
+			autoLocalize = false,
+		})
+		missing.TextXAlignment = Enum.TextXAlignment.Left
+		missing.TextColor3 = Theme.Max
+		missing.Visible = false
+		missing.Parent = frame
 
 		local view: RowView = {
 			frame = frame,
@@ -100,14 +113,35 @@ function UpgradesPanel.build(content: Frame): Panel
 			effect = effect,
 			price = price,
 			buy = buy,
-			canBuy = false,
+			missing = missing,
+			row = nil,
+			missingToken = 0,
 		}
 		views[id] = view
 
 		buy.Activated:Connect(function()
-			-- Only the id is sent. A click the server refuses changes nothing.
-			if view.canBuy and remote then
-				remote:FireServer(id)
+			local row = view.row
+			if row == nil then
+				return
+			end
+			-- Only the id is sent, and only when the row says it can be bought. A greyed button
+			-- never sends; it shows how much is missing instead.
+			if row.canBuy then
+				if remote then
+					remote:FireServer(id)
+				end
+			elseif row.state == "TooFewCoins" and row.missingText then
+				view.missingToken += 1
+				local token = view.missingToken
+				missing.Text = row.missingText
+				missing.Visible = true
+				view.effect.Visible = false
+				task.delay(Ui.UpgradesWindow.MissingMessageSeconds, function()
+					if view.missingToken == token then
+						missing.Visible = false
+						view.effect.Visible = true
+					end
+				end)
 			end
 		end)
 	end
@@ -128,15 +162,33 @@ function UpgradesPanel.build(content: Frame): Panel
 		})
 		for _, row in rows do
 			local view = views[row.id]
+			view.row = row
+			local locked = row.state == "Locked"
 			view.level.Text = row.levelText
 			view.effect.Text = row.effectText
 			view.price.Text = row.priceText
+			view.name.TextColor3 = if locked then Theme.TextMuted else Theme.Text
+			view.price.TextColor3 = if locked then Theme.TextMuted else Theme.Text
+			-- Locked rows get the localised "Coming soon" text, every other price is a number.
+			view.price.AutoLocalize = locked
 			view.buy.Text = row.buttonText
-			view.buy.Visible = row.state ~= "Max"
+			view.buy.Visible = row.state ~= "Max" and not locked
+			-- Greyed whenever a tap cannot buy. State is readable for playtests.
 			view.buy.AutoButtonColor = row.canBuy
 			view.buy.BackgroundColor3 = if row.canBuy then Theme.Brand else Theme.SurfaceRaised
 			view.buy.TextColor3 = if row.canBuy then Theme.Text else Theme.TextMuted
-			view.canBuy = row.canBuy
+			view.buy:SetAttribute("State", row.state)
+			view.frame:SetAttribute("State", row.state)
+			-- A shown message follows the balance, and goes once the row can be bought.
+			if view.missing.Visible then
+				if row.missingText then
+					view.missing.Text = row.missingText
+				else
+					view.missingToken += 1
+					view.missing.Visible = false
+					view.effect.Visible = true
+				end
+			end
 		end
 	end
 
@@ -150,6 +202,7 @@ function UpgradesPanel.build(content: Frame): Panel
 			Components.place(view.name, r.name)
 			Components.place(view.level, r.level)
 			Components.place(view.effect, r.effect)
+			Components.place(view.missing, r.effect)
 			Components.place(view.price, r.price)
 			Components.place(view.buy, r.buy)
 			y += r.height + r.gap

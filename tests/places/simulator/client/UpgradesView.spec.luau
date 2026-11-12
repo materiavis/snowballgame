@@ -3,6 +3,7 @@
 -- the price with price rounding, the buy state, MAX at level 100 and "–" while not loaded. Row
 -- layout keeps the 44 px floor on the smallest screens of ADR 0008.
 
+local fs = require("@lune/fs")
 local T = require("../../../TestKit")
 local E = require("../../../helpers/Economy")
 local Ui = require("../../../../src/shared/Config/Ui")
@@ -48,8 +49,8 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		T.equal(rows.growth.levelText, "0/100")
 		T.equal(rows.growth.effectText, "40.00 → 39.68 s to MAX")
 		T.equal(rows.walkSpeed.effectText, "16.00 → 16.16 studs/s")
-		T.equal(rows.magnet.effectText, "4.0 → 4.2 studs")
-		T.equal(rows.sellValue.effectText, "×1.00 → ×1.05")
+		T.equal(rows.magnet.effectText, "4.0 studs", "locked: the current effect only")
+		T.equal(rows.sellValue.effectText, "×1.00", "locked: the current effect only")
 		T.equal(rows.stability.effectText, "10.00 → 9.92 % lost per hit")
 	end)
 
@@ -57,26 +58,80 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		local rows = byId(UpgradesView.rows(input(ZERO, 1000)))
 		T.equal(rows.growth.priceText, "25")
 		T.equal(rows.walkSpeed.priceText, "40")
-		T.equal(rows.magnet.priceText, "150")
-		T.equal(rows.sellValue.priceText, "200")
 		T.equal(rows.stability.priceText, "100")
 
 		local levels = table.clone(ZERO)
-		levels.sellValue = 30
-		local row = UpgradesView.row(input(levels, 0), "sellValue")
-		T.equal(row.priceText, E.NumberFormat.price(E.Upgrades.cost("sellValue", 31)))
+		levels.growth = 30
+		local row = UpgradesView.row(input(levels, 0), "growth")
+		T.equal(row.priceText, E.NumberFormat.price(E.Upgrades.cost("growth", 31)))
 		T.equal(row.levelText, "30/100")
 	end)
 
-	test("buy state follows the coins: Buy when affordable, 'Need coins' otherwise", function()
+	test("buy state follows the coins: Buy when affordable, greyed TooFewCoins otherwise", function()
 		local rows = byId(UpgradesView.rows(input(ZERO, 100)))
 		T.equal(rows.growth.state, "Buy")
 		T.equal(rows.growth.canBuy, true)
 		T.equal(rows.growth.buttonText, Ui.Text.UpgradeBuy)
+		T.equal(rows.growth.missingText, nil)
 		T.equal(rows.stability.state, "Buy", "exactly the price is enough")
-		T.equal(rows.magnet.state, "TooFewCoins")
-		T.equal(rows.magnet.canBuy, false)
-		T.equal(rows.magnet.buttonText, Ui.Text.UpgradeTooFewCoins)
+		local poor = byId(UpgradesView.rows(input(ZERO, 30)))
+		T.equal(poor.walkSpeed.state, "TooFewCoins")
+		T.equal(poor.walkSpeed.canBuy, false)
+		T.equal(poor.walkSpeed.buttonText, Ui.Text.UpgradeBuy, "same label, greyed")
+	end)
+
+	test("R1-2: the missing amount is price - Coins from the same price as the shown price", function()
+		local poor = byId(UpgradesView.rows(input(ZERO, 30)))
+		T.equal(poor.walkSpeed.missing, 10)
+		T.equal(poor.walkSpeed.missingText, "Need 10 more")
+		T.equal(poor.stability.missing, 70)
+		T.equal(poor.stability.missingText, "Need 70 more")
+		T.equal(poor.growth.state, "Buy")
+
+		-- Large amounts use price rounding (up), so the message never understates what is missing.
+		local levels = table.clone(ZERO)
+		levels.growth = 20
+		local price = E.Upgrades.cost("growth", 21)
+		local coins = price - 1_150
+		local row = UpgradesView.row(input(levels, coins), "growth")
+		T.equal(row.priceText, E.NumberFormat.price(price), "shown price")
+		T.equal(row.missing, 1_150)
+		T.equal(row.missingText, "Need 1.2K more", "1,150 rounds up to 1.2K, not down to 1.1K")
+		local high = table.clone(ZERO)
+		high.growth = 60
+		local highPrice = E.Upgrades.cost("growth", 61)
+		T.isTrue(highPrice > 3_755_901, "level 61 costs more than every shortfall below")
+		for _, shortfall in { 1, 999, 1_001, 1_234_567, 3_755_901 } do
+			local r = UpgradesView.row(input(high, highPrice - shortfall), "growth")
+			T.equal(r.missing, shortfall)
+			T.equal(r.missingText, UpgradesView.missingText(Ui.Text.UpgradeNeedMore, E.NumberFormat.price(shortfall)))
+		end
+		T.equal(UpgradesView.missingText("Need {amount} more", "3.8M"), "Need 3.8M more")
+		T.equal(UpgradesView.missingText("{amount}", "50%"), "50%", "a % in the amount is kept")
+	end)
+
+	test("R1-1: Magnet and Sell value are visible, locked and marked Coming soon", function()
+		T.equal(Upgrades.Locked.magnet, true)
+		T.equal(Upgrades.Locked.sellValue, true)
+		for _, coins in { 0, 1e30 } do
+			local rows = byId(UpgradesView.rows(input(ZERO, coins)))
+			for _, id in { "magnet", "sellValue" } do
+				local row = rows[id]
+				T.equal(row.state, "Locked", id)
+				T.equal(row.canBuy, false, `{id} never buyable`)
+				T.equal(row.priceText, Ui.Text.UpgradeComingSoon)
+				T.equal(row.priceText, "Coming soon")
+				T.equal(row.missingText, nil)
+				T.equal(row.name, Ui.UpgradeRows[id].Name, "still listed by name")
+				T.equal(row.levelText, "0/100")
+			end
+			for _, id in { "growth", "walkSpeed", "stability" } do
+				T.isTrue(rows[id].state ~= "Locked", `{id} is not locked`)
+			end
+		end
+		local notLoaded = UpgradesView.row(input(ZERO, 1000, "Loading"), "magnet")
+		T.equal(notLoaded.state, "Locked", "locked also while loading")
+		T.equal(notLoaded.levelText, Ui.Text.Missing)
 	end)
 
 	test("AC2: level 100 shows MAX, the final effect and no buy", function()
@@ -108,6 +163,21 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 			T.equal(UpgradesView.row(input(ZERO, coins), "growth").canBuy, false, tostring(coins))
 		end
 		T.equal(UpgradesView.row(input(ZERO, nil), "growth").canBuy, false, "no Coins attribute")
+	end)
+
+	test("R1-2: the panel fires the remote only for a buyable row; a greyed tap shows MissingAmount", function()
+		local panel = fs.readFile("src/places/simulator/client/SimulatorHudController/UpgradesPanel.luau")
+		T.isTrue(
+			string.find(panel, "if row.canBuy then\n\t\t\t\tif remote then\n\t\t\t\t\tremote:FireServer(id)", 1, true)
+				~= nil,
+			"FireServer only inside the canBuy branch"
+		)
+		T.isTrue(string.find(panel, 'elseif row.state == "TooFewCoins" and row.missingText then', 1, true) ~= nil)
+		T.isTrue(string.find(panel, '"MissingAmount"', 1, true) ~= nil, "named label for playtests")
+		T.isTrue(string.find(panel, "Ui.UpgradesWindow.MissingMessageSeconds", 1, true) ~= nil, "duration from config")
+		T.isTrue(string.find(panel, 'view.buy:SetAttribute("State", row.state)', 1, true) ~= nil, "state readable")
+		T.equal(Ui.UpgradesWindow.MissingMessageSeconds, 2)
+		T.equal(Ui.Text.UpgradeNeedMore, "Need {amount} more")
 	end)
 
 	test("row layout keeps the buy button at least 44 px on the smallest screens", function()
