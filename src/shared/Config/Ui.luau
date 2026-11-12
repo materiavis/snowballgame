@@ -50,6 +50,35 @@ local Ui = {
 		Padding = 12,
 	},
 
+	-- Upgrades window rows (#36, ADR 0010). Spielraum (concept 7.8: look of the menu). A row is two
+	-- lines of ButtonBase height (scaled, at least MinTouchTarget): name and level over the effect
+	-- on the left, the price over the buy button on the right.
+	UpgradesWindow = {
+		RowGap = 8,
+		-- Share of the row width for the price and buy column.
+		BuyColumnFraction = 0.35,
+		BuyMinWidth = 80,
+		ScrollBarThickness = 6,
+		-- Share of a row's info column for the name; the level takes the rest.
+		NameFraction = 0.65,
+	},
+
+	-- How each upgrade reads in the window (Spielraum). The effect is shown as
+	-- Prefix .. value .. Unit, with value = effect * Scale at Decimals decimals.
+	UpgradeRows = {
+		growth = table.freeze({ Name = "Growth", Prefix = "", Unit = " s to MAX", Scale = 1, Decimals = 2 }),
+		walkSpeed = table.freeze({ Name = "Walk speed", Prefix = "", Unit = " studs/s", Scale = 1, Decimals = 2 }),
+		magnet = table.freeze({ Name = "Magnet", Prefix = "", Unit = " studs", Scale = 1, Decimals = 1 }),
+		sellValue = table.freeze({ Name = "Sell value", Prefix = "×", Unit = "", Scale = 1, Decimals = 2 }),
+		stability = table.freeze({
+			Name = "Stability",
+			Prefix = "",
+			Unit = " % lost per hit",
+			Scale = 100,
+			Decimals = 2,
+		}),
+	},
+
 	-- Areas that HUD and windows keep clear on touch screens (concept 10.2). Each side is
 	-- max(fraction of the screen, minimum px). They approximate Roblox's default touch
 	-- controls and the third-person ball; the playtest on a small phone checks them.
@@ -116,7 +145,15 @@ local Ui = {
 		Coins = "Coins",
 		BallSize = "Size",
 		Upgrades = "Upgrades",
-		UpgradesPlaceholder = "Upgrades are coming soon.",
+		-- Upgrades window (#36). The values next to them are separate, unlocalised labels.
+		UpgradeBuy = "Buy",
+		UpgradeTooFewCoins = "Need coins",
+		UpgradeMax = "MAX",
+		-- Between the effect now and after the next level.
+		UpgradeArrow = " → ",
+		-- Upgrade stand prompt (ProximityPrompt texts).
+		UpgradeStandAction = "Upgrades",
+		UpgradeStandObject = "Upgrade stand",
 		Close = "X",
 		-- Shown instead of a balance while the profile is not loaded (owner decision on #35).
 		Missing = "–",
@@ -139,6 +176,8 @@ for _, key in
 	{
 		"Hud",
 		"Window",
+		"UpgradesWindow",
+		"UpgradeRows",
 		"ClearZones",
 		"TextSize",
 		"Fonts",

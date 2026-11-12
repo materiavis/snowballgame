@@ -39,6 +39,7 @@ local SafeSpot = require(script:WaitForChild("SafeSpot"))
 local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
 local TestGeometry = require(script:WaitForChild("TestGeometry"))
 local SurfaceService = require(script.Parent:WaitForChild("SurfaceService"))
+local UpgradeService = require(script.Parent:WaitForChild("UpgradeService"))
 
 local MAX_PART_SIZE = 2048 -- Roblox engine limit per axis
 
@@ -51,6 +52,8 @@ local studioTools = RunService:IsStudio() and game.PlaceId == 0
 local core = BallCore.new(BallConfig, ZonesConfig, Formulas.Zones.zoneOptics)
 local rules = GrowthRules.new(BallConfig, Formulas.Zones.maxSize)
 local modifiers = GrowthModifiers.new(Formulas.Upgrades.effect)
+-- Growth and Stability levels are read live, so a purchase changes the next growth step.
+modifiers.setLevelSource(UpgradeService.GetLevel)
 local obstacleRules = ObstacleRules.new(BallConfig)
 local recoveryRules = RecoveryRules.new(BallConfig)
 local obstacles = Obstacles.new(BallConfig, obstacleRules, studioTools)
