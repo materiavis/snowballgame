@@ -1,7 +1,7 @@
 --!strict
 -- The one seam between ball growth and upgrades (concept 7.4, 7.8). Growth time and collision
--- loss are upgrade effects, read through Formulas.Upgrades.effect. UpgradeService (#36) does
--- not exist yet, so every player is at level 0 until it calls setLevelSource.
+-- loss are upgrade effects, read through Formulas.Upgrades.effect. BallService sets
+-- UpgradeService.GetLevel (#36) as the level source; without one every player is at level 0.
 
 export type LevelSource = (player: any, upgradeId: string) -> number
 
