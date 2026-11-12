@@ -1,7 +1,7 @@
 --!strict
 -- AC1 for #24: malformed, out-of-range, over-rate and unauthorised calls are dropped and
--- counted, the handler never sees them, and nothing throws. Runs the real NetExample
--- declaration with its Config.Net limits; the clock is faked, players are plain tables.
+-- counted, the handler never sees them, and nothing throws. Runs a test-only declaration
+-- (the old NetExample remote, removed with #28); the clock is faked, players are plain tables.
 
 local T = require("../../TestKit")
 local FakeClock = require("../../helpers/FakeClock")
@@ -10,8 +10,6 @@ local Registry = require("../../../src/shared/Net/Registry")
 local RateLimiter = require("../../../src/shared/Net/RateLimiter")
 local Stats = require("../../../src/shared/Net/Stats")
 local Guard = require("../../../src/shared/Net/Guard")
-local declareRemotes = require("../../../src/shared/Net/Remotes")
-local NetConfig = require("../../../src/shared/Config/Net")
 
 local NAN = 0 / 0
 local INF = math.huge
@@ -52,14 +50,30 @@ local function harness(definition: any, handler: Guard.Handler?): Harness
 	return { call = call, stats = stats, clock = clock, handled = handled, errors = errors }
 end
 
+-- Test fixture, not a design value: a whole number 1..MaxAmount and a list of up to
+-- MaxValues bounded numbers.
+local example = { MaxAmount = 10, MaxValues = 3, MaxValueMagnitude = 1000 }
+local exampleLimit = { Burst = 5, RefillPerSecond = 2 }
+local exampleBurst = exampleLimit.Burst
+
 local function exampleDefinition()
-	return Registry.build(declareRemotes(Schema, NetConfig)).NetExample
+	return Registry.build({
+		NetExample = {
+			kind = "Event",
+			args = {
+				Schema.number({ min = 1, max = example.MaxAmount, integer = true }),
+				Schema.array(
+					Schema.number({ min = -example.MaxValueMagnitude, max = example.MaxValueMagnitude }),
+					{ maxLength = example.MaxValues }
+				),
+			},
+			rateLimit = exampleLimit,
+		},
+	}).NetExample
 end
 
 local PLAYER = { Name = "Tester" }
 local OTHER = { Name = "Other" }
-local example = NetConfig.Example
-local exampleBurst = NetConfig.RateLimits.NetExample.Burst
 
 return T.suite("src/shared/Net/Guard", function(test)
 	test("a valid call reaches the handler with its arguments", function()
@@ -130,7 +144,7 @@ return T.suite("src/shared/Net/Guard", function(test)
 		h.call(OTHER, 1, {})
 		T.equal(#h.handled, exampleBurst + 1, "another player has their own budget")
 
-		h.clock.advance(1 / NetConfig.RateLimits.NetExample.RefillPerSecond)
+		h.clock.advance(1 / exampleLimit.RefillPerSecond)
 		h.call(PLAYER, 1, {})
 		T.equal(#h.handled, exampleBurst + 2, "one token back after one refill interval")
 	end)

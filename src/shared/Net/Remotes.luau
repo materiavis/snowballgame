@@ -8,26 +8,30 @@
 --   rateLimit a Config.Net.RateLimits entry (per player)
 --   authorize optional hook for ownership, distance, cooldowns and other game-state checks
 --
+-- A server -> client event is declared the same way. It gets no server handler, so anything a
+-- client fires on it is dropped (Rate, Arity or NoHandler) and counted.
+--
 -- This module is a function of its dependencies so the headless tests can load it with
 -- plain path requires, while Net/init passes the Roblox modules.
 
-return function(Schema: any, NetConfig: any): { [string]: any }
-	local example = NetConfig.Example
+return function(_Schema: any, NetConfig: any): { [string]: any }
+	local limits = NetConfig.RateLimits
 
 	return {
-		-- EXAMPLE ONLY, not gameplay. Lets the playtester exercise the guard in Studio
-		-- (NetExampleService handles it). Remove it once the first real remote exists.
-		-- Args: a whole number 1..MaxAmount and a list of up to MaxValues bounded numbers.
-		NetExample = {
+		-- Client -> server, no arguments: the Simulator "Lobby" button (ADR 0010). TravelService
+		-- refuses it outside the Simulator and while a travel is in progress. The destination is
+		-- always the Lobby, so the client has nothing to choose.
+		TravelRequestLobby = {
 			kind = "Event",
-			args = {
-				Schema.number({ min = 1, max = example.MaxAmount, integer = true }),
-				Schema.array(
-					Schema.number({ min = -example.MaxValueMagnitude, max = example.MaxValueMagnitude }),
-					{ maxLength = example.MaxValues }
-				),
-			},
-			rateLimit = NetConfig.RateLimits.NetExample,
+			args = {},
+			rateLimit = limits.TravelRequestLobby,
+		},
+
+		-- Server -> client: TravelService sends one Config.Travel.Messages key (ADR 0010).
+		TravelNotice = {
+			kind = "Event",
+			args = {},
+			rateLimit = limits.TravelNotice,
 		},
 	}
 end
