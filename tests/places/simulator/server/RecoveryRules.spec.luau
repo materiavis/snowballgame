@@ -164,7 +164,7 @@ return T.suite("Simulator RecoveryRules (7.3, #94)", function(test)
 		T.equal(rules.blocksPlacement(9.5, 10, false), true, "half a stud into a wall")
 	end)
 
-	test("bound: run A's burst is cut, a ball pushed off an edge by hand is not", function()
+	test("burst bound: run A's burst is cut, a ball pushed off an edge by hand is not (see RecoveryLoop)", function()
 		-- Run A: 5 recoveries in about 2 s. With the old rule they would go on as long as the
 		-- character stood there; the bound parks the ball at the next one past the limit.
 		local times: { number } = {}

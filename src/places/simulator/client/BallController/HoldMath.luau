@@ -16,6 +16,8 @@ export type HoldConfig = {
 	HoldVelocityGain: number,
 	HoldMaxSpeedFactor: number,
 	HoldMaxAcceleration: number,
+	MoveDeadzone: number,
+	RecoveryHoldResetTime: number,
 }
 
 export type HoldMath = {
@@ -32,6 +34,17 @@ export type HoldMath = {
 		walkSpeed: number
 	) -> (number, number),
 	acceleration: (wantX: number, wantZ: number, bvx: number, bvz: number) -> (number, number),
+	directionTo: (rx: number, rz: number, fallbackX: number, fallbackZ: number) -> (number, number),
+	followsBall: (now: number, recoveredAt: number?) -> boolean,
+	nextHeldDirection: (
+		hx: number,
+		hz: number,
+		mx: number,
+		mz: number,
+		rx: number,
+		rz: number,
+		followBall: boolean
+	) -> (number, number),
 }
 
 local EPSILON = 1e-6
@@ -104,11 +117,54 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		return clampLength((wantX - bvx) * gain, (wantZ - bvz) * gain, config.HoldMaxAcceleration)
 	end
 
+	-- Unit direction of (rx, rz), or the fallback when it is too short to have one.
+	local function directionTo(rx: number, rz: number, fallbackX: number, fallbackZ: number): (number, number)
+		local length = math.sqrt(rx * rx + rz * rz)
+		if length > 1e-3 and length == length then
+			return rx / length, rz / length
+		end
+		return fallbackX, fallbackZ
+	end
+
+	-- True for RecoveryHoldResetTime seconds after the client saw a server recovery. A window,
+	-- not one frame: the new position and the Recoveries attribute need not arrive in the same
+	-- frame, and the hold must end up aimed at where the ball was put, not where it fell.
+	local function followsBall(now: number, recoveredAt: number?): boolean
+		return recoveredAt ~= nil and now - recoveredAt < config.RecoveryHoldResetTime
+	end
+
+	-- The hold direction for this frame; (rx, rz) is the ball relative to the character.
+	-- Walking always wins: walking is the steering (7.3), so a player who walks out over the
+	-- edge again pushes the ball over again. Standing still right after a recovery, the hold
+	-- follows the ball to where the server put it, so the old direction (over the edge, into an
+	-- obstacle) does not swing it back (#94). Otherwise the last walking direction stays.
+	local function nextHeldDirection(
+		hx: number,
+		hz: number,
+		mx: number,
+		mz: number,
+		rx: number,
+		rz: number,
+		followBall: boolean
+	): (number, number)
+		local moving = math.sqrt(mx * mx + mz * mz)
+		if moving > config.MoveDeadzone then
+			return mx / moving, mz / moving
+		end
+		if followBall then
+			return directionTo(rx, rz, hx, hz)
+		end
+		return hx, hz
+	end
+
 	return table.freeze({
 		holdDistance = holdDistance,
 		maxOrbitRate = maxOrbitRate,
 		desiredVelocity = desiredVelocity,
 		acceleration = acceleration,
+		directionTo = directionTo,
+		followsBall = followsBall,
+		nextHeldDirection = nextHeldDirection,
 	})
 end
 

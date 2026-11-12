@@ -19,6 +19,7 @@ export type BallState = {
 	-- park end while the bound holds the ball, the stuck timer and the last spot it stayed at.
 	placedAt: number,
 	recentRecoveries: { number },
+	recentPutBacks: { any }, -- RecoveryRules.PutBack, for the loop bound
 	parkedUntil: number?,
 	stuck: any,
 	lastSafePosition: Vector3?,
@@ -98,6 +99,7 @@ function BallStepModule.newState(
 		recoveries = 0,
 		placedAt = 0,
 		recentRecoveries = {},
+		recentPutBacks = {},
 		parkedUntil = nil,
 		stuck = nil,
 		lastSafePosition = nil,

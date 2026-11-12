@@ -147,6 +147,24 @@ local Ball = {
 	RecoveryBurstLimit = 3,
 	RecoveryBurstWindow = 5,
 	RecoveryParkTime = 3,
+	-- Loop bound (#94 round 1, proposals): the burst rule misses a loop with a few seconds per
+	-- round (playtest at f95545a: falls about 5 s apart at the map edge). A recovery whose
+	-- put-back position lies within max(RecoveryLoopRadiusMin, diameter ×
+	-- RecoveryLoopRadiusPerDiameter) studs of RecoveryLoopLimit earlier put-backs inside
+	-- RecoveryLoopWindow seconds is past the bound and parks like the burst rule. "Near the same
+	-- place" keeps a player who loses the ball now and then across the map below it. With 3 in
+	-- 40 s a loop of up to about 13 s per round is parked at its 4th recovery (15 s into a 5 s
+	-- loop). A player who deliberately pushes the ball off the same edge every few seconds is
+	-- parked too: the server cannot tell that from the loop, and parking only holds the ball
+	-- for RecoveryParkTime. Normal play (playtest normal-play check) has no recoveries at all.
+	RecoveryLoopLimit = 3,
+	RecoveryLoopWindow = 40,
+	RecoveryLoopRadiusMin = 10,
+	RecoveryLoopRadiusPerDiameter = 1,
+	-- Client: after the server put the ball back, the hold follows the ball's new bearing for
+	-- this long while the player stands still, so it is not swung back over the edge (#94).
+	-- Covers the put-back position and the Recoveries attribute arriving a few frames apart.
+	RecoveryHoldResetTime = 0.5,
 	-- Stuck (#94 AC8): out of the character's growth range for StuckTime seconds while the ball
 	-- neither moved StuckProgressStuds nor came that much closer, e.g. held behind an obstacle.
 	StuckTime = 4,

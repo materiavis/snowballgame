@@ -124,25 +124,42 @@ function RecoveryModule.new(deps: Deps): Recovery
 		state.lastRecovery = why
 
 		local spot = put(state, root)
+		local putBack: Vector3 = spot.position
+		-- Loop bound: needs the put-back position, so it is decided after the placement.
+		local size = state.part.Size.X
+		local putBacks = recoveryRules.recentPutBacks(state.recentPutBacks, now)
+		local near = recoveryRules.nearPutBacks(putBacks, putBack.X, putBack.Z, size)
+		local looped = recoveryRules.atLoopBound(near)
+		table.insert(putBacks, { time = now, x = putBack.X, z = putBack.Z })
+		state.recentPutBacks = putBacks
+
 		state.part:SetAttribute(config.RecoveriesAttribute, state.recoveries)
 		local name = state.player.Name
-		local diameter = string.format("%.2f", state.part.Size.X)
+		local diameter = string.format("%.2f", size)
 		if deps.verbose then
 			print(
 				`[BallService] {name} recovery reason={why} ball={show(ballBefore)} character={show(root.Position)} putBack={show(
-					spot.position
-				)} spot={spot.kind} diameter={diameter} recoveries={state.recoveries} recent={#recent}`
+					putBack
+				)} spot={spot.kind} diameter={diameter} recoveries={state.recoveries} recent={#recent} loop={near + 1}`
 			)
 		end
 		if spot.kind == "Unsafe" then
-			warn(`[BallService] {name} no safe spot for the ball ({why}), put back in front at {show(spot.position)}`)
+			warn(`[BallService] {name} no safe spot for the ball ({why}), put back in front at {show(putBack)}`)
 		end
 		if bounded then
 			park(state, now)
 			warn(
 				`[BallService] {name} recovery bound: {#recent} recoveries within {config.RecoveryBurstWindow} s, ball parked at {show(
-					spot.position
+					putBack
 				)} ({spot.kind}) for {config.RecoveryParkTime} s`
+			)
+		elseif looped then
+			park(state, now)
+			warn(
+				`[BallService] {name} recovery loop bound: {near + 1} recoveries within {config.RecoveryLoopWindow} s and {string.format(
+					"%.1f",
+					recoveryRules.loopRadius(size)
+				)} studs, ball parked at {show(putBack)} ({spot.kind}) for {config.RecoveryParkTime} s`
 			)
 		end
 	end

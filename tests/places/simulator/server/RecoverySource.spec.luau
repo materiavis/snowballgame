@@ -19,10 +19,30 @@ return T.suite("Simulator recovery source (#94)", function(test)
 		local start = string.find(source, "if deps.verbose then%s+print%(%s+`%[BallService%] {name} recovery")
 		T.isTrue(start ~= nil, "a verbose-gated recovery print")
 		local line = string.sub(source, start :: number, (start :: number) + 400)
-		for _, field in { "reason={why}", "ball={show(ballBefore)}", "character={show(root.Position)}", "putBack=" } do
+		local fields =
+			{ "reason={why}", "ball={show(ballBefore)}", "character={show(root.Position)}", "putBack=", "loop=" }
+		for _, field in fields do
 			T.isTrue(string.find(line, field, 1, true) ~= nil, field)
 		end
 		T.isTrue(string.find(read("init.luau"), "verbose = studioTools", 1, true) ~= nil, "gated by studioTools")
+	end)
+
+	test("both bounds park the ball, and the Recoveries count is written on every recovery", function()
+		local source = read("Recovery.luau")
+		T.isTrue(string.find(source, "if bounded then%s+park%(state, now%)") ~= nil, "burst bound parks")
+		T.isTrue(string.find(source, "elseif looped then%s+park%(state, now%)") ~= nil, "loop bound parks")
+		local written = string.find(source, "state.part:SetAttribute(config.RecoveriesAttribute", 1, true)
+		T.isTrue(written ~= nil, "Recoveries written in recover, outside the Studio gate")
+	end)
+
+	test("the client hold follows the server's Recoveries attribute", function()
+		local source = fs.readFile("src/places/simulator/client/BallController/init.luau")
+		T.isTrue(
+			string.find(source, "GetAttributeChangedSignal(BallConfig.RecoveriesAttribute)", 1, true) ~= nil,
+			"listens to the replicated count"
+		)
+		T.isTrue(string.find(source, "hold.followsBall(", 1, true) ~= nil, "uses the reset window")
+		T.isTrue(string.find(source, "PlaceId", 1, true) == nil, "not limited to Studio")
 	end)
 
 	test("the fall check skips the grace time after a placement", function()
