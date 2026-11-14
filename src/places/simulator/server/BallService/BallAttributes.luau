@@ -64,6 +64,12 @@ function BallAttributesModule.new(config: any, rules: any, diagnostics: boolean)
 		local stuck = state.stuck
 		setOn(part, sent, names.StuckFor, if stuck then math.round(stuck.time * 10) / 10 else 0)
 		setOn(part, sent, names.Parked, state.parkedUntil ~= nil)
+		setOn(part, sent, names.SameHits, state.sameHits)
+		setOn(part, sent, names.LastTouch, state.lastTouch)
+		setOn(part, sent, names.ReboundStuds, state.reboundStuds)
+		setOn(part, sent, names.ReboundSeconds, state.reboundSeconds)
+		setOn(part, sent, names.ReboundBackAfter, state.reboundBackAfter)
+		setOn(part, sent, names.ReboundWithinLimit, state.reboundWithin)
 	end
 
 	-- `force` writes now; otherwise at most once per PublishInterval, so a growing ball does not
