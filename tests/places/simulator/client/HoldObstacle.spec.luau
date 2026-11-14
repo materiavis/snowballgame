@@ -56,8 +56,10 @@ end
 -- #94 AC8: the 35-stud ball put 0.59 studs (horizontal; 0.5 in 3D) behind LargeObstacle on the
 -- line from the character through its centre. The ball touches the cube's top edge, so its
 -- horizontal contact radius is √(17.5² - 9.5²). The character stands 3 studs before the +Z face,
--- `lateral` studs off the centre line; the hold follows the ball for RecoveryHoldResetTime.
-local function behind(kind: string, lateral: number): number
+-- `lateral` studs off the centre line; the hold follows the ball for RecoveryHoldResetTime. The
+-- placement (a Placements change) arms the current hold from the start (#97 round 5); `unarmed`
+-- leaves that out, as in round 4.
+local function behind(kind: string, lateral: number, unarmed: boolean?): number
 	local hold: any = if kind == "main" then main else current
 	local contact = math.sqrt(17.5 ^ 2 - 9.5 ^ 2)
 	local cx, cz = 20 + lateral, -23
@@ -87,6 +89,7 @@ local function behind(kind: string, lateral: number): number
 		standSeconds = 4.5,
 		followSeconds = BallConfig.RecoveryHoldResetTime,
 		friction = AC8_FRICTION,
+		armedAt = if unarmed then nil else 0,
 	}).moved
 end
 

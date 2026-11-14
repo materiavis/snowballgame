@@ -18,7 +18,6 @@ export type HoldConfig = {
 	HoldMaxAcceleration: number,
 	HoldApproachDeceleration: number,
 	HoldContactMargin: number,
-	HoldContactReleaseDegrees: number,
 	HoldReboundGain: number,
 	HoldReboundMaxAcceleration: number,
 	MoveDeadzone: number,
@@ -53,7 +52,7 @@ export type HoldMath = {
 		distance: number,
 		armed: boolean
 	) -> (number, number, boolean),
-	reboundArmed: (now: number, contactAt: number?) -> boolean,
+	reboundArmed: (now: number, armedAt: number?) -> boolean,
 	directionTo: (rx: number, rz: number, fallbackX: number, fallbackZ: number) -> (number, number),
 	followsBall: (now: number, recoveredAt: number?) -> boolean,
 	nextHeldDirection: (
@@ -93,7 +92,6 @@ local HoldMathModule = {}
 
 function HoldMathModule.new(config: HoldConfig): HoldMath
 	local turnRate = math.rad(config.HoldTurnRateDegrees)
-	local releaseCosine = math.cos(math.rad(config.HoldContactReleaseDegrees))
 
 	-- Same formula as BallCore.holdDistance on the server (a spec keeps them equal).
 	local function holdDistance(diameter: number): number
@@ -196,11 +194,12 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		return x, z, false
 	end
 
-	-- True for ReboundWatchTime seconds after the own ball's last obstacle contact (#97 round 4):
-	-- the client contact test, or a change of the server's Collisions or SameHits count. Only
-	-- then do the approach limit and the rebound brake act; everywhere else the hold is main's.
-	local function reboundArmed(now: number, contactAt: number?): boolean
-		return contactAt ~= nil and now - contactAt < config.ReboundWatchTime
+	-- True for ReboundWatchTime seconds after the last arming event at `armedAt` (#97 rounds 4
+	-- and 5): the own ball's contact with any obstacle (client contact test, or a change of the
+	-- server's Collisions or SameHits count), or a server move (Placements or Recoveries change).
+	-- Only then do the approach limit and the rebound brake act; everywhere else the hold is main's.
+	local function reboundArmed(now: number, armedAt: number?): boolean
+		return armedAt ~= nil and now - armedAt < config.ReboundWatchTime
 	end
 
 	-- Unit direction of (rx, rz), or the fallback when it is too short to have one.
@@ -227,10 +226,9 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	-- While the own ball touches an obstacle (#97 rounds 2 and 3), walking or standing, the hold
 	-- keeps the ball's current bearing instead: its hold point would lie inside the obstacle, and
 	-- swinging towards it drives the ball along the face and round the corner, or keeps a ball
-	-- resting beside a face pressed into it. Once free, walking steers again. Round 4: walking,
-	-- with the ball more than HoldContactReleaseDegrees from the walking direction, walking
-	-- steers as on main, so a ball caught behind a small obstacle the character stepped over
-	-- swings round it after the character instead of being pulled straight into it.
+	-- resting beside a face pressed into it. Once free, walking steers again. The caller passes
+	-- only obstacles that cannot be knocked over (#97 round 5): at a small obstacle the character
+	-- steps over, main's direction swings the ball round it after the character.
 	local function nextHeldDirection(
 		hx: number,
 		hz: number,
@@ -244,12 +242,7 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		local moving = math.sqrt(mx * mx + mz * mz)
 		if touchingObstacle then
 			if moving > config.MoveDeadzone then
-				local walkX, walkZ = mx / moving, mz / moving
-				local bearingX, bearingZ = directionTo(rx, rz, walkX, walkZ)
-				if bearingX * walkX + bearingZ * walkZ >= releaseCosine then
-					return bearingX, bearingZ
-				end
-				return walkX, walkZ
+				return directionTo(rx, rz, mx / moving, mz / moving)
 			end
 			return directionTo(rx, rz, hx, hz)
 		end

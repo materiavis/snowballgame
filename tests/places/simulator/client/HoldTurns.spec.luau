@@ -10,6 +10,7 @@
 -- ball position must equal main's. The R5 turn time (until the ball is within 15° of the
 -- walking direction and within 1 stud of the hold distance) is reported for both.
 
+local fs = require("@lune/fs")
 local T = require("../../../TestKit")
 local BallConfig = require("../../../../src/shared/Config/Ball")
 local HoldMath = require("../../../../src/places/simulator/client/BallController/HoldMath")
@@ -183,6 +184,36 @@ return T.suite("Simulator hold in free field equals main (#97 round 4, R5)", fun
 			T.equal(hx, ax)
 			T.equal(hz, az)
 			T.equal(braking, false)
+		end
+	end)
+
+	test("d: a Placements or Recoveries change arms the hold for ReboundWatchTime (round 5)", function()
+		local source = fs.readFile("src/places/simulator/client/BallController/init.luau")
+		local function has(text: string): boolean
+			return string.find(source, text, 1, true) ~= nil
+		end
+		-- One arming time for contacts, server hits and server moves, read by reboundArmed.
+		T.isTrue(has("local function arm()\n\tarmedAt = os.clock()\nend"), "arm() starts the window")
+		T.isTrue(has("hold.reboundArmed(now, armedAt)"), "the window is reboundArmed's")
+		local move = string.match(source, "local function onServerMove%(%)(.-)\n\tend\n")
+		T.isTrue(move ~= nil and string.find(move, "arm()", 1, true) ~= nil, "a server move arms")
+		T.isTrue(has("GetAttributeChangedSignal(BallConfig.RecoveriesAttribute):Connect(onServerMove)"))
+		T.isTrue(has("GetAttributeChangedSignal(BallConfig.PlacementsAttribute):Connect(onServerMove)"))
+		-- BallHoldArmed only when it changes, not every frame.
+		T.isTrue(has("if armed ~= holdArmed then"), "BallHoldArmed set on change only")
+		-- Armed from the move for ReboundWatchTime: a ball 8 studs out comes back no faster than
+		-- the approach limit allows, as after a contact; after the window it is main's again.
+		local distance = current.holdDistance(35)
+		local movedAt = 20
+		for _, now in { movedAt, movedAt + BallConfig.ReboundWatchTime - 0.01, movedAt + BallConfig.ReboundWatchTime } do
+			local armed = current.reboundArmed(now, movedAt)
+			local _, wantZ = current.desiredVelocity(0, -distance - 8, 0, -1, distance, 0, 0, WALK, armed)
+			local _, mainZ = main.desiredVelocity(0, -distance - 8, 0, -1, distance, 0, 0, WALK)
+			if now < movedAt + BallConfig.ReboundWatchTime then
+				T.isTrue(wantZ < mainZ - 1, `armed at {now - movedAt} s: approach limited`)
+			else
+				T.equal(wantZ, mainZ, "window over: main's")
+			end
 		end
 	end)
 end)

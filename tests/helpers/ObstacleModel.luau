@@ -7,7 +7,8 @@
 --
 -- `hold` is a HoldMath instance; `kind` "main" drives it like main before #97 (no contact flag,
 -- plain `acceleration`), "new" like the current BallController (contact flag; approach limit
--- and rebound brake armed for ReboundWatchTime after the last contact, #97 round 4).
+-- and rebound brake armed for ReboundWatchTime after the last contact or a server move, #97
+-- rounds 4 and 5; contact hold only at a box that cannot be knocked over, round 5).
 
 local ObstacleModel = {}
 
@@ -33,6 +34,8 @@ export type Setup = {
 	followSeconds: number?, -- hold follows the ball this long at the start (a server placement)
 	friction: number?, -- Coulomb friction at the box face; 0 or nil = frictionless
 	characterPassesBox: boolean?, -- the character steps over the box (a 1-stud SmallObstacle)
+	knockOver: boolean?, -- the box has KnockOverSize: a touch arms, but gets no contact hold
+	armedAt: number?, -- a server move (placement) armed the hold at this time ("new" only)
 	fps: number?,
 }
 
@@ -90,7 +93,7 @@ function ObstacleModel.run(setup: Setup): Result
 	local startX, startZ = bx, bz
 	local hx, hz = setup.walkX, setup.walkZ
 	local touchedAt: number? = nil
-	local contactAt: number? = nil
+	local contactAt: number? = setup.armedAt
 	local armedAtTouch, missedBrakes, brakeFrames = false, 0, 0
 	local most, moved = 0, 0
 	local firstOut: number?, lastOut: number? = nil, nil
@@ -110,7 +113,7 @@ function ObstacleModel.run(setup: Setup): Result
 				contactAt = now
 			end
 			armed = hold.reboundArmed(now, contactAt)
-			hx, hz = hold.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow, touching)
+			hx, hz = hold.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow, touching and not setup.knockOver)
 		end
 		local ax, az
 		if setup.kind == "main" then

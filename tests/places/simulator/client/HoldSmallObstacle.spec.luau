@@ -1,12 +1,15 @@
 --!strict
--- HoldMath at the 1-stud SmallObstacle the character steps over (issue #97 round 4, AC2,
+-- HoldMath at the 1-stud SmallObstacle the character steps over (issue #97 rounds 4 and 5, AC2,
 -- ADR 0002 "After a hit"), on the 2D model in helpers/ObstacleModel with `characterPassesBox`.
--- Owner decisions on #97 round 4: the ball gets past with the character within 4.5 studs and
--- `outFor` ≤ ReboundMaxSecondsSmallObstacle (1.5 s) in the approach model (d1); after the
--- step-over (d2) no ball may still be out at the end of the watch (no hang), and the 4.5/1.5
--- limit there is judged in Studio, because this model is harsher than Studio (main fails most
--- d2 cases here and passed all six runs in Studio: the 2D cube is a wall of any height, the
--- ball cannot ride over its edge).
+-- Round 5 (owner decision): the contact hold applies only to obstacles that cannot be knocked
+-- over, so a ball touching only SmallObstacle (it has KnockOverSize) gets main's hold direction;
+-- the touch still arms the approach limit and the rebound brake. d1 is the approach (the ball
+-- held in front, the character walks into the cube), d2 the state the round-3 playtest saw
+-- (character past the cube, ball against it behind him). The limit (4.5 studs, `outFor` ≤
+-- ReboundMaxSecondsSmallObstacle) is judged in Studio; this model is harsher than Studio (main
+-- fails most d2 cases here and passed all six Studio runs: the 2D cube is a wall of any height,
+-- the ball cannot ride over its edge). The specs here check the hold direction and that no ball
+-- hangs at the cube.
 
 local T = require("../../../TestKit")
 local BallConfig = require("../../../../src/shared/Config/Ball")
@@ -24,6 +27,24 @@ local BALL_OFFSETS = { 0, 0.5, -0.5, 1.3, -1.3 }
 local current = HoldMath.new(BallConfig :: any)
 local main = HoldMathMain.new(BallConfig :: any)
 
+-- The current hold, recording for every frame whether its hold direction differs from main's
+-- for the same inputs.
+local function recording(): (any, () -> number)
+	local wrapped = table.clone(current) :: any
+	local differing = 0
+	wrapped.nextHeldDirection = function(hx, hz, mx, mz, rx, rz, follow, touching)
+		local x, z = current.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow, touching)
+		local mainX, mainZ = main.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow)
+		if math.abs(x - mainX) > 1e-12 or math.abs(z - mainZ) > 1e-12 then
+			differing += 1
+		end
+		return x, z
+	end
+	return wrapped, function()
+		return differing
+	end
+end
+
 -- Horizontal contact radius on the cube: a ball whose centre is above the cube's top touches
 -- its top edge.
 local function contactRadius(diameter: number): number
@@ -36,14 +57,14 @@ end
 
 -- d1: the ball held in front, the character walks -Z from z -10 into the cube, its body
 -- sliding round the ball, for 3 s, then stands 3 s.
-local function approach(kind: string, diameter: number, offset: number, side: number): ObstacleModel.Result
-	local hold: any = if kind == "main" then main else current
+local function approach(hold: any, kind: string, diameter: number, offset: number, side: number): ObstacleModel.Result
 	local x = -20 + offset
 	return ObstacleModel.run({
 		hold = hold,
 		kind = kind,
 		config = BallConfig,
 		box = SMALL,
+		knockOver = true,
 		diameter = diameter,
 		contactRadius = contactRadius(diameter),
 		characterX = x + side,
@@ -58,10 +79,16 @@ local function approach(kind: string, diameter: number, offset: number, side: nu
 	})
 end
 
--- d2: the state the round-3 playtest saw: the character has stepped over the cube, the ball
--- rests against its +Z face behind the character; the character walks on 2 s, then stands 3 s.
-local function afterStepOver(kind: string, diameter: number, offset: number, side: number): ObstacleModel.Result
-	local hold: any = if kind == "main" then main else current
+-- d2: the character has stepped over the cube, the ball rests against its +Z face behind him;
+-- he walks on 2 s, then stands 3 s. `knockOver` false is round 3/4's contact hold at this cube.
+local function afterStepOver(
+	hold: any,
+	kind: string,
+	diameter: number,
+	offset: number,
+	side: number,
+	knockOver: boolean
+): ObstacleModel.Result
 	local contact = contactRadius(diameter)
 	local bx = -20 + offset
 	local beside = math.max(math.abs(offset) - 0.5, 0)
@@ -71,6 +98,7 @@ local function afterStepOver(kind: string, diameter: number, offset: number, sid
 		kind = kind,
 		config = BallConfig,
 		box = SMALL,
+		knockOver = knockOver,
 		diameter = diameter,
 		contactRadius = contact,
 		characterX = bx + side,
@@ -89,51 +117,46 @@ local function past(result: ObstacleModel.Result): boolean
 	return result.ballZ < SMALL.z0 and not result.outAtEnd
 end
 
-return T.suite("Simulator HoldMath at the SmallObstacle (#97 round 4)", function(test)
-	test("the contact hold ends only walking, with the ball beyond HoldContactReleaseDegrees", function()
-		local function at(degrees: number): (number, number)
-			return math.sin(math.rad(degrees)) * 3, -math.cos(math.rad(degrees)) * 3
-		end
-		-- Walking -Z, a ball 95° off (squeezed to just behind the side) keeps the contact hold.
-		local sx, sz = at(95)
-		local hx, hz = current.nextHeldDirection(0, -1, 0, -1, sx, sz, false, true)
-		T.near(hx, sx / 3, 1e-9)
-		T.near(hz, sz / 3, 1e-9)
-		-- Beyond the release angle walking steers, as on main.
-		local bx, bz = at(BallConfig.HoldContactReleaseDegrees + 1)
-		hx, hz = current.nextHeldDirection(0, -1, 0, -1, bx, bz, false, true)
-		T.equal(hx, 0)
-		T.equal(hz, -1)
-		-- Standing, even a ball straight behind keeps the contact hold (round 3).
-		hx, hz = current.nextHeldDirection(0, -1, 0, 0, 0, 3, false, true)
-		T.equal(hx, 0)
-		T.equal(hz, 1)
-	end)
-
-	test("d1: walking over the cube, the ball gets past with the character inside the limit", function()
+return T.suite("Simulator HoldMath at the SmallObstacle (#97 rounds 4 and 5)", function(test)
+	test("c: a ball touching only a knock-over-able obstacle gets main's hold direction every frame", function()
+		local touchedCases = 0
 		for _, diameter in DIAMETERS do
 			for _, offset in BALL_OFFSETS do
 				for _, side in { 0.2, -0.2, 0.6 } do
-					local result = approach("new", diameter, offset, side)
+					local hold, differing = recording()
+					local result = approach(hold, "new", diameter, offset, side)
+					T.equal(differing(), 0, `d1 diameter {diameter} offset {offset} side {side}`)
+					if result.touched then
+						touchedCases += 1
+						T.equal(result.armedAtTouch, true, "the touch still arms the brake")
+					end
+				end
+				for _, side in { 0, 0.3, -0.3 } do
+					local hold, differing = recording()
+					afterStepOver(hold, "new", diameter, offset, side, true)
+					T.equal(differing(), 0, `d2 diameter {diameter} offset {offset} side {side}`)
+				end
+			end
+		end
+		T.isTrue(touchedCases > 0, "the approach touches the cube")
+	end)
+
+	test("d1: walking over the cube, the ball gets past with the character", function()
+		for _, diameter in DIAMETERS do
+			for _, offset in BALL_OFFSETS do
+				for _, side in { 0.2, -0.2, 0.6 } do
+					local result = approach(current, "new", diameter, offset, side)
 					local label =
 						`diameter {diameter} offset {offset} side {side}: {result.most} studs, out {result.outFor} s`
-					T.isTrue(past(result), `{label}: past the cube`)
-					T.isTrue(result.most <= BallConfig.ReboundMaxStuds, label)
-					T.isTrue(result.outFor <= BallConfig.ReboundMaxSecondsSmallObstacle, label)
+					T.isTrue(past(result), `{label}: past the cube, not out at the end`)
+					T.isTrue(result.most < BallConfig.LeashDistance, `{label}: no leash recovery`)
 				end
 			end
 		end
 	end)
 
-	test("d2 cause: with the round-3 contact hold behind the character the ball hangs", function()
-		-- Round 3 kept the hold on the ball's bearing whatever the angle; the release angle
-		-- above 180° switches that off.
-		local config = table.clone(BallConfig) :: any
-		config.HoldContactReleaseDegrees = 181
-		local saved = current
-		current = HoldMath.new(config)
-		local result = afterStepOver("new", 1.6, 0, 0)
-		current = saved
+	test("d2 cause: with the contact hold at the cube the ball hangs behind the character", function()
+		local result = afterStepOver(current, "new", 1.6, 0, 0, false)
 		T.isTrue(result.outAtEnd, `still out at the end: {result.most} studs`)
 	end)
 
@@ -141,7 +164,7 @@ return T.suite("Simulator HoldMath at the SmallObstacle (#97 round 4)", function
 		for _, diameter in DIAMETERS do
 			for _, offset in BALL_OFFSETS do
 				for _, side in { 0, 0.3, -0.3 } do
-					local result = afterStepOver("new", diameter, offset, side)
+					local result = afterStepOver(current, "new", diameter, offset, side, true)
 					local label =
 						`diameter {diameter} offset {offset} side {side}: {result.most} studs, out {result.outFor} s`
 					T.isTrue(past(result), `{label}: past the cube, not out at the end`)
