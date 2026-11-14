@@ -14,6 +14,9 @@
 --                       (PlaceBehind, #94 AC8); not a recovery
 --   BallRecoveryTestGeometry bool: true builds the temporary cliff and hole pier
 --                       (TestGeometry, #94), false removes them
+--   BallRunAtObstacle   string, idle "": lines the target up in front of the Obstacle with
+--                       this name and walks it in (RunAtObstacle, #97); not a recovery
+--   BallHitTrace        bool: one log line per sample while a rebound is watched (#97)
 -- A value switch runs once and resets itself to idle. Invalid values only warn.
 
 export type Hooks = {
@@ -31,6 +34,9 @@ export type Hooks = {
 	clearTrack: (state: any) -> (),
 	-- Prints its own line or warns (PlaceBehind).
 	placeBehindObstacle: (state: any) -> (),
+	-- Prints its own line or warns (RunAtObstacle).
+	runAtObstacle: (state: any, obstacleName: string) -> (),
+	setHitTrace: (enabled: boolean) -> (),
 	-- Builds (true) or removes (false) the recovery test geometry; returns a log line.
 	setTestGeometry: (enabled: boolean) -> string,
 	describe: (state: any) -> string, -- "<name> zone=… fraction=… diameter=… metres=…"
@@ -46,6 +52,9 @@ local MOVE_AWAY_SWITCH = "BallMoveCharacterAway"
 local CLEAR_TRACK_SWITCH = "BallClearTrack"
 local TEST_GEOMETRY_SWITCH = "BallRecoveryTestGeometry"
 local PLACE_BEHIND_SWITCH = "BallPlaceBehindObstacle"
+local RUN_AT_SWITCH = "BallRunAtObstacle"
+local HIT_TRACE_SWITCH = "BallHitTrace"
+local RUN_AT_IDLE = ""
 local ZONE_IDLE = 0
 local FRACTION_IDLE = -1
 local MOVE_AWAY_IDLE = 0
@@ -143,6 +152,23 @@ function StudioSwitches.bind(host: Instance, hooks: Hooks)
 				hooks.placeBehindObstacle(state)
 			end
 		end
+	end)
+
+	bindValue(RUN_AT_SWITCH, RUN_AT_IDLE, function(obstacleName)
+		if type(obstacleName) ~= "string" then
+			warn(`[BallService] {RUN_AT_SWITCH}: needs the name of an Obstacle, got {obstacleName}`)
+			return
+		end
+		for _, state in targets() do
+			hooks.runAtObstacle(state, obstacleName)
+		end
+	end)
+
+	ensure(HIT_TRACE_SWITCH, false)
+	host:GetAttributeChangedSignal(HIT_TRACE_SWITCH):Connect(function()
+		local enabled = host:GetAttribute(HIT_TRACE_SWITCH) == true
+		hooks.setHitTrace(enabled)
+		print(`[BallService] {HIT_TRACE_SWITCH}={enabled}`)
 	end)
 
 	ensure(PAUSE_SWITCH, false)

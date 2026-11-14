@@ -23,6 +23,7 @@ local BallConfig = require(Config:WaitForChild("Ball")) :: any
 local ZonesConfig = require(Config:WaitForChild("Zones")) :: any
 local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
+local AfterHit = require(script:WaitForChild("AfterHit"))
 local BallAttributes = require(script:WaitForChild("BallAttributes"))
 local BallCore = require(script:WaitForChild("BallCore"))
 local BallPart = require(script:WaitForChild("BallPart"))
@@ -30,11 +31,13 @@ local BallStep = require(script:WaitForChild("BallStep"))
 local CollisionSetup = require(script:WaitForChild("CollisionSetup"))
 local GrowthModifiers = require(script:WaitForChild("GrowthModifiers"))
 local GrowthRules = require(script:WaitForChild("GrowthRules"))
+local HitRules = require(script:WaitForChild("HitRules"))
 local ObstacleRules = require(script:WaitForChild("ObstacleRules"))
 local Obstacles = require(script:WaitForChild("Obstacles"))
 local PlaceBehind = require(script:WaitForChild("PlaceBehind"))
 local Recovery = require(script:WaitForChild("Recovery"))
 local RecoveryRules = require(script:WaitForChild("RecoveryRules"))
+local RunAtObstacle = require(script:WaitForChild("RunAtObstacle"))
 local SafeSpot = require(script:WaitForChild("SafeSpot"))
 local StudioSwitches = require(script:WaitForChild("StudioSwitches"))
 local TestGeometry = require(script:WaitForChild("TestGeometry"))
@@ -62,7 +65,19 @@ groundParams.FilterType = Enum.RaycastFilterType.Exclude
 local ballPart = BallPart.new(BallConfig, core.holdDistance, groundParams)
 
 local growthPaused = false
+local hitTrace = false -- Studio switch BallHitTrace (#97)
 local started = false
+
+local afterHit = AfterHit.new({
+	config = BallConfig,
+	hitRules = HitRules.new(BallConfig),
+	holdDistance = core.holdDistance,
+	gapTo = obstacles.gapTo,
+	verbose = studioTools,
+	isTracing = function(): boolean
+		return hitTrace
+	end,
+})
 
 -- Server view (ADR 0003): ground rays ignore every ball and every character.
 local function refreshGroundFilter()
@@ -145,6 +160,7 @@ local ballStep = BallStep.new({
 	obstacleRules = obstacleRules,
 	recoveryRules = recoveryRules,
 	obstacles = obstacles,
+	afterHit = afterHit,
 	modifiers = modifiers,
 	surfaces = SurfaceService,
 	attributes = attributes,
@@ -238,6 +254,17 @@ local function setUpStudio()
 		end,
 		moveTo = recovery.moveTo,
 	})
+	local runAtObstacle = RunAtObstacle.new({
+		config = BallConfig,
+		obstacleRules = obstacleRules,
+		recoveryRules = recoveryRules,
+		holdDistance = core.holdDistance,
+		groundParams = groundParams,
+		obstacles = function(): { Instance }
+			return CollectionService:GetTagged(BallConfig.ObstacleTag)
+		end,
+		moveTo = recovery.moveTo,
+	})
 	StudioSwitches.bind(ServerScriptService, {
 		targets = function(targetUserId: number): { any }
 			local result = {}
@@ -278,6 +305,10 @@ local function setUpStudio()
 			root.CFrame = root.CFrame + direction.Unit * studs
 		end,
 		placeBehindObstacle = placeBehind,
+		runAtObstacle = runAtObstacle,
+		setHitTrace = function(enabled: boolean)
+			hitTrace = enabled
+		end,
 		clearTrack = function(state: BallState)
 			state.track.clear()
 		end,

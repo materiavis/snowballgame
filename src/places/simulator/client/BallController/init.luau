@@ -15,8 +15,10 @@ local RunService = game:GetService("RunService")
 local BallConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Ball")) :: any
 local HoldMath = require(script:WaitForChild("HoldMath"))
 
--- Client view only (ADR 0002 "Playtest hooks"): how many server recoveries the hold followed.
+-- Client view only (ADR 0002 "Playtest hooks"): how many server recoveries the hold followed,
+-- and how often the rebound brake (#97) started.
 local HOLD_RESETS_ATTRIBUTE = "BallHoldResets"
+local REBOUND_BRAKES_ATTRIBUTE = "BallReboundBrakes"
 
 local localPlayer = Players.LocalPlayer
 local hold = HoldMath.new(BallConfig)
@@ -34,6 +36,8 @@ local heldX, heldZ = 0, -1
 -- Recoveries attribute); nil = none yet.
 local recoveredAt: number? = nil
 local holdResets = 0
+local reboundBrakes = 0
+local braking = false
 local started = false
 
 -- Starts the hold direction where the ball already is, so it does not jump on (re)spawn.
@@ -131,20 +135,30 @@ local function step()
 		heldX, heldZ =
 			hold.nextHeldDirection(heldX, heldZ, move.X, move.Z, rx, rz, hold.followsBall(os.clock(), recoveredAt))
 		local rootVelocity = rootPart.AssemblyLinearVelocity
-		local wantX, wantZ = hold.desiredVelocity(
+		local distance = hold.holdDistance(ball.Size.X)
+		local wantX, wantZ =
+			hold.desiredVelocity(rx, rz, heldX, heldZ, distance, rootVelocity.X, rootVelocity.Z, walkSpeed)
+		local reboundBrake
+		ax, az, reboundBrake = hold.holdAcceleration(
+			wantX,
+			wantZ,
+			velocity.X,
+			velocity.Z,
 			rx,
 			rz,
-			heldX,
-			heldZ,
-			hold.holdDistance(ball.Size.X),
 			rootVelocity.X,
 			rootVelocity.Z,
-			walkSpeed
+			distance
 		)
-		ax, az = hold.acceleration(wantX, wantZ, velocity.X, velocity.Z)
+		if reboundBrake and not braking then
+			reboundBrakes += 1
+			localPlayer:SetAttribute(REBOUND_BRAKES_ATTRIBUTE, reboundBrakes)
+		end
+		braking = reboundBrake
 	else
 		-- No living character: brake the ball where it is.
 		ax, az = hold.acceleration(0, 0, velocity.X, velocity.Z)
+		braking = false
 	end
 	local mass = ball.AssemblyMass
 	force.Force = Vector3.new(ax * mass, 0, az * mass)
@@ -157,6 +171,7 @@ function BallController.Start()
 	started = true
 
 	localPlayer:SetAttribute(HOLD_RESETS_ATTRIBUTE, holdResets)
+	localPlayer:SetAttribute(REBOUND_BRAKES_ATTRIBUTE, reboundBrakes)
 	localPlayer.CharacterAdded:Connect(onCharacter)
 	if localPlayer.Character then
 		task.spawn(onCharacter, localPlayer.Character)

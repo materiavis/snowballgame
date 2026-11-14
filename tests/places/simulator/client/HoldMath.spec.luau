@@ -46,7 +46,8 @@ local function stepSim(sim: Sim, diameter: number, dx: number, dz: number, walkS
 	local cvx, cvz = if moving then dx * walkSpeed else 0, if moving then dz * walkSpeed else 0
 	local wantX, wantZ =
 		hold.desiredVelocity(sim.bx - sim.cx, sim.bz - sim.cz, sim.hx, sim.hz, distance, cvx, cvz, walkSpeed)
-	local ax, az = hold.acceleration(wantX, wantZ, sim.bvx, sim.bvz)
+	local ax, az =
+		hold.holdAcceleration(wantX, wantZ, sim.bvx, sim.bvz, sim.bx - sim.cx, sim.bz - sim.cz, cvx, cvz, distance)
 	sim.cx += cvx * step
 	sim.cz += cvz * step
 	sim.bvx += ax * step
@@ -217,5 +218,123 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 		x, z = hold.directionTo(3, 4, 0, -1)
 		T.near(x, 0.6, 1e-9)
 		T.near(z, 0.8, 1e-9)
+	end)
+
+	-- #97: the ball leaves the hold point (pushed off an obstacle or squeezed out) while the
+	-- character stands, hold direction -Z. Physics runs at 240 Hz with the force of the last
+	-- frame. A rolling solid sphere turns only 5/7 of a force at its centre into speed; an
+	-- airborne one all of it. Returns the most studs beyond the hold distance, the last time
+	-- it was more than ReboundSettleStuds beyond, and the closest approach (negative = inside).
+	local ROLLING = 5 / 7
+	local function rebound(
+		diameter: number,
+		startOffset: number,
+		speed: number,
+		share: number,
+		fps: number,
+		brake: boolean
+	): (number, number, number)
+		local distance = hold.holdDistance(diameter)
+		local bx, bz, bvx, bvz = 0, -distance - startOffset, 0, -speed
+		local most, closest, lastOut = -math.huge, math.huge, 0
+		local substeps = 240 // fps
+		for frame = 1, 5 * fps do
+			local wantX, wantZ = hold.desiredVelocity(bx, bz, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
+			local ax, az
+			if brake then
+				ax, az = hold.holdAcceleration(wantX, wantZ, bvx, bvz, bx, bz, 0, 0, distance)
+			else
+				ax, az = hold.acceleration(wantX, wantZ, bvx, bvz)
+			end
+			for _ = 1, substeps do
+				bvx += ax * share / 240
+				bvz += az * share / 240
+				bx += bvx / 240
+				bz += bvz / 240
+			end
+			local beyond = length(bx, bz) - distance
+			most = math.max(most, beyond)
+			closest = math.min(closest, beyond)
+			if beyond > BallConfig.ReboundSettleStuds then
+				lastOut = frame / fps
+			end
+		end
+		return most, lastOut, closest
+	end
+
+	test("#97: a 46 studs/s rebound stays inside the proposed limit, small and big, 60 and 30 fps", function()
+		for _, fps in { 60, 30 } do
+			for _, diameter in { 1.6, 4, 35 } do
+				for _, share in { ROLLING, 1 } do
+					local most, lastOut = rebound(diameter, 0, 46, share, fps, true)
+					local label = `{fps} fps diameter {diameter} share {share}`
+					T.isTrue(most <= BallConfig.ReboundMaxStuds, `{label}: {most} studs out`)
+					T.isTrue(lastOut <= BallConfig.ReboundMaxSeconds, `{label}: back after {lastOut} s`)
+				end
+			end
+		end
+	end)
+
+	test("#97 cause: without the rebound brake the same rebound rolls about 10 studs out", function()
+		-- HoldMaxAcceleration alone (150, 107 as rolling speed) needs 46² / 214 ≈ 9.9 studs.
+		local most = rebound(4, 0, 46, ROLLING, 60, false)
+		T.isTrue(most > 3 * BallConfig.ReboundMaxStuds, `{most} studs out`)
+	end)
+
+	test("#97: a ball far out comes back without overshooting into the HumanoidRootPart", function()
+		for _, fps in { 60, 30 } do
+			for _, diameter in { 1.6, 4, 35 } do
+				for _, offset in { 8, 20 } do
+					local _, _, closest = rebound(diameter, offset, 0, ROLLING, fps, true)
+					-- The ball's surface would reach the root part at -(HoldGap - ROOT_HALF_DEPTH).
+					T.isTrue(
+						closest > -(BallConfig.HoldGap - ROOT_HALF_DEPTH),
+						`{fps} fps diameter {diameter} from {offset}: closest {closest}`
+					)
+				end
+			end
+		end
+	end)
+
+	test("#97: the rebound brake acts only on a ball beyond the hold distance that leaves", function()
+		local distance = hold.holdDistance(4)
+		local wantX, wantZ = hold.desiredVelocity(0, -distance - 1, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
+		local _, _, leaving = hold.holdAcceleration(wantX, wantZ, 0, -40, 0, -distance - 1, 0, 0, distance)
+		T.equal(leaving, true, "beyond and leaving")
+		local _, _, returning = hold.holdAcceleration(wantX, wantZ, 0, 10, 0, -distance - 1, 0, 0, distance)
+		T.equal(returning, false, "beyond and coming back")
+		local insideX, insideZ = hold.desiredVelocity(0, -distance + 0.5, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
+		local _, _, inside = hold.holdAcceleration(insideX, insideZ, 0, -40, 0, -distance + 0.5, 0, 0, distance)
+		T.equal(inside, false, "inside the hold distance")
+		-- Walking with the ball in front: the ball moves away from where the character was, but
+		-- not away from the character, so it is no rebound.
+		local walkX, walkZ = hold.desiredVelocity(0, -distance - 0.2, 0, -1, distance, 0, -16, BallConfig.WalkSpeed)
+		local _, _, walking = hold.holdAcceleration(walkX, walkZ, 0, -15.5, 0, -distance - 0.2, 0, -16, distance)
+		T.equal(walking, false, "pushing while walking")
+		local ax, az, strong = hold.holdAcceleration(1e6, 0, 0, -1e3, 0, -distance - 5, 0, 0, distance)
+		T.equal(strong, true)
+		T.isTrue(length(ax, az) <= BallConfig.HoldReboundMaxAcceleration + BallConfig.HoldMaxAcceleration + 1e-6)
+	end)
+
+	test("#97: pushing straight on is unchanged, so the time to the maximum (#34 AC1) is too", function()
+		for _, walkSpeed in { BallConfig.WalkSpeed, 32, 40 } do
+			local sim = newSim(4)
+			local distance = hold.holdDistance(4)
+			for _ = 1, 60 do
+				stepSim(sim, 4, 0, -1, walkSpeed)
+			end
+			for _ = 1, 2 * 60 do
+				local rx, rz = sim.bx - sim.cx, sim.bz - sim.cz
+				local cvz = -walkSpeed
+				local wantX, wantZ = hold.desiredVelocity(rx, rz, 0, -1, distance, 0, cvz, walkSpeed)
+				local ax, az, braking = hold.holdAcceleration(wantX, wantZ, sim.bvx, sim.bvz, rx, rz, 0, cvz, distance)
+				local plainX, plainZ = hold.acceleration(wantX, wantZ, sim.bvx, sim.bvz)
+				T.equal(braking, false, `walk speed {walkSpeed}: no rebound brake`)
+				T.near(ax, plainX, 1e-9)
+				T.near(az, plainZ, 1e-9)
+				stepSim(sim, 4, 0, -1, walkSpeed)
+			end
+			T.near(length(sim.bvx, sim.bvz), walkSpeed, 0.1, `ball speed at walk speed {walkSpeed}`)
+		end
 	end)
 end)

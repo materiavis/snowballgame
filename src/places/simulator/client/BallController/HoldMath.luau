@@ -16,6 +16,9 @@ export type HoldConfig = {
 	HoldVelocityGain: number,
 	HoldMaxSpeedFactor: number,
 	HoldMaxAcceleration: number,
+	HoldApproachDeceleration: number,
+	HoldReboundGain: number,
+	HoldReboundMaxAcceleration: number,
 	MoveDeadzone: number,
 	RecoveryHoldResetTime: number,
 }
@@ -34,6 +37,17 @@ export type HoldMath = {
 		walkSpeed: number
 	) -> (number, number),
 	acceleration: (wantX: number, wantZ: number, bvx: number, bvz: number) -> (number, number),
+	holdAcceleration: (
+		wantX: number,
+		wantZ: number,
+		bvx: number,
+		bvz: number,
+		rx: number,
+		rz: number,
+		cvx: number,
+		cvz: number,
+		distance: number
+	) -> (number, number, boolean),
 	directionTo: (rx: number, rz: number, fallbackX: number, fallbackZ: number) -> (number, number),
 	followsBall: (now: number, recoveredAt: number?) -> boolean,
 	nextHeldDirection: (
@@ -98,7 +112,12 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 			bx, bz = rx / current, rz / current
 		end
 		local gain = config.HoldPositionGain
-		local radialSpeed = (distance - current) * gain
+		-- Never faster towards the hold distance than the ball can still stop in (#97). With the
+		-- plain gain a ball 8 studs out comes back at the speed cap, overshoots into the
+		-- character and is pushed out again.
+		local radialError = distance - current
+		local stoppable = math.sqrt(2 * config.HoldApproachDeceleration * math.abs(radialError))
+		local radialSpeed = math.clamp(radialError * gain, -stoppable, stoppable)
 		-- Signed angle from the bearing to the hold direction. An exact reversal turns one
 		-- fixed way, so it never stalls.
 		local angle = math.atan2(bx * hz - bz * hx, bx * hx + bz * hz)
@@ -115,6 +134,43 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	local function acceleration(wantX: number, wantZ: number, bvx: number, bvz: number): (number, number)
 		local gain = config.HoldVelocityGain
 		return clampLength((wantX - bvx) * gain, (wantZ - bvz) * gain, config.HoldMaxAcceleration)
+	end
+
+	-- Acceleration while a character holds the ball. (rx, rz) is the ball relative to the
+	-- character, (cvx, cvz) the character's velocity. As `acceleration`, except for a ball beyond
+	-- the hold distance that moves away from the character (a rebound, #97): the part towards
+	-- the character may then brake at HoldReboundGain, up to HoldReboundMaxAcceleration.
+	-- HoldMaxAcceleration keeps a far-off ball from being flung; braking a ball that is leaving
+	-- flings nothing. The third value is true while this brake is stronger than the normal one.
+	local function holdAcceleration(
+		wantX: number,
+		wantZ: number,
+		bvx: number,
+		bvz: number,
+		rx: number,
+		rz: number,
+		cvx: number,
+		cvz: number,
+		distance: number
+	): (number, number, boolean)
+		local gain = config.HoldVelocityGain
+		local ax, az = (wantX - bvx) * gain, (wantZ - bvz) * gain
+		local current = math.sqrt(rx * rx + rz * rz)
+		if current > distance and current > EPSILON then
+			local bx, bz = rx / current, rz / current
+			local outward = (bvx - cvx) * bx + (bvz - cvz) * bz
+			if outward > 0 then
+				local radial = ax * bx + az * bz
+				local brake =
+					math.max(math.min(radial, -outward * config.HoldReboundGain), -config.HoldReboundMaxAcceleration)
+				if brake < -config.HoldMaxAcceleration then
+					local tx, tz = clampLength(ax - radial * bx, az - radial * bz, config.HoldMaxAcceleration)
+					return tx + brake * bx, tz + brake * bz, true
+				end
+			end
+		end
+		local x, z = clampLength(ax, az, config.HoldMaxAcceleration)
+		return x, z, false
 	end
 
 	-- Unit direction of (rx, rz), or the fallback when it is too short to have one.
@@ -162,6 +218,7 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		maxOrbitRate = maxOrbitRate,
 		desiredVelocity = desiredVelocity,
 		acceleration = acceleration,
+		holdAcceleration = holdAcceleration,
 		directionTo = directionTo,
 		followsBall = followsBall,
 		nextHeldDirection = nextHeldDirection,

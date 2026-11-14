@@ -66,6 +66,11 @@ local Ball = {
 	ObstacleTag = "Obstacle",
 	KnockOverSizeAttribute = "KnockOverSize",
 	CollisionContactMargin = 0.25, -- studs of slack on the server's view of the contact
+	-- Same hit (D2 of #97, proposal): after a touch the server remembers the obstacle until the
+	-- gap between the ball's surface and that obstacle has reached this many studs. Touching it
+	-- again before is the same hit and costs nothing. Twice ReboundMaxStuds, so a rebound inside
+	-- the limit never counts again; a player who backs off this far and rolls in again collides.
+	CollisionSeparationStuds = 6,
 	KnockOverRetryInterval = 1, -- seconds between tries while a ball is where it would return
 
 	-- MAX feedback (7.4). The arrow points at the nearest instance with this tag.
@@ -188,6 +193,26 @@ local Ball = {
 	HoldMaxSpeedFactor = 3,
 	-- studs/s². Holds the ball on slopes up to about 35° and keeps a far-off ball from being flung.
 	HoldMaxAcceleration = 150,
+	-- After a hit (#97, proposals until the owner confirms them after the playtest).
+	-- The hold brings the ball back to the hold distance no faster than it can stop again at
+	-- this deceleration, so it does not overshoot into the character. A rolling ball only gets
+	-- 5/7 of the force as speed (about 107 of 150); 60 leaves room for the controller's lag.
+	HoldApproachDeceleration = 60, -- studs/s²
+	-- A ball beyond the hold distance that moves away from the character is braked at this
+	-- gain on its outward speed, up to HoldReboundMaxAcceleration. In the HoldMath model a
+	-- rolling ball leaving the hold point at 46 studs/s (run A of #34) stops about 2.5 studs out
+	-- (3.0 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
+	HoldReboundGain = 40, -- 1/s
+	HoldReboundMaxAcceleration = 800, -- studs/s²
+	-- The agreed limit (D1 of #97) the Studio rebound diagnostic checks every hit against: the
+	-- ball centre stays within hold distance + ReboundMaxStuds of the character (ground plane),
+	-- and is back within hold distance + ReboundSettleStuds after at most ReboundMaxSeconds.
+	-- 3 studs keeps the edge at HoldGap + 3 = 4.5, inside GrowthRange (6), so growth goes on;
+	-- 1 s is CollisionProtection. ReboundWatchTime is how long after a touch it is measured.
+	ReboundMaxStuds = 3,
+	ReboundMaxSeconds = 1,
+	ReboundSettleStuds = 1,
+	ReboundWatchTime = 3,
 	MoveDeadzone = 0.1, -- Humanoid.MoveDirection below this counts as standing still
 
 	-- Camera (client): the zoom is kept at least so far that the whole ball fits in the
@@ -238,6 +263,12 @@ local Ball = {
 		RecoverySpot = "RecoverySpot", -- Front, Around, LastSafe or Unsafe
 		StuckFor = "StuckFor", -- seconds the stuck timer has run
 		Parked = "Parked", -- true while the recovery bound holds the ball
+		-- After a hit (#97)
+		SameHits = "SameHits", -- touches recognised as the same hit, so free of loss
+		LastTouch = "LastTouch", -- result of the last new touch: hit, sameHit or protected
+		ReboundStuds = "ReboundStuds", -- last watch: most studs beyond the hold distance
+		ReboundSeconds = "ReboundSeconds", -- last watch: seconds more than ReboundSettleStuds out
+		ReboundWithinLimit = "ReboundWithinLimit", -- last watch against ReboundMaxStuds/Seconds
 	},
 
 	-- Collision groups and rules: ADR 0003 rev. 2 ("Ball collisions with foreign characters"),

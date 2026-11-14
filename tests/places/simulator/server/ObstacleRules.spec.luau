@@ -70,6 +70,30 @@ return T.suite("Simulator ObstacleRules (7.4)", function(test)
 		T.equal(protected.knockOvers[1], "fence", "protection does not matter")
 	end)
 
+	test("#97 D2: touching the obstacle of the last hit again is that hit, not a new one", function()
+		local function sameTree(obstacle: any): boolean
+			return obstacle == "tree"
+		end
+		local outcome = rules.evaluate({}, { { obstacle = "tree" }, { obstacle = "rock" } }, false, never, sameTree)
+		T.equal(outcome.hit, true, "the rock is new")
+		T.equal(#outcome.touches, 2)
+		T.equal(#outcome.repeats, 1)
+		T.equal(outcome.repeats[1], "tree")
+		local only = rules.evaluate({}, { { obstacle = "tree" } }, false, never, sameTree)
+		T.equal(only.hit, false, "the tree again costs nothing")
+		T.equal(only.contacts["tree"], true, "and is still a contact")
+		local knocked = rules.evaluate({}, { { obstacle = "tree", knockOverSize = 1 } }, false, always, sameTree)
+		T.equal(knocked.knockOvers[1], "tree", "a big enough ball still knocks it over")
+		T.equal(#knocked.touches, 0)
+	end)
+
+	test("a touch while protected is a touch without a hit", function()
+		local outcome = rules.evaluate({}, { { obstacle = "tree" } }, true, never)
+		T.equal(outcome.hit, false)
+		T.equal(outcome.touches[1], "tree")
+		T.equal(#outcome.repeats, 0)
+	end)
+
 	test("an obstacle the ball is too small for costs size", function()
 		local outcome = rules.evaluate({}, { { obstacle = "fence", knockOverSize = 1 } }, false, never)
 		T.equal(outcome.hit, true)
