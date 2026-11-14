@@ -15,7 +15,8 @@
 --   BallRecoveryTestGeometry bool: true builds the temporary cliff and hole pier
 --                       (TestGeometry, #94), false removes them
 --   BallRunAtObstacle   string, idle "": lines the target up in front of the Obstacle with
---                       this name and walks it in (RunAtObstacle, #97); not a recovery
+--                       this name and walks it in (RunAtObstacle, #97); "<name>,<offset>,<angle>"
+--                       aims off-centre and walks at an angle; not a recovery
 --   BallHitTrace        bool: one log line per sample while a rebound is watched (#97)
 -- A value switch runs once and resets itself to idle. Invalid values only warn.
 
@@ -35,7 +36,7 @@ export type Hooks = {
 	-- Prints its own line or warns (PlaceBehind).
 	placeBehindObstacle: (state: any) -> (),
 	-- Prints its own line or warns (RunAtObstacle).
-	runAtObstacle: (state: any, obstacleName: string) -> (),
+	runAtObstacle: (state: any, value: string) -> (),
 	setHitTrace: (enabled: boolean) -> (),
 	-- Builds (true) or removes (false) the recovery test geometry; returns a log line.
 	setTestGeometry: (enabled: boolean) -> string,
@@ -156,7 +157,7 @@ function StudioSwitches.bind(host: Instance, hooks: Hooks)
 
 	bindValue(RUN_AT_SWITCH, RUN_AT_IDLE, function(obstacleName)
 		if type(obstacleName) ~= "string" then
-			warn(`[BallService] {RUN_AT_SWITCH}: needs the name of an Obstacle, got {obstacleName}`)
+			warn(`[BallService] {RUN_AT_SWITCH}: needs "<name>[,<offset>[,<angle>]]", got {obstacleName}`)
 			return
 		end
 		for _, state in targets() do

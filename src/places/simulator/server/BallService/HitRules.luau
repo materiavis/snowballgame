@@ -10,7 +10,10 @@
 --
 -- Rebound watch (D1, Studio diagnostics): after a touch, how far the ball centre gets beyond
 -- the hold distance from the character on the ground plane within ReboundWatchTime, and how
--- long it stays more than ReboundSettleStuds beyond it, checked against the agreed limit.
+-- long it stays more than ReboundSettleStuds beyond it (first to last sample out), checked
+-- against the agreed limit. The time from the touch until it is back is reported as well
+-- (`backAfter`); it also holds the time the ball spends pressed before it goes out (#97 round
+-- 1: round 0 checked that time against the limit, unlike its documented definition).
 
 export type HitConfig = {
 	CollisionSeparationStuds: number,
@@ -28,13 +31,16 @@ export type Watch = {
 	obstacle: any,
 	result: string, -- "hit", "sameHit" or "protected"
 	maxBeyond: number, -- studs beyond the hold distance, at least 0
-	lastOutAt: number?, -- last sample more than ReboundSettleStuds beyond the hold distance
+	firstOutAt: number?, -- first sample more than ReboundSettleStuds beyond the hold distance
+	lastOutAt: number?, -- last such sample
+	outAtEnd: boolean, -- the latest sample was out
 	atMax: any, -- caller's payload of the sample with maxBeyond (positions for the log)
 }
 
 export type Summary = {
 	studs: number,
-	seconds: number,
+	seconds: number, -- out: first to last sample more than ReboundSettleStuds beyond
+	backAfter: number, -- from the touch to the last sample out (0 if never out)
 	within: boolean,
 }
 
@@ -75,7 +81,9 @@ function HitRulesModule.new(config: HitConfig): HitRules
 			obstacle = obstacle,
 			result = result,
 			maxBeyond = 0,
+			firstOutAt = nil,
 			lastOutAt = nil,
+			outAtEnd = false,
 			atMax = nil,
 		}
 	end
@@ -87,22 +95,30 @@ function HitRulesModule.new(config: HitConfig): HitRules
 			watch.maxBeyond = math.max(beyond, watch.maxBeyond)
 			watch.atMax = payload
 		end
-		if beyond > config.ReboundSettleStuds then
+		local out = beyond > config.ReboundSettleStuds
+		if out then
+			watch.firstOutAt = watch.firstOutAt or now
 			watch.lastOutAt = now
 		end
+		watch.outAtEnd = out
 	end
 
 	local function isWatchOver(watch: Watch, now: number): boolean
 		return now - watch.startedAt >= config.ReboundWatchTime
 	end
 
+	-- A ball still out at the end of the watch is not back, whatever the span so far.
 	local function summarize(watch: Watch): Summary
-		local lastOutAt = watch.lastOutAt
-		local seconds = if lastOutAt then lastOutAt - watch.startedAt else 0
+		local firstOutAt, lastOutAt = watch.firstOutAt, watch.lastOutAt
+		local seconds = if firstOutAt and lastOutAt then lastOutAt - firstOutAt else 0
+		local backAfter = if lastOutAt then lastOutAt - watch.startedAt else 0
 		return {
 			studs = watch.maxBeyond,
 			seconds = seconds,
-			within = watch.maxBeyond <= config.ReboundMaxStuds and seconds <= config.ReboundMaxSeconds,
+			backAfter = backAfter,
+			within = watch.maxBeyond <= config.ReboundMaxStuds
+				and seconds <= config.ReboundMaxSeconds
+				and not watch.outAtEnd,
 		}
 	end
 

@@ -264,6 +264,7 @@ local function setUpStudio()
 			return CollectionService:GetTagged(BallConfig.ObstacleTag)
 		end,
 		moveTo = recovery.moveTo,
+		clearDistance = PlaceBehind.clearDistance,
 	})
 	StudioSwitches.bind(ServerScriptService, {
 		targets = function(targetUserId: number): { any }

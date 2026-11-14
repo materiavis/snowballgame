@@ -17,6 +17,7 @@ export type HoldConfig = {
 	HoldMaxSpeedFactor: number,
 	HoldMaxAcceleration: number,
 	HoldApproachDeceleration: number,
+	HoldBearingFadeStuds: number,
 	HoldReboundGain: number,
 	HoldReboundMaxAcceleration: number,
 	MoveDeadzone: number,
@@ -123,7 +124,13 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		local angle = math.atan2(bx * hz - bz * hx, bx * hx + bz * hz)
 		local limit = maxOrbitRate(distance, walkSpeed)
 		local angularSpeed = math.clamp(angle * gain, -limit, limit)
-		local tangentialSpeed = angularSpeed * math.max(current, distance)
+		-- Distance before bearing (#97 round 1): beyond the hold distance the swing fades out
+		-- over HoldBearingFadeStuds. Otherwise a ball pressed against an obstacle face, whose hold
+		-- point lies inside the obstacle, is driven along the face and round its corner, where it
+		-- ends beyond the hold distance with the obstacle in between.
+		local beyond = current - distance
+		local bearingShare = if beyond > 0 then math.max(1 - beyond / config.HoldBearingFadeStuds, 0) else 1
+		local tangentialSpeed = angularSpeed * math.max(current, distance) * bearingShare
 		-- Tangent = bearing turned +90° (same sign convention as the angle).
 		local wantX = cvx + bx * radialSpeed - bz * tangentialSpeed
 		local wantZ = cvz + bz * radialSpeed + bx * tangentialSpeed
@@ -139,9 +146,11 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	-- Acceleration while a character holds the ball. (rx, rz) is the ball relative to the
 	-- character, (cvx, cvz) the character's velocity. As `acceleration`, except for a ball beyond
 	-- the hold distance that moves away from the character (a rebound, #97): the part towards
-	-- the character may then brake at HoldReboundGain, up to HoldReboundMaxAcceleration.
-	-- HoldMaxAcceleration keeps a far-off ball from being flung; braking a ball that is leaving
-	-- flings nothing. The third value is true while this brake is stronger than the normal one.
+	-- the character may then brake that outward speed at HoldReboundGain, up to
+	-- HoldReboundMaxAcceleration. Only the outward speed itself: everything else, including
+	-- pressing a ball against an obstacle, keeps HoldMaxAcceleration (#97 round 1: in round 0
+	-- solver jitter of a pressed ball unlocked the whole unclamped command, up to 800). The
+	-- third value is true while this brake is stronger than the normal one.
 	local function holdAcceleration(
 		wantX: number,
 		wantZ: number,
@@ -153,23 +162,17 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		cvz: number,
 		distance: number
 	): (number, number, boolean)
-		local gain = config.HoldVelocityGain
-		local ax, az = (wantX - bvx) * gain, (wantZ - bvz) * gain
+		local x, z = acceleration(wantX, wantZ, bvx, bvz)
 		local current = math.sqrt(rx * rx + rz * rz)
 		if current > distance and current > EPSILON then
 			local bx, bz = rx / current, rz / current
 			local outward = (bvx - cvx) * bx + (bvz - cvz) * bz
-			if outward > 0 then
-				local radial = ax * bx + az * bz
-				local brake =
-					math.max(math.min(radial, -outward * config.HoldReboundGain), -config.HoldReboundMaxAcceleration)
-				if brake < -config.HoldMaxAcceleration then
-					local tx, tz = clampLength(ax - radial * bx, az - radial * bz, config.HoldMaxAcceleration)
-					return tx + brake * bx, tz + brake * bz, true
-				end
+			local brake = math.max(-outward * config.HoldReboundGain, -config.HoldReboundMaxAcceleration)
+			local radial = x * bx + z * bz
+			if brake < radial and brake < -config.HoldMaxAcceleration then
+				return x + (brake - radial) * bx, z + (brake - radial) * bz, true
 			end
 		end
-		local x, z = clampLength(ax, az, config.HoldMaxAcceleration)
 		return x, z, false
 	end
 

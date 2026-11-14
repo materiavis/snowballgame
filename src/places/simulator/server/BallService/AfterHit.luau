@@ -108,10 +108,13 @@ function AfterHitModule.new(deps: Deps): AfterHit
 		local summary = hitRules.summarize(watch)
 		state.reboundStuds = round(summary.studs, 2)
 		state.reboundSeconds = round(summary.seconds, 2)
+		state.reboundBackAfter = round(summary.backAfter, 2)
 		state.reboundWithin = summary.within
 		if deps.verbose then
 			local atMax = watch.atMax or {}
-			local measured = `maxBeyondHold={number(summary.studs)} backAfter={number(summary.seconds)}`
+			local measured = `maxBeyondHold={number(summary.studs)} outFor={number(summary.seconds)} backAfter={number(
+				summary.backAfter
+			)}`
 			local limit = `limit={config.ReboundMaxStuds}/{config.ReboundMaxSeconds} within={summary.within}`
 			local where = `ballAtMax={show(atMax.ball)} characterAtMax={show(atMax.character)}`
 			print(

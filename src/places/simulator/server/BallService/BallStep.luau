@@ -37,6 +37,7 @@ export type BallState = {
 	rebound: any, -- HitRules.Watch
 	reboundStuds: number?,
 	reboundSeconds: number?,
+	reboundBackAfter: number?,
 	reboundWithin: boolean?,
 	protectedUntil: number,
 	lastCollisionLoss: number,
@@ -126,6 +127,7 @@ function BallStepModule.newState(
 		rebound = nil,
 		reboundStuds = nil,
 		reboundSeconds = nil,
+		reboundBackAfter = nil,
 		reboundWithin = nil,
 		protectedUntil = 0,
 		lastCollisionLoss = 0,

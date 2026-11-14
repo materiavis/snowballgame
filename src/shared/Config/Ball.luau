@@ -199,14 +199,20 @@ local Ball = {
 	-- 5/7 of the force as speed (about 107 of 150); 60 leaves room for the controller's lag.
 	HoldApproachDeceleration = 60, -- studs/s²
 	-- A ball beyond the hold distance that moves away from the character is braked at this
-	-- gain on its outward speed, up to HoldReboundMaxAcceleration. In the HoldMath model a
-	-- rolling ball leaving the hold point at 46 studs/s (run A of #34) stops about 2.5 studs out
-	-- (3.0 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
+	-- gain on its outward speed, up to HoldReboundMaxAcceleration. Only the outward speed: a
+	-- ball pressed against an obstacle keeps HoldMaxAcceleration. In the HoldMath model a
+	-- rolling ball leaving the hold point at 46 studs/s (run A of #34) stops 2.2 studs out
+	-- (2.7 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
 	HoldReboundGain = 40, -- 1/s
-	HoldReboundMaxAcceleration = 800, -- studs/s²
+	HoldReboundMaxAcceleration = 1000, -- studs/s²
+	-- Distance before bearing (#97 round 1): beyond the hold distance the swing towards the
+	-- walking direction fades out over this many studs, so a ball pressed against an obstacle
+	-- face is not driven along it and round the corner to reach a hold point inside the obstacle.
+	HoldBearingFadeStuds = 1,
 	-- The agreed limit (D1 of #97) the Studio rebound diagnostic checks every hit against: the
 	-- ball centre stays within hold distance + ReboundMaxStuds of the character (ground plane),
-	-- and is back within hold distance + ReboundSettleStuds after at most ReboundMaxSeconds.
+	-- and is more than ReboundSettleStuds beyond it for at most ReboundMaxSeconds (from the
+	-- first to the last sample out; the time since the touch is logged as well).
 	-- 3 studs keeps the edge at HoldGap + 3 = 4.5, inside GrowthRange (6), so growth goes on;
 	-- 1 s is CollisionProtection. ReboundWatchTime is how long after a touch it is measured.
 	ReboundMaxStuds = 3,
@@ -268,6 +274,7 @@ local Ball = {
 		LastTouch = "LastTouch", -- result of the last new touch: hit, sameHit or protected
 		ReboundStuds = "ReboundStuds", -- last watch: most studs beyond the hold distance
 		ReboundSeconds = "ReboundSeconds", -- last watch: seconds more than ReboundSettleStuds out
+		ReboundBackAfter = "ReboundBackAfter", -- last watch: seconds from the touch until back
 		ReboundWithinLimit = "ReboundWithinLimit", -- last watch against ReboundMaxStuds/Seconds
 	},
 
