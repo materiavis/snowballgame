@@ -17,7 +17,7 @@ export type HoldConfig = {
 	HoldMaxSpeedFactor: number,
 	HoldMaxAcceleration: number,
 	HoldApproachDeceleration: number,
-	HoldBearingFadeStuds: number,
+	HoldContactMargin: number,
 	HoldReboundGain: number,
 	HoldReboundMaxAcceleration: number,
 	MoveDeadzone: number,
@@ -58,8 +58,18 @@ export type HoldMath = {
 		mz: number,
 		rx: number,
 		rz: number,
-		followBall: boolean
+		followBall: boolean,
+		touchingObstacle: boolean?
 	) -> (number, number),
+	touchesBox: (
+		x: number,
+		y: number,
+		z: number,
+		halfX: number,
+		halfY: number,
+		halfZ: number,
+		radius: number
+	) -> boolean,
 }
 
 local EPSILON = 1e-6
@@ -124,13 +134,7 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		local angle = math.atan2(bx * hz - bz * hx, bx * hx + bz * hz)
 		local limit = maxOrbitRate(distance, walkSpeed)
 		local angularSpeed = math.clamp(angle * gain, -limit, limit)
-		-- Distance before bearing (#97 round 1): beyond the hold distance the swing fades out
-		-- over HoldBearingFadeStuds. Otherwise a ball pressed against an obstacle face, whose hold
-		-- point lies inside the obstacle, is driven along the face and round its corner, where it
-		-- ends beyond the hold distance with the obstacle in between.
-		local beyond = current - distance
-		local bearingShare = if beyond > 0 then math.max(1 - beyond / config.HoldBearingFadeStuds, 0) else 1
-		local tangentialSpeed = angularSpeed * math.max(current, distance) * bearingShare
+		local tangentialSpeed = angularSpeed * math.max(current, distance)
 		-- Tangent = bearing turned +90° (same sign convention as the angle).
 		local wantX = cvx + bx * radialSpeed - bz * tangentialSpeed
 		local wantZ = cvz + bz * radialSpeed + bx * tangentialSpeed
@@ -197,6 +201,10 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	-- edge again pushes the ball over again. Standing still right after a recovery, the hold
 	-- follows the ball to where the server put it, so the old direction (over the edge, into an
 	-- obstacle) does not swing it back (#94). Otherwise the last walking direction stays.
+	-- While the own ball touches an obstacle (#97 rounds 2 and 3), walking or standing, the hold
+	-- keeps the ball's current bearing instead: its hold point would lie inside the obstacle, and
+	-- swinging towards it drives the ball along the face and round the corner, or keeps a ball
+	-- resting beside a face pressed into it. Once free, walking steers again.
 	local function nextHeldDirection(
 		hx: number,
 		hz: number,
@@ -204,9 +212,16 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		mz: number,
 		rx: number,
 		rz: number,
-		followBall: boolean
+		followBall: boolean,
+		touchingObstacle: boolean?
 	): (number, number)
 		local moving = math.sqrt(mx * mx + mz * mz)
+		if touchingObstacle then
+			if moving > config.MoveDeadzone then
+				return directionTo(rx, rz, mx / moving, mz / moving)
+			end
+			return directionTo(rx, rz, hx, hz)
+		end
 		if moving > config.MoveDeadzone then
 			return mx / moving, mz / moving
 		end
@@ -216,7 +231,27 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		return hx, hz
 	end
 
+	-- Whether a ball of `radius` with its centre at (x, y, z) in a box's own space touches the box
+	-- of half size (halfX, halfY, halfZ), within HoldContactMargin. Same box distance as the
+	-- server's ObstacleRules; this one only steers the own ball's hold, it decides no collision.
+	local function touchesBox(
+		x: number,
+		y: number,
+		z: number,
+		halfX: number,
+		halfY: number,
+		halfZ: number,
+		radius: number
+	): boolean
+		local dx = math.max(math.abs(x) - halfX, 0)
+		local dy = math.max(math.abs(y) - halfY, 0)
+		local dz = math.max(math.abs(z) - halfZ, 0)
+		local reach = radius + config.HoldContactMargin
+		return dx * dx + dy * dy + dz * dz <= reach * reach
+	end
+
 	return table.freeze({
+		touchesBox = touchesBox,
 		holdDistance = holdDistance,
 		maxOrbitRate = maxOrbitRate,
 		desiredVelocity = desiredVelocity,

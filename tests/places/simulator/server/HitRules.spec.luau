@@ -152,12 +152,12 @@ return T.suite("Simulator HitRules (#97)", function(test)
 	end)
 
 	test("the proposed values fit together", function()
-		T.isTrue(SEPARATION >= 2 * BallConfig.ReboundMaxStuds, "a rebound inside the limit never separates")
+		T.isTrue(SEPARATION > BallConfig.ReboundMaxStuds, "a rebound inside the limit never separates")
 		T.isTrue(BallConfig.ReboundMaxSeconds <= BallConfig.ReboundWatchTime)
 		T.isTrue(BallConfig.ReboundSettleStuds < BallConfig.ReboundMaxStuds)
 		T.isTrue(
-			BallConfig.HoldGap + BallConfig.ReboundMaxStuds < BallConfig.GrowthRange,
-			"a ball at the limit is still in growth range"
+			BallConfig.HoldGap + BallConfig.ReboundMaxStuds <= BallConfig.GrowthRange,
+			"a ball at the limit is still in growth range (edge at most GrowthRange)"
 		)
 		T.isTrue(BallConfig.HoldReboundMaxAcceleration > BallConfig.HoldMaxAcceleration)
 	end)

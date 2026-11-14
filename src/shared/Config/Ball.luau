@@ -68,7 +68,7 @@ local Ball = {
 	CollisionContactMargin = 0.25, -- studs of slack on the server's view of the contact
 	-- Same hit (D2 of #97, proposal): after a touch the server remembers the obstacle until the
 	-- gap between the ball's surface and that obstacle has reached this many studs. Touching it
-	-- again before is the same hit and costs nothing. Twice ReboundMaxStuds, so a rebound inside
+	-- again before is the same hit and costs nothing. Above ReboundMaxStuds (4.5), so a rebound inside
 	-- the limit never counts again; a player who backs off this far and rolls in again collides.
 	CollisionSeparationStuds = 6,
 	KnockOverRetryInterval = 1, -- seconds between tries while a ball is where it would return
@@ -205,17 +205,19 @@ local Ball = {
 	-- (2.7 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
 	HoldReboundGain = 40, -- 1/s
 	HoldReboundMaxAcceleration = 1000, -- studs/s²
-	-- Distance before bearing (#97 round 1): beyond the hold distance the swing towards the
-	-- walking direction fades out over this many studs, so a ball pressed against an obstacle
-	-- face is not driven along it and round the corner to reach a hold point inside the obstacle.
-	HoldBearingFadeStuds = 1,
+	-- Contact hold (#97 round 2): while the own ball is within this many studs of an Obstacle's
+	-- box and the character walks, the hold keeps the ball's bearing instead of swinging it to the
+	-- walking direction, so it is not driven along the face. Same slack as the server's
+	-- CollisionContactMargin; the client only steers its own ball with it.
+	HoldContactMargin = 0.25,
 	-- The agreed limit (D1 of #97) the Studio rebound diagnostic checks every hit against: the
 	-- ball centre stays within hold distance + ReboundMaxStuds of the character (ground plane),
 	-- and is more than ReboundSettleStuds beyond it for at most ReboundMaxSeconds (from the
 	-- first to the last sample out; the time since the touch is logged as well).
-	-- 3 studs keeps the edge at HoldGap + 3 = 4.5, inside GrowthRange (6), so growth goes on;
-	-- 1 s is CollisionProtection. ReboundWatchTime is how long after a touch it is measured.
-	ReboundMaxStuds = 3,
+	-- 4.5 studs (owner decision on #97 after round 1) put the edge at HoldGap + 4.5 = 6, the
+	-- GrowthRange; 1 s is CollisionProtection. ReboundWatchTime is how long after a touch it is
+	-- measured.
+	ReboundMaxStuds = 4.5,
 	ReboundMaxSeconds = 1,
 	ReboundSettleStuds = 1,
 	ReboundWatchTime = 3,

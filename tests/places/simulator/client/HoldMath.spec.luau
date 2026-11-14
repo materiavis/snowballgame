@@ -278,7 +278,8 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 	test("#97 cause: without the rebound brake the same rebound rolls about 10 studs out", function()
 		-- HoldMaxAcceleration alone (150, 107 as rolling speed) needs 46² / 214 ≈ 9.9 studs.
 		local most = rebound(4, 0, 46, ROLLING, 60, false)
-		T.isTrue(most > 3 * BallConfig.ReboundMaxStuds, `{most} studs out`)
+		T.isTrue(most > 9, `{most} studs out`)
+		T.isTrue(most > 2 * BallConfig.ReboundMaxStuds, "twice the limit")
 	end)
 
 	test("#97: a ball far out comes back without overshooting into the HumanoidRootPart", function()
@@ -336,5 +337,42 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 			end
 			T.near(length(sim.bvx, sim.bvz), walkSpeed, 0.1, `ball speed at walk speed {walkSpeed}`)
 		end
+	end)
+
+	test("#97 contact hold: touching an obstacle, walking or standing, the hold is the ball's bearing", function()
+		-- Ball at (3, -4) from the character, walking -Z: free, walking steers.
+		local hx, hz = hold.nextHeldDirection(0, -1, 0, -1, 3, -4, false, false)
+		T.equal(hx, 0)
+		T.equal(hz, -1)
+		-- Touching while walking: the ball's bearing, not the walking direction.
+		hx, hz = hold.nextHeldDirection(0, -1, 0, -1, 3, -4, false, true)
+		T.near(hx, 0.6, 1e-9)
+		T.near(hz, -0.8, 1e-9)
+		-- Touching while standing (round 3): the bearing too, not the last walking direction.
+		hx, hz = hold.nextHeldDirection(1, 0, 0, 0, 3, -4, false, true)
+		T.near(hx, 0.6, 1e-9)
+		T.near(hz, -0.8, 1e-9)
+		-- Free and standing: the last direction stays, as on main.
+		hx, hz = hold.nextHeldDirection(1, 0, 0, 0, 3, -4, false, false)
+		T.equal(hx, 1)
+		T.equal(hz, 0)
+		-- Ball on the character: the walking direction, else the last one, as fallback.
+		hx, hz = hold.nextHeldDirection(1, 0, 0, -1, 0, 0, false, true)
+		T.equal(hx, 0)
+		T.equal(hz, -1)
+	end)
+
+	test("#97 contact hold: the box contact uses HoldContactMargin", function()
+		local margin = BallConfig.HoldContactMargin
+		-- Box of half size 4, ball radius 2: face at 4, touching up to 4 + 2 + margin.
+		T.equal(hold.touchesBox(0, 0, 6 + margin - 0.01, 4, 4, 4, 2), true, "face")
+		T.equal(hold.touchesBox(0, 0, 6 + margin + 0.01, 4, 4, 4, 2), false, "clear")
+		T.equal(hold.touchesBox(0, 0, 0, 4, 4, 4, 2), true, "inside")
+		local corner = 4 + (2 + margin - 0.01) / math.sqrt(2)
+		T.equal(hold.touchesBox(corner, 0, corner, 4, 4, 4, 2), true, "edge")
+		-- A 35-stud ball resting behind the 8-stud cube touches its top edge.
+		local dy = 17.5 - 8
+		local horizontal = math.sqrt(17.5 ^ 2 - dy ^ 2)
+		T.equal(hold.touchesBox(0, 17.5 - 4, 4 + horizontal, 4, 4, 4, 17.5), true, "top edge")
 	end)
 end)
