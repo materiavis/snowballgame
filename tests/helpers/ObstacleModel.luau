@@ -1,11 +1,13 @@
 --!strict
 -- 2D model of the hold against an obstacle box (issue #97, ADR 0002 "After a hit"). The
--- character is kinematic and slides along the ball and the box; the ball rolls (5/7 of the hold
--- force becomes speed) and its contacts are inelastic. Same order as BallController: the hold
--- reads both bodies, then physics runs at 240 Hz with the force of the frame.
+-- character is kinematic and slides along the ball and the box (or steps over a low box,
+-- `characterPassesBox`); the ball rolls (5/7 of the hold force becomes speed) and its contacts
+-- are inelastic. Same order as BallController: the hold reads both bodies, then physics runs at
+-- 240 Hz with the force of the frame.
 --
 -- `hold` is a HoldMath instance; `kind` "main" drives it like main before #97 (no contact flag,
--- plain `acceleration`), "new" like the current BallController.
+-- plain `acceleration`), "new" like the current BallController (contact flag; approach limit
+-- and rebound brake armed for ReboundWatchTime after the last contact, #97 round 4).
 
 local ObstacleModel = {}
 
@@ -30,6 +32,7 @@ export type Setup = {
 	standSeconds: number,
 	followSeconds: number?, -- hold follows the ball this long at the start (a server placement)
 	friction: number?, -- Coulomb friction at the box face; 0 or nil = frictionless
+	characterPassesBox: boolean?, -- the character steps over the box (a 1-stud SmallObstacle)
 	fps: number?,
 }
 
@@ -42,6 +45,12 @@ export type Result = {
 	ballZ: number,
 	characterX: number,
 	characterZ: number,
+	-- "new" only (#97 round 4): whether the hold of the frame of the first touch was already
+	-- armed, and frames after it in which the brake would have acted but was not armed.
+	armedAtTouch: boolean,
+	missedBrakes: number,
+	brakeFrames: number, -- frames with the rebound brake acting
+	touched: boolean,
 }
 
 local CHARACTER_RADIUS = 1
@@ -81,6 +90,8 @@ function ObstacleModel.run(setup: Setup): Result
 	local startX, startZ = bx, bz
 	local hx, hz = setup.walkX, setup.walkZ
 	local touchedAt: number? = nil
+	local contactAt: number? = nil
+	local armedAtTouch, missedBrakes, brakeFrames = false, 0, 0
 	local most, moved = 0, 0
 	local firstOut: number?, lastOut: number? = nil, nil
 	local outAtEnd = false
@@ -90,19 +101,38 @@ function ObstacleModel.run(setup: Setup): Result
 		local mx, mz = if walking then setup.walkX else 0, if walking then setup.walkZ else 0
 		local rx, rz = bx - cx, bz - cz
 		local follow = setup.followSeconds ~= nil and now < setup.followSeconds
+		local armed = false
 		if setup.kind == "main" then
 			hx, hz = hold.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow)
 		else
 			local touching = gapToBox(bx, bz) <= config.HoldContactMargin
+			if touching then
+				contactAt = now
+			end
+			armed = hold.reboundArmed(now, contactAt)
 			hx, hz = hold.nextHeldDirection(hx, hz, mx, mz, rx, rz, follow, touching)
 		end
-		local wantX, wantZ = hold.desiredVelocity(rx, rz, hx, hz, distance, cvx, cvz, config.WalkSpeed)
 		local ax, az
 		if setup.kind == "main" then
+			local wantX, wantZ = hold.desiredVelocity(rx, rz, hx, hz, distance, cvx, cvz, config.WalkSpeed)
 			ax, az = hold.acceleration(wantX, wantZ, bvx, bvz)
 		else
-			ax, az = hold.holdAcceleration(wantX, wantZ, bvx, bvz, rx, rz, cvx, cvz, distance)
+			local wantX, wantZ = hold.desiredVelocity(rx, rz, hx, hz, distance, cvx, cvz, config.WalkSpeed, armed)
+			local braking
+			ax, az, braking = hold.holdAcceleration(wantX, wantZ, bvx, bvz, rx, rz, cvx, cvz, distance, armed)
+			if braking then
+				brakeFrames += 1
+			end
+			if touchedAt ~= nil and not armed then
+				local armedX, armedZ = hold.desiredVelocity(rx, rz, hx, hz, distance, cvx, cvz, config.WalkSpeed, true)
+				local _, _, wouldBrake =
+					hold.holdAcceleration(armedX, armedZ, bvx, bvz, rx, rz, cvx, cvz, distance, true)
+				if wouldBrake then
+					missedBrakes += 1
+				end
+			end
 		end
+		local wasTouched = touchedAt ~= nil
 		for _ = 1, 240 // fps do
 			local h = 1 / 240
 			local vx, vz = mx * config.WalkSpeed, mz * config.WalkSpeed
@@ -115,7 +145,10 @@ function ObstacleModel.run(setup: Setup): Result
 					vz -= into * oz / gap
 				end
 			end
-			local ncx, ncz = outOfBox(cx + vx * h, cz + vz * h, CHARACTER_RADIUS)
+			local ncx, ncz = cx + vx * h, cz + vz * h
+			if not setup.characterPassesBox then
+				ncx, ncz = outOfBox(ncx, ncz, CHARACTER_RADIUS)
+			end
 			cvx, cvz = (ncx - cx) / h, (ncz - cz) / h
 			cx, cz = ncx, ncz
 			bvx += ax * ROLLING * h
@@ -157,6 +190,9 @@ function ObstacleModel.run(setup: Setup): Result
 				end
 			end
 		end
+		if not wasTouched and touchedAt ~= nil then
+			armedAtTouch = armed
+		end
 		moved = math.max(moved, length(bx - startX, bz - startZ))
 		if touchedAt and now - touchedAt <= config.ReboundWatchTime then
 			local beyond = length(bx - cx, bz - cz) - distance
@@ -177,6 +213,10 @@ function ObstacleModel.run(setup: Setup): Result
 		ballZ = bz,
 		characterX = cx,
 		characterZ = cz,
+		armedAtTouch = armedAtTouch,
+		missedBrakes = missedBrakes,
+		brakeFrames = brakeFrames,
+		touched = touchedAt ~= nil,
 	}
 end
 

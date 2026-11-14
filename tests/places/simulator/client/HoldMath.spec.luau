@@ -45,9 +45,19 @@ local function stepSim(sim: Sim, diameter: number, dx: number, dz: number, walkS
 	end
 	local cvx, cvz = if moving then dx * walkSpeed else 0, if moving then dz * walkSpeed else 0
 	local wantX, wantZ =
-		hold.desiredVelocity(sim.bx - sim.cx, sim.bz - sim.cz, sim.hx, sim.hz, distance, cvx, cvz, walkSpeed)
-	local ax, az =
-		hold.holdAcceleration(wantX, wantZ, sim.bvx, sim.bvz, sim.bx - sim.cx, sim.bz - sim.cz, cvx, cvz, distance)
+		hold.desiredVelocity(sim.bx - sim.cx, sim.bz - sim.cz, sim.hx, sim.hz, distance, cvx, cvz, walkSpeed, false)
+	local ax, az = hold.holdAcceleration(
+		wantX,
+		wantZ,
+		sim.bvx,
+		sim.bvz,
+		sim.bx - sim.cx,
+		sim.bz - sim.cz,
+		cvx,
+		cvz,
+		distance,
+		false
+	)
 	sim.cx += cvx * step
 	sim.cz += cvz * step
 	sim.bvx += ax * step
@@ -91,16 +101,16 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 	end)
 
 	test("velocity and acceleration are limited", function()
-		local wantX, wantZ = hold.desiredVelocity(1e6, 0, 0, -1, 3, 0, 0, BallConfig.WalkSpeed)
+		local wantX, wantZ = hold.desiredVelocity(1e6, 0, 0, -1, 3, 0, 0, BallConfig.WalkSpeed, false)
 		T.near(length(wantX, wantZ), BallConfig.HoldMaxSpeedFactor * BallConfig.WalkSpeed, 1e-6, "far ball")
 		local ax, az = hold.acceleration(1e6, 0, 0, 0)
 		T.near(length(ax, az), BallConfig.HoldMaxAcceleration, 1e-6, "acceleration")
-		wantX, wantZ = hold.desiredVelocity(0, -3, 0, -1, 3, 0, 0, BallConfig.WalkSpeed)
+		wantX, wantZ = hold.desiredVelocity(0, -3, 0, -1, 3, 0, 0, BallConfig.WalkSpeed, false)
 		T.near(length(wantX, wantZ), 0, 1e-9, "at the hold point and standing")
 	end)
 
 	test("a ball on top of the character is pushed out along the hold direction", function()
-		local wantX, wantZ = hold.desiredVelocity(0, 0, 1, 0, 3, 0, 0, BallConfig.WalkSpeed)
+		local wantX, wantZ = hold.desiredVelocity(0, 0, 1, 0, 3, 0, 0, BallConfig.WalkSpeed, false)
 		T.isTrue(wantX > 0 and math.abs(wantZ) < 1e-9)
 	end)
 
@@ -239,10 +249,10 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 		local most, closest, lastOut = -math.huge, math.huge, 0
 		local substeps = 240 // fps
 		for frame = 1, 5 * fps do
-			local wantX, wantZ = hold.desiredVelocity(bx, bz, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
+			local wantX, wantZ = hold.desiredVelocity(bx, bz, 0, -1, distance, 0, 0, BallConfig.WalkSpeed, brake)
 			local ax, az
 			if brake then
-				ax, az = hold.holdAcceleration(wantX, wantZ, bvx, bvz, bx, bz, 0, 0, distance)
+				ax, az = hold.holdAcceleration(wantX, wantZ, bvx, bvz, bx, bz, 0, 0, distance, true)
 			else
 				ax, az = hold.acceleration(wantX, wantZ, bvx, bvz)
 			end
@@ -299,20 +309,22 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 
 	test("#97: the rebound brake acts only on a ball beyond the hold distance that leaves", function()
 		local distance = hold.holdDistance(4)
-		local wantX, wantZ = hold.desiredVelocity(0, -distance - 1, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
-		local _, _, leaving = hold.holdAcceleration(wantX, wantZ, 0, -40, 0, -distance - 1, 0, 0, distance)
+		local wantX, wantZ = hold.desiredVelocity(0, -distance - 1, 0, -1, distance, 0, 0, BallConfig.WalkSpeed, true)
+		local _, _, leaving = hold.holdAcceleration(wantX, wantZ, 0, -40, 0, -distance - 1, 0, 0, distance, true)
 		T.equal(leaving, true, "beyond and leaving")
-		local _, _, returning = hold.holdAcceleration(wantX, wantZ, 0, 10, 0, -distance - 1, 0, 0, distance)
+		local _, _, returning = hold.holdAcceleration(wantX, wantZ, 0, 10, 0, -distance - 1, 0, 0, distance, true)
 		T.equal(returning, false, "beyond and coming back")
-		local insideX, insideZ = hold.desiredVelocity(0, -distance + 0.5, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
-		local _, _, inside = hold.holdAcceleration(insideX, insideZ, 0, -40, 0, -distance + 0.5, 0, 0, distance)
+		local insideX, insideZ =
+			hold.desiredVelocity(0, -distance + 0.5, 0, -1, distance, 0, 0, BallConfig.WalkSpeed, true)
+		local _, _, inside = hold.holdAcceleration(insideX, insideZ, 0, -40, 0, -distance + 0.5, 0, 0, distance, true)
 		T.equal(inside, false, "inside the hold distance")
 		-- Walking with the ball in front: the ball moves away from where the character was, but
 		-- not away from the character, so it is no rebound.
-		local walkX, walkZ = hold.desiredVelocity(0, -distance - 0.2, 0, -1, distance, 0, -16, BallConfig.WalkSpeed)
-		local _, _, walking = hold.holdAcceleration(walkX, walkZ, 0, -15.5, 0, -distance - 0.2, 0, -16, distance)
+		local walkX, walkZ =
+			hold.desiredVelocity(0, -distance - 0.2, 0, -1, distance, 0, -16, BallConfig.WalkSpeed, true)
+		local _, _, walking = hold.holdAcceleration(walkX, walkZ, 0, -15.5, 0, -distance - 0.2, 0, -16, distance, true)
 		T.equal(walking, false, "pushing while walking")
-		local ax, az, strong = hold.holdAcceleration(1e6, 0, 0, -1e3, 0, -distance - 5, 0, 0, distance)
+		local ax, az, strong = hold.holdAcceleration(1e6, 0, 0, -1e3, 0, -distance - 5, 0, 0, distance, true)
 		T.equal(strong, true)
 		T.isTrue(length(ax, az) <= BallConfig.HoldReboundMaxAcceleration + BallConfig.HoldMaxAcceleration + 1e-6)
 	end)
@@ -327,8 +339,9 @@ return T.suite("Simulator HoldMath (7.3)", function(test)
 			for _ = 1, 2 * 60 do
 				local rx, rz = sim.bx - sim.cx, sim.bz - sim.cz
 				local cvz = -walkSpeed
-				local wantX, wantZ = hold.desiredVelocity(rx, rz, 0, -1, distance, 0, cvz, walkSpeed)
-				local ax, az, braking = hold.holdAcceleration(wantX, wantZ, sim.bvx, sim.bvz, rx, rz, 0, cvz, distance)
+				local wantX, wantZ = hold.desiredVelocity(rx, rz, 0, -1, distance, 0, cvz, walkSpeed, true)
+				local ax, az, braking =
+					hold.holdAcceleration(wantX, wantZ, sim.bvx, sim.bvz, rx, rz, 0, cvz, distance, true)
 				local plainX, plainZ = hold.acceleration(wantX, wantZ, sim.bvx, sim.bvz)
 				T.equal(braking, false, `walk speed {walkSpeed}: no rebound brake`)
 				T.near(ax, plainX, 1e-9)

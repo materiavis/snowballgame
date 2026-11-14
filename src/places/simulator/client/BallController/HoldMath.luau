@@ -18,10 +18,12 @@ export type HoldConfig = {
 	HoldMaxAcceleration: number,
 	HoldApproachDeceleration: number,
 	HoldContactMargin: number,
+	HoldContactReleaseDegrees: number,
 	HoldReboundGain: number,
 	HoldReboundMaxAcceleration: number,
 	MoveDeadzone: number,
 	RecoveryHoldResetTime: number,
+	ReboundWatchTime: number,
 }
 
 export type HoldMath = {
@@ -35,7 +37,8 @@ export type HoldMath = {
 		distance: number,
 		cvx: number,
 		cvz: number,
-		walkSpeed: number
+		walkSpeed: number,
+		armed: boolean
 	) -> (number, number),
 	acceleration: (wantX: number, wantZ: number, bvx: number, bvz: number) -> (number, number),
 	holdAcceleration: (
@@ -47,8 +50,10 @@ export type HoldMath = {
 		rz: number,
 		cvx: number,
 		cvz: number,
-		distance: number
+		distance: number,
+		armed: boolean
 	) -> (number, number, boolean),
+	reboundArmed: (now: number, contactAt: number?) -> boolean,
 	directionTo: (rx: number, rz: number, fallbackX: number, fallbackZ: number) -> (number, number),
 	followsBall: (now: number, recoveredAt: number?) -> boolean,
 	nextHeldDirection: (
@@ -88,6 +93,7 @@ local HoldMathModule = {}
 
 function HoldMathModule.new(config: HoldConfig): HoldMath
 	local turnRate = math.rad(config.HoldTurnRateDegrees)
+	local releaseCosine = math.cos(math.rad(config.HoldContactReleaseDegrees))
 
 	-- Same formula as BallCore.holdDistance on the server (a spec keeps them equal).
 	local function holdDistance(diameter: number): number
@@ -106,7 +112,8 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 
 	-- Velocity the ball should have. (rx, rz) is the ball relative to the character, (hx, hz)
 	-- the unit hold direction, (cvx, cvz) the character's velocity (feed-forward, so the ball
-	-- keeps pace without lagging into the character).
+	-- keeps pace without lagging into the character). `armed` (reboundArmed) switches the
+	-- approach limit on; unarmed this is main's hold exactly (#97 round 4).
 	local function desiredVelocity(
 		rx: number,
 		rz: number,
@@ -115,7 +122,8 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		distance: number,
 		cvx: number,
 		cvz: number,
-		walkSpeed: number
+		walkSpeed: number,
+		armed: boolean
 	): (number, number)
 		local current = math.sqrt(rx * rx + rz * rz)
 		local bx, bz = hx, hz -- bearing; on top of the character, push out along the hold direction
@@ -123,12 +131,14 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 			bx, bz = rx / current, rz / current
 		end
 		local gain = config.HoldPositionGain
-		-- Never faster towards the hold distance than the ball can still stop in (#97). With the
-		-- plain gain a ball 8 studs out comes back at the speed cap, overshoots into the
-		-- character and is pushed out again.
-		local radialError = distance - current
-		local stoppable = math.sqrt(2 * config.HoldApproachDeceleration * math.abs(radialError))
-		local radialSpeed = math.clamp(radialError * gain, -stoppable, stoppable)
+		local radialSpeed = (distance - current) * gain
+		if armed then
+			-- Never faster towards the hold distance than the ball can still stop in (#97). With
+			-- the plain gain a ball 8 studs out comes back at the speed cap, overshoots into the
+			-- character and is pushed out again.
+			local stoppable = math.sqrt(2 * config.HoldApproachDeceleration * math.abs(distance - current))
+			radialSpeed = math.clamp(radialSpeed, -stoppable, stoppable)
+		end
 		-- Signed angle from the bearing to the hold direction. An exact reversal turns one
 		-- fixed way, so it never stalls.
 		local angle = math.atan2(bx * hz - bz * hx, bx * hx + bz * hz)
@@ -151,10 +161,12 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	-- character, (cvx, cvz) the character's velocity. As `acceleration`, except for a ball beyond
 	-- the hold distance that moves away from the character (a rebound, #97): the part towards
 	-- the character may then brake that outward speed at HoldReboundGain, up to
-	-- HoldReboundMaxAcceleration. Only the outward speed itself: everything else, including
-	-- pressing a ball against an obstacle, keeps HoldMaxAcceleration (#97 round 1: in round 0
-	-- solver jitter of a pressed ball unlocked the whole unclamped command, up to 800). The
-	-- third value is true while this brake is stronger than the normal one.
+	-- HoldReboundMaxAcceleration. Only the outward speed: everything else, including pressing a
+	-- ball against an obstacle, keeps HoldMaxAcceleration (#97 round 1: in round 0 solver jitter
+	-- of a pressed ball unlocked the whole unclamped command, up to 800). The third value is
+	-- true while this brake is stronger than the normal one. Only while `armed` (reboundArmed);
+	-- unarmed this is `acceleration`, main's hold (#97 round 4: in free field the brake changed
+	-- the turns, R5).
 	local function holdAcceleration(
 		wantX: number,
 		wantZ: number,
@@ -164,9 +176,13 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		rz: number,
 		cvx: number,
 		cvz: number,
-		distance: number
+		distance: number,
+		armed: boolean
 	): (number, number, boolean)
 		local x, z = acceleration(wantX, wantZ, bvx, bvz)
+		if not armed then
+			return x, z, false
+		end
 		local current = math.sqrt(rx * rx + rz * rz)
 		if current > distance and current > EPSILON then
 			local bx, bz = rx / current, rz / current
@@ -178,6 +194,13 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 			end
 		end
 		return x, z, false
+	end
+
+	-- True for ReboundWatchTime seconds after the own ball's last obstacle contact (#97 round 4):
+	-- the client contact test, or a change of the server's Collisions or SameHits count. Only
+	-- then do the approach limit and the rebound brake act; everywhere else the hold is main's.
+	local function reboundArmed(now: number, contactAt: number?): boolean
+		return contactAt ~= nil and now - contactAt < config.ReboundWatchTime
 	end
 
 	-- Unit direction of (rx, rz), or the fallback when it is too short to have one.
@@ -204,7 +227,10 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 	-- While the own ball touches an obstacle (#97 rounds 2 and 3), walking or standing, the hold
 	-- keeps the ball's current bearing instead: its hold point would lie inside the obstacle, and
 	-- swinging towards it drives the ball along the face and round the corner, or keeps a ball
-	-- resting beside a face pressed into it. Once free, walking steers again.
+	-- resting beside a face pressed into it. Once free, walking steers again. Round 4: walking,
+	-- with the ball more than HoldContactReleaseDegrees from the walking direction, walking
+	-- steers as on main, so a ball caught behind a small obstacle the character stepped over
+	-- swings round it after the character instead of being pulled straight into it.
 	local function nextHeldDirection(
 		hx: number,
 		hz: number,
@@ -218,7 +244,12 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		local moving = math.sqrt(mx * mx + mz * mz)
 		if touchingObstacle then
 			if moving > config.MoveDeadzone then
-				return directionTo(rx, rz, mx / moving, mz / moving)
+				local walkX, walkZ = mx / moving, mz / moving
+				local bearingX, bearingZ = directionTo(rx, rz, walkX, walkZ)
+				if bearingX * walkX + bearingZ * walkZ >= releaseCosine then
+					return bearingX, bearingZ
+				end
+				return walkX, walkZ
 			end
 			return directionTo(rx, rz, hx, hz)
 		end
@@ -257,6 +288,7 @@ function HoldMathModule.new(config: HoldConfig): HoldMath
 		desiredVelocity = desiredVelocity,
 		acceleration = acceleration,
 		holdAcceleration = holdAcceleration,
+		reboundArmed = reboundArmed,
 		directionTo = directionTo,
 		followsBall = followsBall,
 		nextHeldDirection = nextHeldDirection,

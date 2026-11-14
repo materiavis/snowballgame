@@ -42,6 +42,9 @@ local reboundBrakes = 0
 local braking = false
 local contactHolds = 0
 local contactHolding = false
+-- os.clock() of the own ball's last obstacle contact (#97 round 4): arms the approach limit
+-- and the rebound brake for ReboundWatchTime. nil = none yet, so the hold is main's.
+local contactAt: number? = nil
 -- Obstacle-tagged parts this client sees, kept current by the tag signals so the per-frame
 -- contact test does not allocate.
 local obstacles: { BasePart } = {}
@@ -121,6 +124,15 @@ local function attachPushForce(ball: BasePart)
 	ball:GetAttributeChangedSignal(BallConfig.RecoveriesAttribute):Connect(onServerMove)
 	-- Moves that are not recoveries (respawn, Studio switch BallPlaceBehindObstacle) as well.
 	ball:GetAttributeChangedSignal(BallConfig.PlacementsAttribute):Connect(onServerMove)
+	-- A new or same hit the server counted arms the brake too, in case the client's own contact
+	-- test missed the touch (these counters are Studio diagnostics; live, the test alone arms).
+	local function onServerHit()
+		if ball == myBall then
+			contactAt = os.clock()
+		end
+	end
+	ball:GetAttributeChangedSignal(BallConfig.DiagnosticAttributes.Collisions):Connect(onServerHit)
+	ball:GetAttributeChangedSignal(BallConfig.DiagnosticAttributes.SameHits):Connect(onServerHit)
 end
 
 local function onBallAdded(child: Instance)
@@ -171,20 +183,18 @@ local function step()
 			localPlayer:SetAttribute(CONTACT_HOLDS_ATTRIBUTE, contactHolds)
 		end
 		contactHolding = touching
-		heldX, heldZ = hold.nextHeldDirection(
-			heldX,
-			heldZ,
-			move.X,
-			move.Z,
-			rx,
-			rz,
-			hold.followsBall(os.clock(), recoveredAt),
-			touching
-		)
+		local now = os.clock()
+		if touching then
+			contactAt = now
+		end
+		-- In the frame of the touch already, so the brake is on before the ball can rebound.
+		local armed = hold.reboundArmed(now, contactAt)
+		heldX, heldZ =
+			hold.nextHeldDirection(heldX, heldZ, move.X, move.Z, rx, rz, hold.followsBall(now, recoveredAt), touching)
 		local rootVelocity = rootPart.AssemblyLinearVelocity
 		local distance = hold.holdDistance(ball.Size.X)
 		local wantX, wantZ =
-			hold.desiredVelocity(rx, rz, heldX, heldZ, distance, rootVelocity.X, rootVelocity.Z, walkSpeed)
+			hold.desiredVelocity(rx, rz, heldX, heldZ, distance, rootVelocity.X, rootVelocity.Z, walkSpeed, armed)
 		local reboundBrake
 		ax, az, reboundBrake = hold.holdAcceleration(
 			wantX,
@@ -195,7 +205,8 @@ local function step()
 			rz,
 			rootVelocity.X,
 			rootVelocity.Z,
-			distance
+			distance,
+			armed
 		)
 		if reboundBrake and not braking then
 			reboundBrakes += 1

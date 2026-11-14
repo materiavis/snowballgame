@@ -14,6 +14,9 @@ local ObstacleModel = require("../../../helpers/ObstacleModel")
 -- LargeObstacle of the placeholder map: 8 × 8 × 8 at (20, 4, -30).
 local LARGE = { x0 = 16, x1 = 24, z0 = -34, z1 = -26 }
 local AC8_FRICTION = 0.45
+-- A ball pulled along at a corner about 1.5 studs out is accepted (owner, rounds 2 and 3); round
+-- 4's release angle must not bring back more (owner decision: 90° gave 1.58, 100° keeps 1.50).
+local CORNER_ACCEPTED = 1.5 + 0.005
 
 local current = HoldMath.new(BallConfig :: any)
 local main = HoldMathMain.new(BallConfig :: any)
@@ -102,6 +105,9 @@ return T.suite("Simulator HoldMath against an obstacle box (#97)", function(test
 					local label =
 						`angle {angle} x {startX} walk {walkSeconds} s: {result.most} studs, out {result.outFor} s`
 					T.isTrue(withinLimit(result), label)
+					T.isTrue(result.most <= CORNER_ACCEPTED, `{label}: no more than the accepted corner drag`)
+					-- Round 4: the brake is armed by the contact test in the frame of the touch.
+					T.equal(result.armedAtTouch, result.touched, `{label}: armed at the touch`)
 				end
 			end
 		end
@@ -111,7 +117,10 @@ return T.suite("Simulator HoldMath against an obstacle box (#97)", function(test
 		for _, angle in { -10, -5, 0, 5, 10, 20 } do
 			for _, startX in { 22, 20, 18, 16, 15, 14.5 } do
 				local result = push("new", startX, angle, 6)
-				T.isTrue(withinLimit(result), `angle {angle} x {startX}: {result.most} studs, out {result.outFor} s`)
+				local label = `angle {angle} x {startX}: {result.most} studs, out {result.outFor} s`
+				T.isTrue(withinLimit(result), label)
+				T.isTrue(result.most <= CORNER_ACCEPTED, `{label}: no more than the accepted corner drag`)
+				T.equal(result.armedAtTouch, result.touched, `{label}: armed at the touch`)
 			end
 		end
 	end)
@@ -128,9 +137,9 @@ return T.suite("Simulator HoldMath against an obstacle box (#97)", function(test
 		-- Round 0 let a tiny outward speed unlock the unclamped command (about 370).
 		local distance = current.holdDistance(35)
 		local rz = -(distance + 8)
-		local wantX, wantZ = current.desiredVelocity(0, rz, 0, -1, distance, 0, 0, BallConfig.WalkSpeed)
+		local wantX, wantZ = current.desiredVelocity(0, rz, 0, -1, distance, 0, 0, BallConfig.WalkSpeed, true)
 		for _, jitter in { 0, 0.01, 0.5, 3 } do
-			local ax, az, braking = current.holdAcceleration(wantX, wantZ, 0, -jitter, 0, rz, 0, 0, distance)
+			local ax, az, braking = current.holdAcceleration(wantX, wantZ, 0, -jitter, 0, rz, 0, 0, distance, true)
 			T.isTrue(length(ax, az) <= BallConfig.HoldMaxAcceleration + 1e-9, `jitter {jitter}: {length(ax, az)}`)
 			T.equal(braking, false, `jitter {jitter}`)
 		end

@@ -19,6 +19,7 @@ export type HitConfig = {
 	CollisionSeparationStuds: number,
 	ReboundMaxStuds: number,
 	ReboundMaxSeconds: number,
+	ReboundMaxSecondsSmallObstacle: number,
 	ReboundSettleStuds: number,
 	ReboundWatchTime: number,
 }
@@ -30,6 +31,7 @@ export type Watch = {
 	startedAt: number,
 	obstacle: any,
 	result: string, -- "hit", "sameHit" or "protected"
+	maxSeconds: number, -- outFor limit of this obstacle: ReboundMaxSeconds, or the small-obstacle one
 	maxBeyond: number, -- studs beyond the hold distance, at least 0
 	firstOutAt: number?, -- first sample more than ReboundSettleStuds beyond the hold distance
 	lastOutAt: number?, -- last such sample
@@ -41,13 +43,14 @@ export type Summary = {
 	studs: number,
 	seconds: number, -- out: first to last sample more than ReboundSettleStuds beyond
 	backAfter: number, -- from the touch to the last sample out (0 if never out)
+	maxSeconds: number, -- the outFor limit `within` used
 	within: boolean,
 }
 
 export type HitRules = {
 	forget: (memory: Memory, gapOf: (obstacle: any) -> number?) -> (),
 	remember: (memory: Memory, contacts: { [any]: boolean }) -> (),
-	startWatch: (now: number, obstacle: any, result: string) -> Watch,
+	startWatch: (now: number, obstacle: any, result: string, small: boolean?) -> Watch,
 	stepWatch: (watch: Watch, now: number, beyond: number, payload: any) -> (),
 	isWatchOver: (watch: Watch, now: number) -> boolean,
 	summarize: (watch: Watch) -> Summary,
@@ -75,11 +78,14 @@ function HitRulesModule.new(config: HitConfig): HitRules
 		end
 	end
 
-	local function startWatch(now: number, obstacle: any, result: string): Watch
+	-- `small`: the obstacle is a small one the character steps over (#97 round 4, owner
+	-- decision): the ball has to swing round it after the character, so outFor may be longer.
+	local function startWatch(now: number, obstacle: any, result: string, small: boolean?): Watch
 		return {
 			startedAt = now,
 			obstacle = obstacle,
 			result = result,
+			maxSeconds = if small then config.ReboundMaxSecondsSmallObstacle else config.ReboundMaxSeconds,
 			maxBeyond = 0,
 			firstOutAt = nil,
 			lastOutAt = nil,
@@ -116,9 +122,8 @@ function HitRulesModule.new(config: HitConfig): HitRules
 			studs = watch.maxBeyond,
 			seconds = seconds,
 			backAfter = backAfter,
-			within = watch.maxBeyond <= config.ReboundMaxStuds
-				and seconds <= config.ReboundMaxSeconds
-				and not watch.outAtEnd,
+			maxSeconds = watch.maxSeconds,
+			within = watch.maxBeyond <= config.ReboundMaxStuds and seconds <= watch.maxSeconds and not watch.outAtEnd,
 		}
 	end
 

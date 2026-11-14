@@ -205,11 +205,18 @@ local Ball = {
 	-- (2.7 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
 	HoldReboundGain = 40, -- 1/s
 	HoldReboundMaxAcceleration = 1000, -- studs/s²
-	-- Contact hold (#97 round 2): while the own ball is within this many studs of an Obstacle's
-	-- box and the character walks, the hold keeps the ball's bearing instead of swinging it to the
-	-- walking direction, so it is not driven along the face. Same slack as the server's
+	-- Contact hold (#97 rounds 2 and 3): while the own ball is within this many studs of an
+	-- Obstacle's box, walking or standing, the hold keeps the ball's bearing instead of swinging it
+	-- to the walking direction, so it is not driven along the face. Same slack as the server's
 	-- CollisionContactMargin; the client only steers its own ball with it.
 	HoldContactMargin = 0.25,
+	-- Round 4 (owner decision on #97): while the character walks and the ball lies more than this
+	-- many degrees from the walking direction, the contact hold ends and walking steers as on
+	-- main, so a ball caught behind a small obstacle the character stepped over swings round it
+	-- instead of being pulled straight into it. 100, not 90: a ball squeezed along a face to just
+	-- beside the character (95 to 99° in the model) keeps the contact hold, so it is not dragged
+	-- along the face again (90 gave 1.58 studs at LargeObstacle against the accepted 1.5).
+	HoldContactReleaseDegrees = 100,
 	-- The agreed limit (D1 of #97) the Studio rebound diagnostic checks every hit against: the
 	-- ball centre stays within hold distance + ReboundMaxStuds of the character (ground plane),
 	-- and is more than ReboundSettleStuds beyond it for at most ReboundMaxSeconds (from the
@@ -219,6 +226,10 @@ local Ball = {
 	-- measured.
 	ReboundMaxStuds = 4.5,
 	ReboundMaxSeconds = 1,
+	-- For a small obstacle (one with KnockOverSizeAttribute) the character steps over, the ball
+	-- has to swing round it after the character: 1.5 s (owner decision on #97 round 4; main
+	-- reached up to 1.2 s in Studio). Studs and the rest of the limit are the same.
+	ReboundMaxSecondsSmallObstacle = 1.5,
 	ReboundSettleStuds = 1,
 	ReboundWatchTime = 3,
 	MoveDeadzone = 0.1, -- Humanoid.MoveDirection below this counts as standing still

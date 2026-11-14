@@ -89,7 +89,10 @@ function AfterHitModule.new(deps: Deps): AfterHit
 		local result = if counted then "hit" elseif #outcome.repeats > 0 then "sameHit" else "protected"
 		state.lastTouch = result
 		if state.rebound == nil then
-			state.rebound = hitRules.startWatch(now, touched, result)
+			-- A small obstacle (it carries KnockOverSizeAttribute) gets its own outFor limit.
+			local small = typeof(touched) == "Instance"
+				and typeof(touched:GetAttribute(config.KnockOverSizeAttribute)) == "number"
+			state.rebound = hitRules.startWatch(now, touched, result, small)
 		end
 		if deps.verbose then
 			local diameter = state.part.Size.X
@@ -115,7 +118,7 @@ function AfterHitModule.new(deps: Deps): AfterHit
 			local measured = `maxBeyondHold={number(summary.studs)} outFor={number(summary.seconds)} backAfter={number(
 				summary.backAfter
 			)}`
-			local limit = `limit={config.ReboundMaxStuds}/{config.ReboundMaxSeconds} within={summary.within}`
+			local limit = `limit={config.ReboundMaxStuds}/{summary.maxSeconds} within={summary.within}`
 			local where = `ballAtMax={show(atMax.ball)} characterAtMax={show(atMax.character)}`
 			print(
 				`[BallService] {state.player.Name} rebound obstacle={nameOf(watch.obstacle)} result={watch.result} {measured} {limit} {where}`
