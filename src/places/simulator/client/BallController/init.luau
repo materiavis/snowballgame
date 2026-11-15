@@ -8,6 +8,7 @@
 -- ball keeps pace with the character, so push speed follows Humanoid.WalkSpeed, which the
 -- server sets. This client never sends a size, a distance or a position to the server.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -15,8 +16,13 @@ local RunService = game:GetService("RunService")
 local BallConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Ball")) :: any
 local HoldMath = require(script:WaitForChild("HoldMath"))
 
--- Client view only (ADR 0002 "Playtest hooks"): how many server recoveries the hold followed.
+-- Client view only (ADR 0002 "Playtest hooks"): how many server recoveries the hold followed,
+-- how often the rebound brake (#97) started, how often the contact hold (#97 round 2) started,
+-- and whether the approach limit and the brake are armed now (#97 round 5).
 local HOLD_RESETS_ATTRIBUTE = "BallHoldResets"
+local REBOUND_BRAKES_ATTRIBUTE = "BallReboundBrakes"
+local CONTACT_HOLDS_ATTRIBUTE = "BallContactHolds"
+local HOLD_ARMED_ATTRIBUTE = "BallHoldArmed"
 
 local localPlayer = Players.LocalPlayer
 local hold = HoldMath.new(BallConfig)
@@ -34,7 +40,57 @@ local heldX, heldZ = 0, -1
 -- Recoveries attribute); nil = none yet.
 local recoveredAt: number? = nil
 local holdResets = 0
+local reboundBrakes = 0
+local braking = false
+local contactHolds = 0
+local contactHolding = false
+-- os.clock() of the last arming event (#97 rounds 4 and 5): an obstacle contact or a server
+-- move of the own ball. Arms the approach limit and the rebound brake for ReboundWatchTime.
+-- nil = none yet, so the hold is main's.
+local armedAt: number? = nil
+local holdArmed = false
+-- Obstacle-tagged parts this client sees, kept current by the tag signals so the per-frame
+-- contact test does not allocate.
+local obstacles: { BasePart } = {}
 local started = false
+
+local function refreshObstacles()
+	table.clear(obstacles)
+	for _, instance in CollectionService:GetTagged(BallConfig.ObstacleTag) do
+		if instance:IsA("BasePart") then
+			table.insert(obstacles, instance)
+		end
+	end
+end
+
+-- Whether the own ball touches any obstacle on this client (#97 round 2), and whether one of
+-- them cannot be knocked over (no KnockOverSize number). Any touch arms the brake; only the
+-- second gets the contact hold (round 5: a small obstacle the character steps over gets main's
+-- hold direction, which swings the ball round it). Only steers the own ball's hold; whether
+-- that is a collision is decided by the server alone.
+local function touchesObstacle(ball: BasePart): (boolean, boolean)
+	local position = ball.Position
+	local radius = ball.Size.X / 2
+	local touching = false
+	for _, obstacle in obstacles do
+		if obstacle.Parent then
+			local localPoint = obstacle.CFrame:PointToObjectSpace(position)
+			local half = obstacle.Size / 2
+			if hold.touchesBox(localPoint.X, localPoint.Y, localPoint.Z, half.X, half.Y, half.Z, radius) then
+				touching = true
+				if typeof(obstacle:GetAttribute(BallConfig.KnockOverSizeAttribute)) ~= "number" then
+					return true, true
+				end
+			end
+		end
+	end
+	return touching, false
+end
+
+-- Starts the window in which the approach limit and the rebound brake act.
+local function arm()
+	armedAt = os.clock()
+end
 
 -- Starts the hold direction where the ball already is, so it does not jump on (re)spawn.
 local function resetHeldDirection()
@@ -76,14 +132,26 @@ local function attachPushForce(ball: BasePart)
 	-- creates it and sets the count in the same frame, so no attribute change may arrive.
 	recoveredAt = os.clock()
 	resetHeldDirection()
+	-- A server move arms the brake as well (#97 round 5): a ball put behind an obstacle may be
+	-- clear of it for the contact test until the hold has pulled it in.
 	local function onServerMove()
 		if ball == myBall then
 			onRecovered()
+			arm()
 		end
 	end
 	ball:GetAttributeChangedSignal(BallConfig.RecoveriesAttribute):Connect(onServerMove)
 	-- Moves that are not recoveries (respawn, Studio switch BallPlaceBehindObstacle) as well.
 	ball:GetAttributeChangedSignal(BallConfig.PlacementsAttribute):Connect(onServerMove)
+	-- A new or same hit the server counted arms the brake too, in case the client's own contact
+	-- test missed the touch (these counters are Studio diagnostics; live, the test alone arms).
+	local function onServerHit()
+		if ball == myBall then
+			arm()
+		end
+	end
+	ball:GetAttributeChangedSignal(BallConfig.DiagnosticAttributes.Collisions):Connect(onServerHit)
+	ball:GetAttributeChangedSignal(BallConfig.DiagnosticAttributes.SameHits):Connect(onServerHit)
 end
 
 local function onBallAdded(child: Instance)
@@ -128,23 +196,51 @@ local function step()
 		local move = h.MoveDirection
 		local rootPosition = rootPart.Position
 		local rx, rz = position.X - rootPosition.X, position.Z - rootPosition.Z
+		local touching, holdsOn = touchesObstacle(ball)
+		if holdsOn and not contactHolding then
+			contactHolds += 1
+			localPlayer:SetAttribute(CONTACT_HOLDS_ATTRIBUTE, contactHolds)
+		end
+		contactHolding = holdsOn
+		if touching then
+			arm()
+		end
+		local now = os.clock()
+		-- In the frame of the touch already, so the brake is on before the ball can rebound.
+		local armed = hold.reboundArmed(now, armedAt)
+		if armed ~= holdArmed then
+			holdArmed = armed
+			localPlayer:SetAttribute(HOLD_ARMED_ATTRIBUTE, armed)
+		end
 		heldX, heldZ =
-			hold.nextHeldDirection(heldX, heldZ, move.X, move.Z, rx, rz, hold.followsBall(os.clock(), recoveredAt))
+			hold.nextHeldDirection(heldX, heldZ, move.X, move.Z, rx, rz, hold.followsBall(now, recoveredAt), holdsOn)
 		local rootVelocity = rootPart.AssemblyLinearVelocity
-		local wantX, wantZ = hold.desiredVelocity(
+		local distance = hold.holdDistance(ball.Size.X)
+		local wantX, wantZ =
+			hold.desiredVelocity(rx, rz, heldX, heldZ, distance, rootVelocity.X, rootVelocity.Z, walkSpeed, armed)
+		local reboundBrake
+		ax, az, reboundBrake = hold.holdAcceleration(
+			wantX,
+			wantZ,
+			velocity.X,
+			velocity.Z,
 			rx,
 			rz,
-			heldX,
-			heldZ,
-			hold.holdDistance(ball.Size.X),
 			rootVelocity.X,
 			rootVelocity.Z,
-			walkSpeed
+			distance,
+			armed
 		)
-		ax, az = hold.acceleration(wantX, wantZ, velocity.X, velocity.Z)
+		if reboundBrake and not braking then
+			reboundBrakes += 1
+			localPlayer:SetAttribute(REBOUND_BRAKES_ATTRIBUTE, reboundBrakes)
+		end
+		braking = reboundBrake
 	else
 		-- No living character: brake the ball where it is.
 		ax, az = hold.acceleration(0, 0, velocity.X, velocity.Z)
+		braking = false
+		contactHolding = false
 	end
 	local mass = ball.AssemblyMass
 	force.Force = Vector3.new(ax * mass, 0, az * mass)
@@ -157,6 +253,12 @@ function BallController.Start()
 	started = true
 
 	localPlayer:SetAttribute(HOLD_RESETS_ATTRIBUTE, holdResets)
+	localPlayer:SetAttribute(REBOUND_BRAKES_ATTRIBUTE, reboundBrakes)
+	localPlayer:SetAttribute(CONTACT_HOLDS_ATTRIBUTE, contactHolds)
+	localPlayer:SetAttribute(HOLD_ARMED_ATTRIBUTE, holdArmed)
+	CollectionService:GetInstanceAddedSignal(BallConfig.ObstacleTag):Connect(refreshObstacles)
+	CollectionService:GetInstanceRemovedSignal(BallConfig.ObstacleTag):Connect(refreshObstacles)
+	refreshObstacles()
 	localPlayer.CharacterAdded:Connect(onCharacter)
 	if localPlayer.Character then
 		task.spawn(onCharacter, localPlayer.Character)
