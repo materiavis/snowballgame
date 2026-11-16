@@ -29,6 +29,16 @@ export type BallState = {
 	credit: number,
 	track: any,
 	contacts: { [any]: boolean }?,
+	-- After a hit (#97): obstacles that still belong to the last hit, touches of them that cost
+	-- nothing, the result of the last touch, the running rebound watch and the last result.
+	hitMemory: { [any]: boolean },
+	sameHits: number,
+	lastTouch: string,
+	rebound: any, -- HitRules.Watch
+	reboundStuds: number?,
+	reboundSeconds: number?,
+	reboundBackAfter: number?,
+	reboundWithin: boolean?,
 	protectedUntil: number,
 	lastCollisionLoss: number,
 	collisions: number,
@@ -53,6 +63,7 @@ export type Deps = {
 	obstacleRules: any,
 	recoveryRules: any,
 	obstacles: any,
+	afterHit: any, -- AfterHit: same-hit memory and rebound watch (#97)
 	modifiers: any,
 	surfaces: any,
 	attributes: any,
@@ -110,6 +121,14 @@ function BallStepModule.newState(
 		credit = 0,
 		track = track,
 		contacts = nil,
+		hitMemory = {},
+		sameHits = 0,
+		lastTouch = "",
+		rebound = nil,
+		reboundStuds = nil,
+		reboundSeconds = nil,
+		reboundBackAfter = nil,
+		reboundWithin = nil,
 		protectedUntil = 0,
 		lastCollisionLoss = 0,
 		collisions = 0,
@@ -154,25 +173,6 @@ function BallStepModule.new(deps: Deps): BallStep
 		return true
 	end
 
-	local function handleObstacles(state: BallState, position: Vector3, diameter: number, now: number)
-		local outcome = deps.obstacleRules.evaluate(
-			state.contacts,
-			deps.obstacles.contactsAt(position, diameter / 2),
-			now < state.protectedUntil,
-			function(obstacleSize: any): boolean
-				return rules.canKnockOver(diameter, obstacleSize)
-			end
-		)
-		state.contacts = outcome.contacts
-		for _, obstacle in outcome.knockOvers do
-			deps.obstacles.knockOver(obstacle)
-			state.knockOvers += 1
-		end
-		if outcome.hit then
-			applyCollision(state, now)
-		end
-	end
-
 	-- The character the growth check looks at: alive and in the world, or nil.
 	local function livingRoot(state: BallState): BasePart?
 		local root, humanoid = state.root, state.humanoid
@@ -180,6 +180,27 @@ function BallStepModule.new(deps: Deps): BallStep
 			return root
 		end
 		return nil
+	end
+
+	local function handleObstacles(state: BallState, position: Vector3, diameter: number, now: number)
+		local radius = diameter / 2
+		local outcome = deps.obstacleRules.evaluate(
+			state.contacts,
+			deps.obstacles.contactsAt(position, radius),
+			now < state.protectedUntil,
+			function(obstacleSize: any): boolean
+				return rules.canKnockOver(diameter, obstacleSize)
+			end,
+			-- A rebound into the obstacle of the last hit is that hit, not a new one (#97 D2).
+			deps.afterHit.sameHitCheck(state, position, radius)
+		)
+		state.contacts = outcome.contacts
+		for _, obstacle in outcome.knockOvers do
+			deps.obstacles.knockOver(obstacle)
+			state.knockOvers += 1
+		end
+		local counted = outcome.hit and applyCollision(state, now)
+		deps.afterHit.noteOutcome(state, outcome, counted, position, livingRoot(state), now)
 	end
 
 	local function growBall(state: BallState, surface: string, grounded: boolean, facts: any, now: number)
@@ -323,6 +344,7 @@ function BallStepModule.new(deps: Deps): BallStep
 		state.rolledStuds += distance
 
 		handleObstacles(state, position, part.Size.X, now)
+		deps.afterHit.step(state, position, livingRoot(state), now, elapsed)
 		growBall(state, surface, grounded, {
 			position = position,
 			distance = distance,

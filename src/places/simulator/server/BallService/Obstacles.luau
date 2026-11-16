@@ -12,6 +12,9 @@ local ObstacleRules = require(script.Parent:WaitForChild("ObstacleRules"))
 export type Obstacles = {
 	start: (ballsFolder: Instance) -> (),
 	contactsAt: (position: Vector3, radius: number) -> { ObstacleRules.Contact },
+	-- Gap in studs between a ball's surface and the obstacle's box; nil once it is out of the
+	-- world (knocked over or destroyed). For the same-hit memory (#97).
+	gapTo: (obstacle: BasePart, position: Vector3, radius: number) -> number?,
 	knockOver: (obstacle: BasePart) -> (),
 }
 
@@ -29,11 +32,21 @@ function ObstaclesModule.new(config: any, rules: ObstacleRules.ObstacleRules, ve
 		overlapParams.FilterDescendantsInstances = tracked
 	end
 
-	local function touches(obstacle: BasePart, position: Vector3, radius: number): boolean
+	local function boxDistance(obstacle: BasePart, position: Vector3): number
 		local localPoint = obstacle.CFrame:PointToObjectSpace(position)
 		local half = obstacle.Size / 2
-		local distance = rules.boxDistance(localPoint.X, localPoint.Y, localPoint.Z, half.X, half.Y, half.Z)
-		return rules.isTouching(distance, radius)
+		return rules.boxDistance(localPoint.X, localPoint.Y, localPoint.Z, half.X, half.Y, half.Z)
+	end
+
+	local function touches(obstacle: BasePart, position: Vector3, radius: number): boolean
+		return rules.isTouching(boxDistance(obstacle, position), radius)
+	end
+
+	local function gapTo(obstacle: BasePart, position: Vector3, radius: number): number?
+		if not obstacle:IsDescendantOf(workspace) then
+			return nil
+		end
+		return boxDistance(obstacle, position) - radius
 	end
 
 	local function contactsAt(position: Vector3, radius: number): { ObstacleRules.Contact }
@@ -104,6 +117,7 @@ function ObstaclesModule.new(config: any, rules: ObstacleRules.ObstacleRules, ve
 	return table.freeze({
 		start = start,
 		contactsAt = contactsAt,
+		gapTo = gapTo,
 		knockOver = knockOver,
 	})
 end

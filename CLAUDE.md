@@ -141,3 +141,27 @@ Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b98
 
 - Every milestone ends with an END PLAYTEST by a human: one issue `END PLAYTEST – <milestone>` (label `end-playtest`) that the Development Manager keeps with `/end-playtest`. It lists the milestone goals and every acceptance criterion left as NEEDS HUMAN REVIEW. A milestone is closed only after that issue is closed with every item PASS. Humans close the END PLAYTEST issue and the milestone; the DM never does.
 - Before any release, a mobile check issue assigned to Jan (label `mobile`) must exist for that release and be **closed**. Without it, the release is blocked.
+
+## 15. Files (Materiavis Files, Nextcloud)
+
+Binary and source files live in **Materiavis Files** (https://files.materiavis.ch), not in this repo and not in Notion.
+Sources of truth stay as above: **Notion = what/why, GitHub = code + technical docs, Files = binary/source files.**
+
+- **Files is for:** concept art, moodboards, references, source assets (`.blend`, `.fbx`, `.psd`, `.wav`), marketing material, playtest recordings, exports.
+- **Never in Files:** game code, Luau scripts, Rojo model files (→ this repo), decisions/specs (→ Notion), passwords/keys (→ Vaultwarden).
+- **Link, don't copy:** issues and Notion pages reference files by link. Don't re-upload a file into Notion or the repo.
+- **AIs write only to the team folder `AI-Output`** (generated docs, image prompts, reports). Moving a file into `Materiavis/...` is a human decision.
+- **AIs never delete or move** files outside `AI-Output` unless a person explicitly asks for that specific file.
+- **Paths:** `Materiavis/02_Games/<Game>/<Area>/<yyyy-mm-dd>_<short-name>_v<n>.<ext>`, e.g. `Materiavis/02_Games/SnowRush/Concept/2026-11-12_snowball-skins_v2.png`.
+- **New files without a clear home** go to `Materiavis/00_Inbox` (and a ping in Discord `#dev-updates`).
+- **Creator Store / third-party models** are never stored there as "approved"; they go through the Model Auditor agent first (section 10).
+- **Files tagged `ai-hidden`** are off-limits for AIs (the MCP server hides them).
+
+MCP servers in `.mcp.json`:
+
+| Server | Account | Who uses it |
+|---|---|---|
+| `materiavis-files` | the person who logs in (OAuth) | the Claude Code main session |
+| `materiavis-files-agent` | `agent`: reads everything, writes only `AI-Output`, cannot share | subagents. Give them only `mcp__materiavis-files-agent__*` in `tools:`, never `materiavis-files` |
+
+The agent's app password comes from the environment variable `NC_AGENT_APP_PASSWORD` on your machine. It is **never** written into this repo (it is public), a prompt, an issue or a log.

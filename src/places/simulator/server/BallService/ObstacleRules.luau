@@ -4,6 +4,8 @@
 --
 -- A collision is a new touch. Pressing against the same tree is one collision, not one every
 -- second, because the protection time would otherwise turn holding W into a steady drain.
+-- A rebound that touches the same obstacle again is not a new touch either (#97 D2): the
+-- caller passes which obstacles still belong to the last hit (HitRules).
 
 export type ObstacleConfig = {
 	CollisionContactMargin: number,
@@ -18,6 +20,10 @@ export type Contact = {
 export type Outcome = {
 	contacts: { [any]: boolean },
 	knockOvers: { any },
+	-- New touches that were not knocked over: counted, protected or the same hit again.
+	touches: { any },
+	-- The part of `touches` that belongs to the last hit and therefore cost nothing (#97).
+	repeats: { any },
 	hit: boolean,
 }
 
@@ -28,7 +34,8 @@ export type ObstacleRules = {
 		previous: { [any]: boolean }?,
 		current: { Contact },
 		protected: boolean,
-		canKnockOver: (obstacleSize: any) -> boolean
+		canKnockOver: (obstacleSize: any) -> boolean,
+		isSameHit: ((obstacle: any) -> boolean)?
 	) -> Outcome,
 }
 
@@ -53,22 +60,30 @@ function ObstacleRulesModule.new(config: ObstacleConfig): ObstacleRules
 		previous: { [any]: boolean }?,
 		current: { Contact },
 		protected: boolean,
-		canKnockOver: (obstacleSize: any) -> boolean
+		canKnockOver: (obstacleSize: any) -> boolean,
+		isSameHit: ((obstacle: any) -> boolean)?
 	): Outcome
 		local contacts: { [any]: boolean } = {}
 		local knockOvers: { any } = {}
+		local touches: { any } = {}
+		local repeats: { any } = {}
 		local hit = false
 		for _, contact in current do
 			contacts[contact.obstacle] = true
 			if previous ~= nil and not previous[contact.obstacle] then
 				if canKnockOver(contact.knockOverSize) then
 					table.insert(knockOvers, contact.obstacle)
-				elseif not protected then
-					hit = true
+				else
+					table.insert(touches, contact.obstacle)
+					if isSameHit ~= nil and isSameHit(contact.obstacle) then
+						table.insert(repeats, contact.obstacle)
+					elseif not protected then
+						hit = true
+					end
 				end
 			end
 		end
-		return { contacts = contacts, knockOvers = knockOvers, hit = hit }
+		return { contacts = contacts, knockOvers = knockOvers, touches = touches, repeats = repeats, hit = hit }
 	end
 
 	return table.freeze({
