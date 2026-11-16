@@ -1,5 +1,5 @@
 --!strict
--- Travel flow between Places (concept 5.6, 6.5; ADR 0003, ADR 0006 "Teleport", ADR 0010):
+-- Travel flow between Places (concept 5.6, 6.5; ADR 0003, ADR 0006 "Teleport", ADR 0011):
 -- save and release -> teleport -> on failure take the lock back, message, automatic retry.
 -- Pure, no requires and no Roblox globals. DataService, the teleporter, server choice,
 -- messages, waits and spawning are injected, so `lune run tests` plays every failure case

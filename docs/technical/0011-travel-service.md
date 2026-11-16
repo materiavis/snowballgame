@@ -1,4 +1,4 @@
-# 0010: TravelService, server selection and PresenceStore
+# 0011: TravelService, server selection and PresenceStore
 
 **Status:** Accepted with merge of PR #110.
 
@@ -59,7 +59,7 @@ Group intents check each player, refuse those that cannot go, choose one target 
 
 **Load failure outside the Lobby (ADR 0003, ADR 0006).** `LoadFailReturn` counts `Failed` load statuses per player. After `LoadFailuresBeforeLobby` (2, each a full DataService load with its own retries, about a minute in total) it shows `LoadFailedReturn`, waits `LoadFailReturnDelay` (5 s) and, if the load still has not worked, teleports to the Lobby without `PrepareTeleport`: no lock is held, nothing is written. A load that recovers meanwhile cancels it. In the Lobby nothing happens (#35 shows the hint, #37 locks the portals).
 
-**Remotes (ADR 0005).** `TravelRequestLobby` (client → server, no arguments, `Burst 2`, `0.5/s`): the destination is fixed, so a client can choose nothing; any argument is dropped as `Arity`; TravelCore refuses it outside the Simulator and while travelling. `TravelNotice` (server → client, a `Config.Travel.Messages` key; no handler, so client calls are dropped). The client shows only known keys. The example remote `NetExample` and `NetExampleService` are removed with this first real remote, as ADR 0005 and 0006 planned; `tests/shared/Net/Guard.spec.luau` keeps the same cases with a test-only declaration.
+**Remotes (ADR 0005).** `TravelRequestLobby` (client → server, no arguments, `Burst 2`, `0.5/s`): the destination is fixed, so a client can choose nothing; any argument is dropped as `Arity`; TravelCore refuses it outside the Simulator and while travelling. `TravelNotice` (server → client, a `Config.Travel.Messages` key; no handler, so client calls are dropped). The client shows only known keys. The example remote `NetExample` and `NetExampleService` are removed here, as ADR 0005 and 0006 planned for the first real remote (`UpgradeBuy`, [ADR 0010](0010-upgrades.md), landed first and left them to a later change). After this change the declared remotes are `TravelRequestLobby`, `TravelNotice` and `UpgradeBuy`; `tests/shared/Net/Guard.spec.luau` keeps the same cases with a test-only declaration.
 
 **Client.** `src/client/Controllers/TravelController` shows the message as a plain text label for `MessageSeconds` (owner decision 2026-11-10; #91 switches to the popup) and offers `TravelController.RequestLobby()` for the button of #90.
 
@@ -111,7 +111,7 @@ After a stub success the player is still here, so the session is resumed (`DataL
 
 ## Consequences
 
-- Server start counts are unchanged (`TravelService` added, `NetExampleService` removed; `PresenceStore` has no `Start`): 6 in Lobby, 8 in World 1, 5 in Arena. Client counts grow by one (`TravelController`): 3 in Lobby, 7 in World 1, 2 in Arena.
+- Server start counts are unchanged (`TravelService` added, `NetExampleService` removed; `PresenceStore` has no `Start`): 6 in Lobby, 9 in World 1, 5 in Arena. Client counts grow by one (`TravelController`): 5 in Lobby, 10 in World 1, 4 in Arena.
 - Real teleports, the friend's server, full-server overflow, `ReserveServer`, private servers and MemoryStore quotas can only be verified on the human-published test version (concept 4.4). Before that, humans fill `Config.Places` and set the Simulator `MaxPlayers`.
 - A save failure costs the player about 35 s of waiting before the final message (two `PrepareTeleport` calls, each with DataService's own retries). Tunable in `Config.Travel` and `Config.Data`.
 - A teleport that times out but still completes later is safe: the lock was taken back, and the player's leave releases it, so the destination waits for the release (ADR 0006).

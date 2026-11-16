@@ -66,6 +66,11 @@ local Ball = {
 	ObstacleTag = "Obstacle",
 	KnockOverSizeAttribute = "KnockOverSize",
 	CollisionContactMargin = 0.25, -- studs of slack on the server's view of the contact
+	-- Same hit (D2 of #97, proposal): after a touch the server remembers the obstacle until the
+	-- gap between the ball's surface and that obstacle has reached this many studs. Touching it
+	-- again before is the same hit and costs nothing. Above ReboundMaxStuds (4.5), so a rebound inside
+	-- the limit never counts again; a player who backs off this far and rolls in again collides.
+	CollisionSeparationStuds = 6,
 	KnockOverRetryInterval = 1, -- seconds between tries while a ball is where it would return
 
 	-- MAX feedback (7.4). The arrow points at the nearest instance with this tag.
@@ -79,22 +84,12 @@ local Ball = {
 	MaxGlowRangeMax = 60, -- the Roblox limit for a PointLight
 	MaxGlowRangePerDiameter = 1.5,
 	MaxGlowFillTransparency = 0.6,
-	MaxText = "MAX!",
 	MaxArrowColorRGB = { 255, 210, 60 },
 	MaxArrowAboveBall = 3, -- studs above the top of the ball
 	MaxArrowHeadLength = 2.5,
 	MaxArrowHeadRadius = 1.2,
 	MaxArrowShaftLength = 3,
 	MaxArrowShaftRadius = 0.4,
-
-	-- Minimal size label (top centre, 7.4) until the HUD integrates the published size.
-	SizeLabelWidth = 220,
-	SizeLabelHeight = 36,
-	SizeLabelTopOffset = 8,
-	MaxLabelHeight = 28,
-	SizeLabelTextRGB = { 255, 255, 255 },
-	MaxLabelTextRGB = { 255, 210, 60 },
-	SizeLabelTextStrokeTransparency = 0.5,
 
 	-- The published size and the Studio diagnostics are refreshed at this interval (seconds).
 	PublishInterval = 0.25,
@@ -116,9 +111,68 @@ local Ball = {
 	SpawnFallbackGroundOffset = 3, -- no ground found: assume it this far below the root part
 	ResetBelowY = -100, -- the ball is put back in front of its owner below this height
 	-- The ball is put back in front of its owner if it stays this far (studs, beyond the hold
-	-- distance) from the character for LeashTime seconds, e.g. stuck behind an obstacle.
+	-- distance) from the character for LeashTime seconds.
 	LeashDistance = 12,
 	LeashTime = 2,
+
+	-- Safe put-back position (#94, ADR 0002 "Recovery"). Proposals until the owner confirms them
+	-- after the playtest. Candidates lie around the character: straight in front first, then
+	-- every RecoveryBearingStepDegrees alternating left and right up to straight behind, each at
+	-- the hold distance plus every RecoveryRingSteps entry. 30° gives 12 bearings; +3 studs keeps
+	-- the ball's edge at HoldGap + 3 = 4.5, inside GrowthRange (6).
+	RecoveryBearingStepDegrees = 30,
+	RecoveryRingSteps = { 0, 3 },
+	-- Ground must also be found at four points this share of the radius from the centre, at
+	-- most RecoverySupportSlope × that offset above or below the centre's ground (1 = 45°), so
+	-- the ball does not sit on the rim of a cliff or hole.
+	RecoverySupportShare = 0.5,
+	RecoverySupportSlope = 1,
+	-- Studs between a put-back ball and an Obstacle, above CollisionContactMargin (0.25) so the
+	-- first sample after the placement sees no contact (#34 finding: placed 0.1 stud inside).
+	RecoveryObstacleClearance = 0.5,
+	-- Other block parts may touch the put-back ball by this much (the ground it rests on).
+	RecoveryPenetrationTolerance = 0.05,
+	-- No fall check for this long after a placement: owner packets sent before it can still
+	-- show the old position. A ball needs about 1 s to fall from the ground to ResetBelowY.
+	RecoveryGraceTime = 0.5,
+	-- At most RecoveryBurstLimit recoveries within RecoveryBurstWindow seconds. The next one in
+	-- the window still puts the ball back, then parks it (anchored) for RecoveryParkTime so it
+	-- cannot fall again at once. Run A of #33 had 5 within about 2 s; a ball pushed off an edge
+	-- by hand again and again needs about 4 s per round at diameter 50 (swing and fall).
+	RecoveryBurstLimit = 3,
+	RecoveryBurstWindow = 5,
+	RecoveryParkTime = 3,
+	-- Loop bound (#94 round 1, proposals): the burst rule misses a loop with a few seconds per
+	-- round (playtest at f95545a: falls about 5 s apart at the map edge). A recovery whose
+	-- put-back position lies within max(RecoveryLoopRadiusMin, diameter ×
+	-- RecoveryLoopRadiusPerDiameter) studs of RecoveryLoopLimit earlier put-backs inside
+	-- RecoveryLoopWindow seconds is past the bound and parks like the burst rule. "Near the same
+	-- place" keeps a player who loses the ball now and then across the map below it. With 3 in
+	-- 40 s a loop of up to about 13 s per round is parked at its 4th recovery (15 s into a 5 s
+	-- loop). A player who deliberately pushes the ball off the same edge every few seconds is
+	-- parked too: the server cannot tell that from the loop, and parking only holds the ball
+	-- for RecoveryParkTime. Normal play (playtest normal-play check) has no recoveries at all.
+	RecoveryLoopLimit = 3,
+	RecoveryLoopWindow = 40,
+	RecoveryLoopRadiusMin = 10,
+	RecoveryLoopRadiusPerDiameter = 1,
+	-- Client: after the server put the ball back, the hold follows the ball's new bearing for
+	-- this long while the player stands still, so it is not swung back over the edge (#94).
+	-- Covers the put-back position and the Recoveries attribute arriving a few frames apart.
+	RecoveryHoldResetTime = 0.5,
+	-- Stuck (#94 AC8): out of the character's growth range for StuckTime seconds while the ball
+	-- neither moved StuckProgressStuds nor came that much closer, e.g. held behind an obstacle.
+	StuckTime = 4,
+	StuckProgressStuds = 2,
+	-- Stuck reach on slopes (#94 round 2, proposal). Outside the growth range only by height, a
+	-- ball still counts as held (not stuck) when the ground under it is at most
+	-- GrowthVerticalRange plus a slope this steep over the ground-plane distance away from the
+	-- character's ground. 40° is above the 25° test ramp and the about 35° the hold can keep a
+	-- ball on (HoldMaxAcceleration), and far below a cliff: at the farthest held distance of a
+	-- 50-stud ball (radius + GrowthRange = 31) it allows 8 + 26 = 34 studs, the test cliff is 70.
+	-- The growth range itself (7.4) is unchanged. The character's ground is searched at most
+	-- GrowthVerticalRange below the root part; above it the character counts as airborne.
+	StuckSlopeDegrees = 40,
 
 	-- Holding the ball in front of the character (client, applied to the ball it owns).
 	-- Hold distance from the HumanoidRootPart centre to the ball centre = radius + HoldGap.
@@ -139,11 +193,57 @@ local Ball = {
 	HoldMaxSpeedFactor = 3,
 	-- studs/s². Holds the ball on slopes up to about 35° and keeps a far-off ball from being flung.
 	HoldMaxAcceleration = 150,
+	-- After a hit (#97, proposals until the owner confirms them after the playtest).
+	-- The hold brings the ball back to the hold distance no faster than it can stop again at
+	-- this deceleration, so it does not overshoot into the character. A rolling ball only gets
+	-- 5/7 of the force as speed (about 107 of 150); 60 leaves room for the controller's lag.
+	HoldApproachDeceleration = 60, -- studs/s²
+	-- A ball beyond the hold distance that moves away from the character is braked at this
+	-- gain on its outward speed, up to HoldReboundMaxAcceleration. Only the outward speed: a
+	-- ball pressed against an obstacle keeps HoldMaxAcceleration. In the HoldMath model a
+	-- rolling ball leaving the hold point at 46 studs/s (run A of #34) stops 2.2 studs out
+	-- (2.7 at 30 fps) instead of about 10. Braking a ball that leaves flings nothing.
+	HoldReboundGain = 40, -- 1/s
+	HoldReboundMaxAcceleration = 1000, -- studs/s²
+	-- Contact test (#97): the own ball counts as touching an Obstacle within this many studs of
+	-- its box. Same slack as the server's CollisionContactMargin; the client only steers its own
+	-- ball with it. A touch of any Obstacle arms the approach limit and the rebound brake for
+	-- ReboundWatchTime (round 4; a Placements or Recoveries change arms them too, round 5).
+	-- Contact hold (rounds 2 and 3): while the ball touches an Obstacle without
+	-- KnockOverSizeAttribute, walking or standing, the hold keeps the ball's bearing instead of
+	-- swinging it to the walking direction, so it is not driven along the face. A small obstacle
+	-- the character steps over gets main's hold direction, which swings the ball round it (round 5,
+	-- owner decision; replaces round 4's release angle).
+	HoldContactMargin = 0.25,
+	-- The agreed limit (D1 of #97) the Studio rebound diagnostic checks every hit against: the
+	-- ball centre stays within hold distance + ReboundMaxStuds of the character (ground plane),
+	-- and is more than ReboundSettleStuds beyond it for at most ReboundMaxSeconds (from the
+	-- first to the last sample out; the time since the touch is logged as well).
+	-- 4.5 studs (owner decision on #97 after round 1) put the edge at HoldGap + 4.5 = 6, the
+	-- GrowthRange; 1 s is CollisionProtection. ReboundWatchTime is how long after a touch it is
+	-- measured.
+	ReboundMaxStuds = 4.5,
+	ReboundMaxSeconds = 1,
+	-- For a small obstacle (one with KnockOverSizeAttribute) the character steps over, the ball
+	-- has to swing round it after the character: 1.5 s (owner decision on #97 round 4; main
+	-- reached up to 1.2 s in Studio). Studs and the rest of the limit are the same.
+	ReboundMaxSecondsSmallObstacle = 1.5,
+	ReboundSettleStuds = 1,
+	ReboundWatchTime = 3,
 	MoveDeadzone = 0.1, -- Humanoid.MoveDirection below this counts as standing still
 
-	-- Camera (client): the zoom is kept at least so far that the whole ball fits in the
-	-- narrower field of view on every bearing around the camera focus, times CameraFitMargin.
-	-- Only lifted while the ball needs it.
+	-- Camera (client, ADR 0002 "Camera", #95): every frame the camera is pushed out to the exact
+	-- distance at which the whole ball fits the current view, with each picture edge clearing
+	-- the ball by CameraFitClearanceShare of its diameter. The player's zoom minimum is what the
+	-- usual view needs: ball straight ahead, camera pitch from CameraMinZoomPitchMinDegrees
+	-- (looking down; Roblox's camera stops at -80) to CameraMinZoomPitchMaxDegrees (level),
+	-- checked every CameraMinZoomStepDegrees. Every other view is covered by the push.
+	CameraFitClearanceShare = 0.1,
+	CameraMinZoomPitchMinDegrees = -80,
+	CameraMinZoomPitchMaxDegrees = 0,
+	CameraMinZoomStepDegrees = 1,
+	-- The zoom room above: the worst case over every view (ball reach / sin(narrower half field
+	-- of view)) times CameraFitMargin, plus CameraMaxZoomExtra.
 	CameraFitMargin = 1.1,
 	CameraMaxZoomExtra = 20, -- studs of player zoom room above the required distance
 	-- Camera focus above the ground the ball rests on (Roblox aims about 1.5 above the root part).
@@ -161,6 +261,10 @@ local Ball = {
 	SizeFractionAttribute = "SizeFraction",
 	VisualDiameterAttribute = "VisualDiameter",
 	RecoveriesAttribute = "Recoveries",
+	-- Server placements that are not recoveries (spawn, respawn, Studio switch
+	-- BallPlaceBehindObstacle).
+	-- The client hold follows the ball after a change, as after a Recoveries change.
+	PlacementsAttribute = "Placements",
 	SizeMetresAttribute = "SizeMetres", -- on the ball
 	IsMaxAttribute = "IsMax", -- on the ball
 	-- On the Player, so any HUD can read the size without finding the ball.
@@ -181,6 +285,17 @@ local Ball = {
 		CountedStuds = "CountedStuds",
 		GrowthSeconds = "GrowthSeconds",
 		MeasuredTimeToMax = "MeasuredTimeToMax",
+		LastRecovery = "LastRecovery", -- reason of the last recovery
+		RecoverySpot = "RecoverySpot", -- Front, Around, LastSafe or Unsafe
+		StuckFor = "StuckFor", -- seconds the stuck timer has run
+		Parked = "Parked", -- true while the recovery bound holds the ball
+		-- After a hit (#97)
+		SameHits = "SameHits", -- touches recognised as the same hit, so free of loss
+		LastTouch = "LastTouch", -- result of the last new touch: hit, sameHit or protected
+		ReboundStuds = "ReboundStuds", -- last watch: most studs beyond the hold distance
+		ReboundSeconds = "ReboundSeconds", -- last watch: seconds more than ReboundSettleStuds out
+		ReboundBackAfter = "ReboundBackAfter", -- last watch: seconds from the touch until back
+		ReboundWithinLimit = "ReboundWithinLimit", -- last watch against ReboundMaxStuds/Seconds
 	},
 
 	-- Collision groups and rules: ADR 0003 rev. 2 ("Ball collisions with foreign characters"),
@@ -220,8 +335,7 @@ table.freeze(Ball.Surfaces)
 table.freeze(Ball.SurfacePriority)
 table.freeze(Ball.MaxGlowColorRGB)
 table.freeze(Ball.MaxArrowColorRGB)
-table.freeze(Ball.SizeLabelTextRGB)
-table.freeze(Ball.MaxLabelTextRGB)
 table.freeze(Ball.DiagnosticAttributes)
+table.freeze(Ball.RecoveryRingSteps)
 
 return table.freeze(Ball)

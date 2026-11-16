@@ -3,6 +3,20 @@
     "notion": {
       "type": "http",
       "url": "https://mcp.notion.com/mcp"
+    },
+    "materiavis-files": {
+      "type": "http",
+      "url": "https://files-mcp.materiavis.ch/mcp"
+    },
+    "materiavis-files-agent": {
+      "command": "uvx",
+      "args": ["nextcloud-mcp-server@0.211.1", "run", "--transport", "stdio", "--enable-app", "webdav"],
+      "env": {
+        "NEXTCLOUD_HOST": "https://files.materiavis.ch",
+        "NEXTCLOUD_USERNAME": "agent",
+        "NEXTCLOUD_PASSWORD": "${NC_AGENT_APP_PASSWORD}",
+        "EXCLUDED_TAGS": "ai-hidden"
+      }
     }
   }
 }

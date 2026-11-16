@@ -1,5 +1,5 @@
 --!strict
--- Teleports between Places (concept 5.6, 6.5; ADR 0003, ADR 0010). Startwerte, seconds unless
+-- Teleports between Places (concept 5.6, 6.5; ADR 0003, ADR 0011). Startwerte, seconds unless
 -- noted. The Simulator server size is Config.Lobby.SimulatorPlayers; PlaceIds are Config.Places.
 
 local Travel = {

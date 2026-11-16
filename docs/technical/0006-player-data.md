@@ -58,10 +58,12 @@ The second argument must repeat the id. At PlaceId 0 the command only touches th
 
 **PlaceId 0.** `StoreProvider.select(game.PlaceId, getReal, makeFake)` runs before any store is opened. At PlaceId 0 it builds `FakeStore.newService()` and never calls `getReal`, so `GetService("DataStoreService")` does not run. A headless test checks this wiring in the source and that no other module under `src/` names DataStoreService. The fake copies values in and out, rejects what a DataStore rejects (functions, NaN, mixed or sparse tables), and keeps data for the life of the Studio server, so a rejoin finds the saved profile.
 
-**Studio playtest support (PlaceId 0 and Studio only; live servers skip all of it).**
+**Load status on every server (revised with PR #92).** The player attribute `DataLoadStatus` (`Loading`, `Loaded`, `Failed`, `Lost`, `Teleported`, `Released`) is written on every server, live or Studio, on every status change. It is the client contract for the HUD (ADR 0008), which shows balances only while it is `Loaded` and the load hint on `Failed`. Server code still asks `DataService.GetLoadStatus` and never reads the attribute back. A client can only change its own local copy, which does not replicate. The writer is the pure `StatusAttributes` listener, so headless specs (`tests/server/DataService/StatusAttributes.spec.luau`) run it against a live server with diagnostics off: a join, a failed load with retry, saves and a release leave `DataLoadStatus` as the only attribute. A source check makes sure `init.luau` subscribes it outside the Studio branch.
+
+**Studio playtest support (Studio only; live servers skip all of it).**
 - Startup line, always printed: `[DataService] store=Fake (PlaceId 0) autosave=120s lockTimeout=600s`.
 - `ServerScriptService` attribute `DataStoreMode` (`Fake`/`Real`).
-- Player attributes: `DataLoadStatus`, `DataLoadDetail` (e.g. `WaitingForLock`, `StoreError`, `Resumed`), `DataPortalLocked`, `DataSaveSeq`, `DataLastSave` (e.g. `Autosave ok seq=3`, `Autosave failed: FakeStore: injected UpdateAsync failure`), `DataSaveFailures`. Each change also prints `[DataService] <name> (<userId>) status=<status> <detail>` or `... save <reason> ok seq=<n>` / `failed: <error>`.
+- Diagnostic player attributes, Studio only: `DataLoadDetail` (e.g. `WaitingForLock`, `StoreError`, `Resumed`), `DataPortalLocked`, `DataSaveSeq`, `DataLastSave` (e.g. `Autosave ok seq=3`, `Autosave failed: FakeStore: injected UpdateAsync failure`), `DataSaveFailures`. Each change also prints `[DataService] <name> (<userId>) status=<status> <detail>` or `... save <reason> ok seq=<n>` / `failed: <error>`.
 - Switches on `ServerScriptService` (set with `SetAttribute` from the server command bar):
   - `DataFailLoad` (bool): every profile load attempt fails like a store outage.
   - `DataFailSave` (bool): every profile save, release and teleport save fails.
@@ -76,4 +78,4 @@ The second argument must repeat the id. At PlaceId 0 the command only touches th
 - Any later change to the stored format needs a `Schema` migration step and owner escalation (CLAUDE.md §13). Store names and key prefixes in `Config.Data` are part of the format.
 - Trade ledger entries are keyed by trade id and are not removed by `EraseUser`. Whether entries that name an erased player must be removed or anonymised is an open question for the trade feature (#49).
 - `RemoveAsync` keeps the old versions that Roblox retains for DataStore keys. That is Roblox's documented erasure path, and it is stated here so nobody assumes immediate physical deletion.
-- No remote is added, so `NetExample` stays until the first real remote lands (cleanup moves to that issue, ADR 0005).
+- No remote is added, so `NetExample` stays until the first real remote lands (cleanup moves to that issue, ADR 0005). It was removed with PR #110 (ADR 0011).

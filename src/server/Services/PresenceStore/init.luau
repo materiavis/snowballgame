@@ -1,6 +1,6 @@
 --!strict
 -- PresenceStore: the only module that touches MemoryStoreService (ADR 0003 "Persistence" and
--- "Cross-server ephemeral state", ADR 0010). Presence of users on Simulator servers (friend
+-- "Cross-server ephemeral state", ADR 0011). Presence of users on Simulator servers (friend
 -- preference, concept 5.6) and the private server -> reserved Simulator server mapping.
 -- The logic is in the pure PresenceCore; this file only picks the backend.
 --

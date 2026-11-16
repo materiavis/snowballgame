@@ -1,5 +1,5 @@
 --!strict
--- Structural checks (ADR 0003, ADR 0010, CLAUDE.md §6 and §9): PlaceId 0 never reaches
+-- Structural checks (ADR 0003, ADR 0011, CLAUDE.md §6 and §9): PlaceId 0 never reaches
 -- MemoryStoreService or TeleportService, PresenceStore is the only module that names
 -- MemoryStoreService, TravelService the only one that names TeleportService, and every message
 -- key TravelCore sends has a text in Config.Travel. The Roblox services cannot run under Lune,

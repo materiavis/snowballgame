@@ -23,7 +23,8 @@ function BallPartModule.new(
 	assert(material ~= nil, `Config.Ball.MaterialName is not an Enum.Material: {config.MaterialName}`)
 
 	-- Centre for a ball of the given diameter, on the ground at the hold distance in front of
-	-- the character, so it starts where the client holds it.
+	-- the character, so it starts where the client holds it. Without ground it is in the air,
+	-- so SafeSpot uses it only when no safe spot exists (#94: this was the `fell` loop).
 	local function spawnPosition(root: BasePart, diameter: number): Vector3
 		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 		if look.Magnitude < 1e-3 then

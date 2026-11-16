@@ -1,5 +1,5 @@
 --!strict
--- TravelController (all Places, ADR 0010): shows TravelService's short messages ("Teleport
+-- TravelController (all Places, ADR 0011): shows TravelService's short messages ("Teleport
 -- fehlgeschlagen. Neuer Versuch …") and gives the Simulator "Lobby" button (#90) one call,
 -- TravelController.RequestLobby(). It only shows and requests; the server decides everything.
 --

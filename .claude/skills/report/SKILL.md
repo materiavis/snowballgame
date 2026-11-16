@@ -1,6 +1,6 @@
 ---
 name: report
-description: Write or update a German Development Report in the established Notion Reports area after a verified GitHub PR merge. Use for post-merge reporting and retrying incomplete report writes from the build-loop.
+description: Write or update a German Development Report in the established Notion Reports area after a verified GitHub PR merge, then run the END PLAYTEST milestone check and clean up the merged branch and worktree. Use for post-merge reporting and retrying incomplete report writes from the build-loop.
 ---
 
 # Post-merge Development Report
@@ -11,6 +11,7 @@ The build-loop may supply the exact PR after a verified merge. With no argument,
 use that handoff only if unambiguous; otherwise ask which PR to report. Create
 one report per repository/PR, including on repeat runs. This command writes the
 report, not code, a merge, a release, a report workspace or test results.
+Section 5 adds the END PLAYTEST milestone check and the post-merge cleanup.
 
 Read `CLAUDE.md` section 12 and current connected tool schemas. Use the available
 GitHub and Notion tools; authenticated `gh` is an alternative for GitHub reads.
@@ -42,11 +43,13 @@ Use [the report template](assets/development-report.md), adapting it to the
 change. Cover what was built, PR/issue/concept/ADR links, actual tests, open points
 and concrete next steps. Keep it concise enough for owners to understand the
 result. Use documented owners only; otherwise say assignment is open. Do not
-create follow-up tasks or notify people without a separate request.
+create follow-up tasks or notify people without a separate request; the END
+PLAYTEST milestone check in section 5 is the only exception.
 
 Include the AC coverage and available formatting/lint/build/review/playtest
-evidence, with source links and tested SHAs. Distinguish PASS, FAIL, pending,
-not tested and justified not applicable. Separate earlier failed rounds from
+evidence, with source links and tested SHAs. Distinguish PASS, FAIL, ERROR,
+NEEDS HUMAN REVIEW (pending the milestone END PLAYTEST), pending, not tested and
+justified not applicable. Separate earlier failed rounds from
 final-revision outcomes; give the actual correction count when documented.
 A command passing is not evidence that gameplay works. A playtest of an earlier
 head does not approve the final head. Distinguish the tested PR head from the
@@ -123,3 +126,15 @@ Return the report link, PR, actual merge target/commit and missing evidence.
 Say **saved and verified** only after readback confirms it. Otherwise return the
 copy-ready report, stable key, operation, any page/task IDs and concrete blocker.
 A reporting failure does not undo a merge or authorize further implementation.
+
+## 5. After the report: milestone check and cleanup
+
+Run both steps after the report is saved, or returned copy-ready with its
+blocker. A failure in one does not skip the other or undo the report.
+
+1. **END PLAYTEST:** run the milestone check of
+   [the end-playtest skill](../end-playtest/SKILL.md) for the milestone of the
+   merged PR's issue.
+2. **Cleanup:** run `/cleanup <PR>` with [the cleanup skill](../cleanup/SKILL.md).
+   It removes the agent worktree and either deletes the branch now or records on
+   the PR that it waits for the END PLAYTEST.

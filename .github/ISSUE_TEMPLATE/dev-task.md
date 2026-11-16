@@ -28,6 +28,7 @@ labels: ["task"]
 
 ## Acceptance criteria
 <!-- Copy the concept's "Fertig, wenn …" criteria without weakening them; add technical checks as needed. -->
+<!-- Prefix a criterion with [human] only if it needs a person: feel or look, device, gamepad, multiple clients. Everything measurable is tested by the playtester. -->
 - [ ] 
 - [ ] 
 

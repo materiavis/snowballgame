@@ -1,6 +1,6 @@
 --!strict
 -- Simulator server selection (concept 5.6, 6.5) and reserved servers for matches and private
--- contexts (ADR 0003, ADR 0010), against PresenceCore on the fake MemoryStore.
+-- contexts (ADR 0003, ADR 0011), against PresenceCore on the fake MemoryStore.
 
 local T = require("../../TestKit")
 local TH = require("./TravelHarness")

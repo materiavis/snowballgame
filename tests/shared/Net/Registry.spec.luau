@@ -7,6 +7,7 @@ local Schema = require("../../../src/shared/Net/Schema")
 local Registry = require("../../../src/shared/Net/Registry")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../src/shared/Config/Net")
+local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
 
 local LIMIT = { Burst = 1, RefillPerSecond = 1 }
 
@@ -16,7 +17,7 @@ end
 
 return T.suite("src/shared/Net/Registry", function(test)
 	test("every real remote has a schema, a rate limit from Config.Net and a valid kind", function()
-		local definitions = Registry.build(declareRemotes(Schema, NetConfig))
+		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))
 		local count = 0
 		for name, definition in definitions do
 			count += 1
@@ -24,7 +25,7 @@ return T.suite("src/shared/Net/Registry", function(test)
 			T.isTrue(NetConfig.RateLimits[name] ~= nil, `{name} has a Config.Net.RateLimits entry`)
 			T.equal(definition.rateLimit, NetConfig.RateLimits[name], `{name} uses its own Config.Net limit`)
 		end
-		T.isTrue(count >= 1, "at least the example remote is declared")
+		T.isTrue(count >= 1, "at least one remote is declared")
 		T.isTrue(table.isfrozen(definitions), "definitions are frozen")
 	end)
 

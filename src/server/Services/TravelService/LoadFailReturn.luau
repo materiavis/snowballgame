@@ -1,5 +1,5 @@
 --!strict
--- Load failure outside the Lobby (ADR 0003 "Load failure", ADR 0006 "Loading", ADR 0010): after
+-- Load failure outside the Lobby (ADR 0003 "Load failure", ADR 0006 "Loading", ADR 0011): after
 -- Config.Travel.LoadFailuresBeforeLobby failed DataService loads the player sees a message and
 -- is sent back to the Lobby. No lock is held while a load fails, so nothing is saved or
 -- released. In the Lobby nothing happens here: it shows its hint and locks the portals (6.5).

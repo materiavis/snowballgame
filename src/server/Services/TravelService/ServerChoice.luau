@@ -1,5 +1,5 @@
 --!strict
--- Which server of the destination Place a travel goes to (concept 5.6, 6.5, ADR 0010).
+-- Which server of the destination Place a travel goes to (concept 5.6, 6.5, ADR 0011).
 -- Pure, no requires: presence, friend lookup, ReserveServer and the private context are injected.
 --
 --   Lobby                -> public (Roblox matchmaking).

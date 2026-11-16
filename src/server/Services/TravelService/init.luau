@@ -1,5 +1,5 @@
 --!strict
--- TravelService: every change of Place goes through here (concept 5.6, 6.5; ADR 0003, ADR 0010).
+-- TravelService: every change of Place goes through here (concept 5.6, 6.5; ADR 0003, ADR 0011).
 -- Save and release (DataService.PrepareTeleport) -> teleport -> on failure take the lock back
 -- (ResumeAfterTeleportFailure), show a short message and retry. Picks the server: a friend's
 -- Simulator server with a free place, else Roblox matchmaking (free place or a new server);
@@ -84,7 +84,7 @@ local function notify(userId: number, key: string)
 	end
 end
 
--- The private context this server belongs to (ADR 0010): a private (VIP) server itself, or a
+-- The private context this server belongs to (ADR 0011): a private (VIP) server itself, or a
 -- reserved Simulator server that PresenceStore maps to one. Nil on public servers.
 local function privateKey(): string?
 	if game.PrivateServerId == "" then

@@ -1,5 +1,5 @@
 --!strict
--- Live teleports for published Places (ADR 0010). TeleportService is passed in by
+-- Live teleports for published Places (ADR 0011). TeleportService is passed in by
 -- TravelService, which fetches it only when game.PlaceId ~= 0, so Studio never reaches it.
 --
 -- TeleportAsync can fail at once (it throws) or later (TeleportInitFailed). Success shows as

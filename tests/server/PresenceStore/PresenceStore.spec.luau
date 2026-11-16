@@ -1,5 +1,5 @@
 --!strict
--- PresenceStore (ADR 0003 "Cross-server ephemeral state", ADR 0010): the fake MemoryStore
+-- PresenceStore (ADR 0003 "Cross-server ephemeral state", ADR 0011): the fake MemoryStore
 -- behaves like the real one where it matters (TTL, copies, rejected values, outages), and the
 -- core treats every value it reads back as untrusted.
 

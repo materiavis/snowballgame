@@ -1,5 +1,5 @@
 --!strict
--- Where each travel intent leads (concept 5.6, ADR 0003 "Places" table, ADR 0010). Pure, no
+-- Where each travel intent leads (concept 5.6, ADR 0003 "Places" table, ADR 0011). Pure, no
 -- requires: Config.Places and the zone layout are passed in. Destinations come only from the
 -- server (current Place, Config, the loaded profile), never from a client or teleport data.
 

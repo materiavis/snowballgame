@@ -5,7 +5,8 @@
 -- The logic lives in the pure child modules; this file only wires Roblox to them.
 --
 -- At game.PlaceId == 0 every store is the in-memory FakeStore and DataStoreService is never
--- even fetched. In Studio the load state is mirrored to player attributes and the fake store
+-- even fetched. Every server writes the player attribute DataLoadStatus (the HUD reads it,
+-- ADR 0008). In Studio the other load and save diagnostics are mirrored too, and the fake store
 -- has fault switches on ServerScriptService (see ADR 0006). Live servers skip both.
 --
 -- Setup runs on the first Start() or API call, like NetService, because services start in
@@ -23,6 +24,7 @@ local GlobalStores = require(script:WaitForChild("GlobalStores"))
 local LockRecord = require(script:WaitForChild("LockRecord"))
 local Retry = require(script:WaitForChild("Retry"))
 local Schema = require(script:WaitForChild("Schema"))
+local StatusAttributes = require(script:WaitForChild("StatusAttributes"))
 local StoreProvider = require(script:WaitForChild("StoreProvider"))
 
 -- Studio-only switches and mirrors (ADR 0006). Attribute names are the playtest contract.
@@ -122,26 +124,15 @@ local function ensureCore()
 	})
 end
 
-local function mirrorToAttributes(event: Event)
+-- Studio only: one console line per status change and save, next to the diagnostic attributes.
+local function printEvent(event: Event)
 	local player = Players:GetPlayerByUserId(event.userId)
-	if player == nil then
-		return
-	end
+	local name = if player then player.Name else "?"
 	if event.kind == "Status" then
-		player:SetAttribute("DataLoadStatus", event.status)
-		player:SetAttribute("DataLoadDetail", event.detail or "")
-		player:SetAttribute("DataPortalLocked", event.status ~= "Loaded")
-		player:SetAttribute("DataSaveSeq", core.getSaveSeq(event.userId))
-		print(`[DataService] {player.Name} ({event.userId}) status={event.status} {event.detail or ""}`)
+		print(`[DataService] {name} ({event.userId}) status={event.status} {event.detail or ""}`)
 	else
 		local outcome = if event.ok then `ok seq={event.seq}` else `failed: {event.detail}`
-		player:SetAttribute("DataLastSave", `{event.reason} {outcome}`)
-		print(`[DataService] {player.Name} ({event.userId}) save {event.reason} {outcome}`)
-		if event.ok then
-			player:SetAttribute("DataSaveSeq", event.seq)
-		else
-			player:SetAttribute("DataSaveFailures", ((player:GetAttribute("DataSaveFailures") :: number?) or 0) + 1)
-		end
+		print(`[DataService] {name} ({event.userId}) save {event.reason} {outcome}`)
 	end
 end
 
@@ -197,8 +188,17 @@ local function setUp()
 		end
 	end)
 
+	-- Every server: DataLoadStatus. The diagnostics only in Studio.
+	core.subscribe(StatusAttributes.listener({
+		getPlayer = function(userId: number): any
+			return Players:GetPlayerByUserId(userId)
+		end,
+		getSaveSeq = core.getSaveSeq,
+		diagnostics = isStudio,
+	}) :: any)
+
 	if isStudio then
-		core.subscribe(mirrorToAttributes)
+		core.subscribe(printEvent)
 		ServerScriptService:SetAttribute("DataStoreMode", storeMode)
 		if storeMode == "Fake" then
 			for _, name in { FAIL_LOAD_ATTRIBUTE, FAIL_SAVE_ATTRIBUTE, AUTOSAVE_NOW_ATTRIBUTE } do

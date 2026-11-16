@@ -1,5 +1,5 @@
 --!strict
--- Studio stub for teleports at game.PlaceId == 0 (ADR 0003 "Teleports in Studio", ADR 0010).
+-- Studio stub for teleports at game.PlaceId == 0 (ADR 0003 "Teleports in Studio", ADR 0011).
 -- Teleports and ReserveServer do not work in Studio, so this never touches TeleportService: it
 -- logs one line per attempt with intent, origin, destination, server choice, zone and players,
 -- and reports success or a simulated failure. Pure, no requires.

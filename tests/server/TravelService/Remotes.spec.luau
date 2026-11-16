@@ -12,11 +12,12 @@ local Registry = require("../../../src/shared/Net/Registry")
 local Schema = require("../../../src/shared/Net/Schema")
 local Stats = require("../../../src/shared/Net/Stats")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
+local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
 
 local PLAYER = { Name = "Tester" }
 
 local function guarded(name: string, handler: any)
-	local definition = Registry.build(declareRemotes(Schema, NetConfig))[name]
+	local definition = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))[name]
 	local clock = FakeClock.new()
 	local stats = Stats.new()
 	local call = Guard.new(definition, {

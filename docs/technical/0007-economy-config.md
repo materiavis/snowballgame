@@ -59,12 +59,13 @@ Concept 1.2 and 8.3 say every number is a Startwert that lives in config modules
   ```
 
   A Robux grant must succeed in `SaveNow` before `ProcessReceipt` returns `PurchaseGranted` (ADR 0003). That logic belongs to PurchaseService.
-- **No remote.** Clients never send amounts. The HUD issue decides how balances reach the client (player attributes or a server-to-client remote); the Studio mirror below is not that mechanism.
+- **No remote.** Clients never send amounts.
+- **Balances on every server (revised with PR #92).** The HUD (#35, ADR 0008) reads balances from player attributes, one per currency id: `Coins` and `SnowCoins`. Every server, live or Studio, writes them when the profile loads (`DataService.LoadStatusChanged` → `Loaded`) and after every Earn, Spend and Reset. A refusal writes nothing. After a failed load or a leave, the attribute can keep its last value. That is why the HUD decides from `DataLoadStatus` (ADR 0006) and shows "–" unless it is `Loaded`. Server code never reads these attributes back, and a client-side write does not replicate. The writer is the pure `BalanceAttributes` module. Headless specs (`tests/server/CurrencyService/BalanceAttributes.spec.luau`) run it against a live server with diagnostics off and check that only `Coins` and `SnowCoins` appear. A source check makes sure `init.luau` wires it outside the Studio branch.
 - **Leaderboards.** `sim.totalCoins` feeds the TotalCoins board through `DataService.QueueLeaderboardValue`. The leaderboard issue wires that, including private servers and bots.
 
 **Studio playtest support (Studio at `game.PlaceId == 0` only; live servers skip all of it).**
 - Startup line, always printed: `[CurrencyService] started currencies=Coins,SnowCoins studioSwitches=true`.
-- Player attributes `Coins`, `TotalCoins` and `SnowCoins`, set when the profile loads and after every change. `CurrencyLastChange` holds the last change or refusal as text, `CurrencyRefusals` counts refusals.
+- Diagnostic player attributes `TotalCoins` and `TotalSnowCoins` (lifetime totals), set together with the balances. `CurrencyLastChange` holds the last change or refusal as text, and `CurrencyRefusals` counts refusals.
 - Every change and refusal prints `[CurrencyService] <name> (<userId>) <text>`, for example `Coins +500 StudioSwitch -> 500 total=500` or `Coins Spend 1000 StudioSwitch refused: Insufficient (balance 500)`.
 - Switches on `ServerScriptService`, set from the server command bar:
   - `CurrencyTargetUserId` (number): the player the switches act on; `0` means every player.

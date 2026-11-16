@@ -1,6 +1,6 @@
 --!strict
 -- Cross-server presence and private-server mapping on one MemoryStore hash map (ADR 0003
--- "Cross-server ephemeral state", ADR 0010). Pure, no requires: the map, wait and log are
+-- "Cross-server ephemeral state", ADR 0011). Pure, no requires: the map, wait and log are
 -- injected, so `lune run tests` runs it against FakeMemoryStore.
 --
 -- Keys (prefixes in Config.Travel):

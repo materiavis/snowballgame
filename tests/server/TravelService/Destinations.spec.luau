@@ -1,5 +1,5 @@
 --!strict
--- Where each intent leads from each Place (concept 5.6, ADR 0003 "Places" table, ADR 0010).
+-- Where each intent leads from each Place (concept 5.6, ADR 0003 "Places" table, ADR 0011).
 
 local T = require("../../TestKit")
 local Destinations = require("../../../src/server/Services/TravelService/Destinations")

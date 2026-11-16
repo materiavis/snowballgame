@@ -1,5 +1,5 @@
 --!strict
--- Studio playtest switches for TravelService (ADR 0010). TravelService only calls this when
+-- Studio playtest switches for TravelService (ADR 0011). TravelService only calls this when
 -- RunService:IsStudio() and game.PlaceId == 0; live servers never set or read these attributes.
 -- Attribute names are the playtest contract. All switches live on ServerScriptService and are
 -- set from the server command bar.
