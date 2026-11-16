@@ -1,6 +1,6 @@
 # 0012: Selling at the scale
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #123.
 
 Implements `7.5-selling` (#38) from the `SellService` row of [ADR 0003](0003-snow-rush-intake.md). Uses the ball (ADR 0002), Net (ADR 0005), DataService (ADR 0006), CurrencyService and `Formulas.Economy.saleCoins` (ADR 0007), the HUD's pop-up component and Coins display (ADR 0008), the map contract (ADR 0009) and UpgradeService (ADR 0010).
 
