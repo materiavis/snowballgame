@@ -2,10 +2,12 @@
 -- CameraController (Simulator only, concept 7.3): Roblox's third-person camera, zoomed out
 -- automatically the bigger the own ball is, so the whole ball stays in view.
 --
--- It lifts Player.CameraMinZoomDistance (and the max with it) on size, field-of-view and
--- viewport changes; the default camera moves the zoom out when the minimum rises. The default
--- "Zoom" occlusion ignores that minimum and pulls the camera in front of the own ball, which
--- has to stay opaque and collidable, so one render step right after the camera pushes it back.
+-- One render step right after the default camera pushes it out to the exact distance at which
+-- the whole ball fits the current view (#95). That also undoes the default "Zoom" occlusion,
+-- which pulls the camera in front of the own ball (it has to stay opaque and collidable).
+-- Player.CameraMinZoomDistance is lifted only to what the usual view needs (ball ahead, camera
+-- level or looking down), so a small ball can be looked at from close up; the max rises with
+-- the worst case over every view. Both change on size, field-of-view and viewport changes only.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,7 +19,12 @@ local HoldMath = require(script.Parent:WaitForChild("BallController"):WaitForChi
 
 -- Local player attribute with the zoom minimum this controller set (playtest hook).
 local MIN_ZOOM_ATTRIBUTE = "CameraMinZoom"
+-- Studio-only playtest hooks (ADR 0002): the distance the current view needs and the worst
+-- case over every view, so portrait values can be checked by calculation.
+local VIEW_ZOOM_ATTRIBUTE = "CameraViewZoom"
+local WORST_ZOOM_ATTRIBUTE = "CameraWorstZoom"
 local PUSH_RENDER_STEP = "SnowballCameraPush"
+local STUDIO_HOOKS = RunService:IsStudio() and game.PlaceId == 0
 
 local localPlayer = Players.LocalPlayer
 local hold = HoldMath.new(BallConfig)
@@ -28,7 +35,12 @@ local defaultMinZoom = localPlayer.CameraMinZoomDistance
 local defaultMaxZoom = localPlayer.CameraMaxZoomDistance
 local myBall: BasePart? = nil
 local ballFolder: Instance? = nil
-local requiredZoom = 0 -- 0 while there is no ball: the render step then does nothing
+local hasBall = false -- false: the render step does nothing
+-- Set in update(), read every frame, so the step computes no angles of its own.
+local verticalHalf = 0
+local horizontalHalf = 0
+local clearance = 0
+local shownViewZoom = -1
 local ballSizeConnection: RBXScriptConnection? = nil
 local cameraConnections: { RBXScriptConnection } = {}
 local characterConnections: { [Player]: RBXScriptConnection } = {}
@@ -55,12 +67,42 @@ end
 
 local function pushCameraOut()
 	local camera = workspace.CurrentCamera
-	if requiredZoom <= 0 or not camera then
+	local ball = myBall
+	if not hasBall or not camera or not ball then
 		return
 	end
 	local focus = camera.Focus.Position
 	local cameraCFrame = camera.CFrame
 	local distance = (cameraCFrame.Position - focus).Magnitude
+	local offset = ball.Position - focus
+	local look = cameraCFrame.LookVector
+	local up = cameraCFrame.UpVector
+	local right = cameraCFrame.RightVector
+	local requiredZoom = CameraFit.viewZoom(
+		offset.X,
+		offset.Y,
+		offset.Z,
+		ball.Size.X / 2,
+		clearance,
+		look.X,
+		look.Y,
+		look.Z,
+		up.X,
+		up.Y,
+		up.Z,
+		right.X,
+		right.Y,
+		right.Z,
+		verticalHalf,
+		horizontalHalf
+	)
+	if STUDIO_HOOKS then
+		local shown = math.round(requiredZoom * 100) / 100
+		if shown ~= shownViewZoom then
+			shownViewZoom = shown
+			localPlayer:SetAttribute(VIEW_ZOOM_ATTRIBUTE, shown)
+		end
+	end
 	if not CameraFit.needsPush(distance, requiredZoom, BallConfig.CameraPushTolerance) then
 		return
 	end
@@ -76,28 +118,47 @@ end
 local function update()
 	local ball = myBall
 	local camera = workspace.CurrentCamera
-	local required = 0
+	local worst = 0
+	local minimum = 0
 	if ball and ball.Parent and camera then
 		local viewport = camera.ViewportSize
 		local aspect = if viewport.Y > 0 then viewport.X / viewport.Y else 1
 		local diameter = ball.Size.X
-		required = CameraFit.requiredZoom(
+		local holdDistance = hold.holdDistance(diameter)
+		verticalHalf, horizontalHalf = CameraFit.halfAngles(camera.FieldOfView, aspect)
+		clearance = diameter * BallConfig.CameraFitClearanceShare
+		worst = CameraFit.requiredZoom(
 			diameter,
-			hold.holdDistance(diameter),
+			holdDistance,
 			camera.FieldOfView,
 			aspect,
 			BallConfig.CameraFitMargin,
 			BallConfig.CameraFocusHeightMin,
 			BallConfig.CameraFocusHeightMax
 		)
+		minimum = CameraFit.minimumZoom(
+			diameter,
+			holdDistance,
+			camera.FieldOfView,
+			aspect,
+			clearance,
+			BallConfig.CameraFocusHeightMin,
+			BallConfig.CameraFocusHeightMax,
+			BallConfig.CameraMinZoomPitchMinDegrees,
+			BallConfig.CameraMinZoomPitchMaxDegrees,
+			BallConfig.CameraMinZoomStepDegrees
+		)
 	end
-	requiredZoom = required
-	local minZoom = math.max(defaultMinZoom, required)
-	local maxZoom = math.max(defaultMaxZoom, required + BallConfig.CameraMaxZoomExtra)
+	hasBall = worst > 0
+	local minZoom = math.max(defaultMinZoom, minimum)
+	local maxZoom = math.max(defaultMaxZoom, worst + BallConfig.CameraMaxZoomExtra)
 	-- Max first, so the minimum is never above the maximum in between.
 	localPlayer.CameraMaxZoomDistance = maxZoom
 	localPlayer.CameraMinZoomDistance = minZoom
 	localPlayer:SetAttribute(MIN_ZOOM_ATTRIBUTE, math.round(minZoom * 100) / 100)
+	if STUDIO_HOOKS then
+		localPlayer:SetAttribute(WORST_ZOOM_ATTRIBUTE, math.round(worst * 100) / 100)
+	end
 end
 
 local function watchCamera()
