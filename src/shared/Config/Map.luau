@@ -15,6 +15,8 @@ local Map = {
 
 	Tags = table.freeze({
 		UpgradeStand = "UpgradeStand",
+		-- Scale sell area (#38, ADR 0012): a BasePart in a zone area. A ball that touches it is sold.
+		ScalePlate = "ScalePlate",
 	}),
 
 	-- The prompt the server puts on an upgrade stand's PrimaryPart. The client opens the Upgrades

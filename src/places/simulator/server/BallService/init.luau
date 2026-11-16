@@ -21,6 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local BallConfig = require(Config:WaitForChild("Ball")) :: any
 local ZonesConfig = require(Config:WaitForChild("Zones")) :: any
+local MapConfig = require(Config:WaitForChild("Map")) :: any
 local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
 local AfterHit = require(script:WaitForChild("AfterHit"))
@@ -60,7 +61,7 @@ modifiers.setLevelSource(UpgradeService.GetLevel)
 local obstacleRules = ObstacleRules.new(BallConfig)
 local recoveryRules = RecoveryRules.new(BallConfig)
 local obstacles = Obstacles.new(BallConfig, obstacleRules, studioTools)
-local attributes = BallAttributes.new(BallConfig, rules, studioTools)
+local attributes = BallAttributes.new(BallConfig, rules, studioTools, MapConfig.FolderName)
 local states: { [Player]: BallState } = {}
 local ballsFolder: Folder
 local groundParams = RaycastParams.new()
@@ -415,6 +416,34 @@ end
 function BallService.GetSizeMetres(player: Player): number?
 	local state = states[player]
 	return if state then rules.sizeMetres(state.zone, state.fraction) else nil
+end
+
+-- For selling (#38, ADR 0012): the ball part as the server sees it, nil without a ball.
+function BallService.GetBallPart(player: Player): BasePart?
+	local state = states[player]
+	return if state and state.part.Parent then state.part else nil
+end
+
+-- Whether the owner's living character is at the ball: the growth range of 7.4.
+function BallService.IsHeld(player: Player): boolean
+	local state = states[player]
+	local root = state and state.root
+	local humanoid = state and state.humanoid
+	if not state or not root or not root.Parent or not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	local offset = root.Position - state.part.Position
+	return rules.inGrowthRange(Vector3.new(offset.X, 0, offset.Z).Magnitude, offset.Y, state.part.Size.X)
+end
+
+-- Shrinks the ball to the start size of its zone (after a sale, 7.5). False without a ball.
+function BallService.ResetSize(player: Player): boolean
+	local state = states[player]
+	if state == nil then
+		return false
+	end
+	setFraction(state, 0)
+	return true
 end
 
 return BallService

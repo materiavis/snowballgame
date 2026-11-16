@@ -60,5 +60,15 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			args = popupArgs(Schema, NetConfig.Popup),
 			rateLimit = NetConfig.RateLimits.Popup,
 		},
+
+		-- Server -> client only (#38, ADR 0012): SellService fires it with the whole coins of one
+		-- sale, and SaleController shows "+3.4K" flying to the Coins display. The server decides
+		-- the sale from the ball touching a scale plate; no client asks for it. No server handler
+		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		SaleResult = {
+			kind = "Event",
+			args = { Schema.number({ min = 0, max = NetConfig.Sale.MaxCoins, integer = true }) },
+			rateLimit = NetConfig.RateLimits.SaleResult,
+		},
 	}
 end
