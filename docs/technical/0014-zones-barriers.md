@@ -1,6 +1,6 @@
 # 0014: Zones 1–5, barriers, the zone teleport and the current zone
 
-**Status:** Accepted with merge of PR #PR_NUMBER.
+**Status:** Accepted with merge of PR #124.
 
 Implements the Vertical Slice part of `7.6-zones-barriers` (#39, owner decisions 2026-11-10: zones 1–5 only, barrier at the end of zone 5 visible and closed, `Config.Zones.HighestOpenZone = 5`). Barriers 6–10 and the world gate are #105. Uses the map contract (ADR 0009), the Net layer (ADR 0005), DataService (ADR 0006), CurrencyService and `Formulas.Zones` (ADR 0007), the HUD scaffold (ADR 0008, #90: window stack, left-edge button, pop-ups, prompts) and BallService (ADR 0002).
 
