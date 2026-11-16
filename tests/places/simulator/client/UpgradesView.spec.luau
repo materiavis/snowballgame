@@ -50,7 +50,7 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		T.equal(rows.growth.effectText, "40.00 → 39.68 s to MAX")
 		T.equal(rows.walkSpeed.effectText, "16.00 → 16.16 studs/s")
 		T.equal(rows.magnet.effectText, "4.0 studs", "locked: the current effect only")
-		T.equal(rows.sellValue.effectText, "×1.00", "locked: the current effect only")
+		T.equal(rows.sellValue.effectText, "×1.00 → ×1.05", "unlocked by selling (#38)")
 		T.equal(rows.stability.effectText, "10.00 → 9.92 % lost per hit")
 	end)
 
@@ -110,12 +110,12 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		T.equal(UpgradesView.missingText("{amount}", "50%"), "50%", "a % in the amount is kept")
 	end)
 
-	test("R1-1: Magnet and Sell value are visible, locked and marked Coming soon", function()
+	test("R1-1: Magnet is visible, locked and marked Coming soon", function()
 		T.equal(Upgrades.Locked.magnet, true)
-		T.equal(Upgrades.Locked.sellValue, true)
+		T.equal(Upgrades.Locked.sellValue, nil, "unlocked by selling (#38)")
 		for _, coins in { 0, 1e30 } do
 			local rows = byId(UpgradesView.rows(input(ZERO, coins)))
-			for _, id in { "magnet", "sellValue" } do
+			for _, id in { "magnet" } do
 				local row = rows[id]
 				T.equal(row.state, "Locked", id)
 				T.equal(row.canBuy, false, `{id} never buyable`)
@@ -125,7 +125,7 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 				T.equal(row.name, Ui.UpgradeRows[id].Name, "still listed by name")
 				T.equal(row.levelText, "0/100")
 			end
-			for _, id in { "growth", "walkSpeed", "stability" } do
+			for _, id in { "growth", "walkSpeed", "sellValue", "stability" } do
 				T.isTrue(rows[id].state ~= "Locked", `{id} is not locked`)
 			end
 		end

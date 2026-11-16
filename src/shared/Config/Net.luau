@@ -18,6 +18,9 @@ local Net = {
 		-- Server -> client pop-up (#90, ADR 0008). The client never sends it; there is no server
 		-- handler, so a client call is dropped (NoHandler) after this limit.
 		Popup = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Server -> client sale result (#38, ADR 0012). Like Popup: no server handler, so a client
+		-- call is dropped (NoHandler) after this limit.
+		SaleResult = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
 	}),
 
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.
@@ -27,6 +30,11 @@ local Net = {
 		MaxKeyLength = 64,
 		MaxNumbers = 2,
 		MaxNumberMagnitude = 1e30,
+	}),
+
+	-- Sale result remote (#38): the coins of one sale. Technical bound: the Coins MaxChange.
+	Sale = table.freeze({
+		MaxCoins = 1e30,
 	}),
 }
 

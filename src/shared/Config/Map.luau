@@ -21,6 +21,8 @@ local Map = {
 		GroupChest = "GroupChest",
 		NewsBoard = "NewsBoard",
 		VipCorner = "VipCorner",
+		-- Scale sell area (#38, ADR 0012): a BasePart in a zone area. A ball that touches it is sold.
+		ScalePlate = "ScalePlate",
 	}),
 
 	-- Portal station attributes (ADR 0009). PortalMode is set by builders; PlayerCount and

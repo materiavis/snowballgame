@@ -20,7 +20,9 @@ local function anchorPosition(instance: Instance): Vector3?
 	return nil
 end
 
-function BallAttributesModule.new(config: any, rules: any, diagnostics: boolean): Published
+-- `mapFolderName` is Config.Map.FolderName: only anchors below Workspace[mapFolderName] count
+-- (ADR 0009 "Scope", #38), so a tagged template in ServerStorage never becomes the MAX target.
+function BallAttributesModule.new(config: any, rules: any, diagnostics: boolean, mapFolderName: string): Published
 	local names = config.DiagnosticAttributes
 
 	local function setOn(instance: Instance, sent: { [string]: any }, name: string, value: any)
@@ -33,8 +35,12 @@ function BallAttributesModule.new(config: any, rules: any, diagnostics: boolean)
 	local function nearestAnchor(position: Vector3): Vector3?
 		local best: Vector3? = nil
 		local bestDistance = math.huge
+		local map = workspace:FindFirstChild(mapFolderName)
+		if map == nil then
+			return nil
+		end
 		for _, instance in CollectionService:GetTagged(config.ScaleAnchorTag) do
-			local candidate = anchorPosition(instance)
+			local candidate = if instance:IsDescendantOf(map) then anchorPosition(instance) else nil
 			if candidate then
 				local distance = (candidate - position).Magnitude
 				if distance < bestDistance then
