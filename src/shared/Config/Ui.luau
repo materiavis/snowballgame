@@ -67,7 +67,17 @@ local Ui = {
 	-- Text keys (in Text) the server may send in a pop-up. Features add theirs here ("MAX!",
 	-- "+3.4K" and "New Pet!" come with #109, #38 and #41). {1} and {2} are numbers, formatted
 	-- with NumberFormat.number (K, M, B ...).
-	PopupTexts = { "PopupTest", "PopupTestNumber", "PromptTriggered", "PlaceholderButton" },
+	PopupTexts = {
+		"PopupTest",
+		"PopupTestNumber",
+		"PromptTriggered",
+		"PlaceholderButton",
+		-- Zones and barriers (#39, ADR 0014).
+		"BarrierNeedMore",
+		"ZoneUnlocked",
+		"ZoneTeleportWait",
+		"ZoneTeleportFailed",
+	},
 
 	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
 	-- key of the last used device by itself (concept 3.2 glossary). A preset overrides Default.
@@ -85,6 +95,12 @@ local Ui = {
 		Placeholder = table.freeze({
 			ActionText = "PromptTestAction",
 			ObjectText = "PromptTestObject",
+		}),
+		-- Barrier (#39, ADR 0014): the client puts it on a barrier this player can buy; it opens
+		-- the same unlock window (or missing amount) as walking into the barrier.
+		Barrier = table.freeze({
+			ActionText = "BarrierPromptAction",
+			ObjectText = "BarrierPromptObject",
 		}),
 	},
 
@@ -264,6 +280,24 @@ local Ui = {
 		-- shows for good is an open owner question (follow-up issue to #35).
 		BallSizeMax = "MAX!",
 		LoadFailed = "Your progress could not be loaded. Trying again…",
+		-- Zones and barriers (#39, ADR 0014, concept 7.6). {zone}, {price} and {name} are filled
+		-- by the client (value labels, AutoLocalize off); {1} in pop-ups by PopupController.
+		BarrierLabel = "Zone {zone} · {price}",
+		-- A barrier that cannot open in this Place yet (map or Config.Zones.HighestOpenZone).
+		BarrierClosed = "Zone {zone} · Coming soon",
+		BarrierPromptAction = "Unlock",
+		BarrierPromptObject = "Barrier",
+		ZoneUnlockTitle = "Unlock zone",
+		ZoneUnlockQuestion = "Unlock Zone {zone} for {price}?",
+		ZoneUnlockYes = "Yes",
+		ZoneUnlockNo = "No",
+		ZoneTeleportTitle = "Zone teleport",
+		ZoneTeleportRow = "Zone {zone} · {name}",
+		-- Pop-ups. BarrierNeedMore is the missing amount, rounded up like a price (ADR 0014).
+		BarrierNeedMore = "Need {1} more",
+		ZoneUnlocked = "Zone {1} unlocked!",
+		ZoneTeleportWait = "Teleport ready in {1} s",
+		ZoneTeleportFailed = "Teleport failed",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no

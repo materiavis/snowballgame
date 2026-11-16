@@ -389,14 +389,50 @@ function BallService.Start()
 	)
 end
 
--- Zone of the player's ball. ZoneService (#29/#39) calls SetZone; until then it is
--- Config.Ball.DefaultZone. Returns false for an unknown player or an invalid zone.
+-- Sets the zone and keeps the size fraction (the ball resizes to the same share of the new
+-- zone). Used by the BallSetZone switch (ADR 0002). Returns false for an unknown player or an
+-- invalid zone. Gameplay zone changes use EnterZone.
 function BallService.SetZone(player: Player, zone: number): boolean
 	local state = states[player]
 	if state == nil or not Formulas.Zones.isZone(zone) then
 		return false
 	end
 	setZone(state, zone)
+	return true
+end
+
+-- ZoneService (#39, ADR 0014): the player is now in `zone`. The ball keeps its size in metres
+-- (concept 7.6, decision 2026-10-08) and grows on to the new zone's maximum; in a lower zone it
+-- is capped at that zone's maximum (GrowthRules.carryFraction). Returns false for an unknown
+-- player or an invalid zone.
+function BallService.EnterZone(player: Player, zone: number): boolean
+	local state = states[player]
+	if state == nil or not Formulas.Zones.isZone(zone) then
+		return false
+	end
+	if state.zone == zone then
+		return true
+	end
+	state.fraction = rules.carryFraction(state.zone, state.fraction, zone)
+	state.zone = zone
+	-- A new measurement of the time to the maximum starts in the new zone.
+	state.growthStartedAt = nil
+	state.measuredTimeToMax = nil
+	applyOptics(state, true)
+	return true
+end
+
+-- ZoneService (#39): the server moved the character (zone start, zone teleport); put the ball in
+-- front of it again, not counted as a recovery. False while BallService has not bound this
+-- character yet: its own CharacterAdded handler then places the ball at the moved character.
+function BallService.PlaceAtCharacter(player: Player): boolean
+	local state = states[player]
+	local character = player.Character
+	local root = state and state.root
+	if state == nil or root == nil or character == nil or root.Parent ~= character then
+		return false
+	end
+	recovery.place(state, root)
 	return true
 end
 
