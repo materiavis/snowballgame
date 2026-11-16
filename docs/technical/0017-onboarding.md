@@ -1,6 +1,6 @@
 # 0017: Onboarding hints of the first five minutes
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #128.
 
 Implements `10.1-onboarding` (#42, Vertical Slice) on top of the Lobby portals and first-join arrow ([ADR 0015](0015-lobby-portals.md)), selling ([ADR 0012](0012-selling.md)), the HUD and input device tracking ([ADR 0008](0008-hud-and-windows.md)), the map contract ([ADR 0009](0009-map-contract.md)), Net ([ADR 0005](0005-net-remotes.md)), DataService ([ADR 0006](0006-player-data.md)) and CurrencyService ([ADR 0007](0007-economy-config.md)).
 
