@@ -1,6 +1,6 @@
 # 0013: Pets and Egg 1 (Vertical Slice slice of 7.9)
 
-**Status:** Accepted with merge of PR #PR_NUMBER.
+**Status:** Accepted with merge of PR #125.
 
 Implements the Vertical Slice part of `7.9-pets-eggs` (#41): Egg 1 bought at an egg station, hatching, equipping in the slots, the additive pet multiplier and equipped pets following in the Simulator. Egg 2, Best Equip, Gold, Frosty, deletion, inventory expansion and following in the Lobby are #103 (owner decision 2026-11-10). Uses the `PetService`, `EggService` and `sim.pets` rows of [ADR 0003](0003-snow-rush-intake.md), the Net layer (ADR 0005), DataService (ADR 0006), CurrencyService, `Formulas.Pets` and `Rng` (ADR 0007), the window stack, left-edge buttons, pop-ups and prompts (ADR 0008, #90), the map contract (ADR 0009) and the station rules of the upgrade stand (ADR 0010).
 
