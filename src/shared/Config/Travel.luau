@@ -48,6 +48,15 @@ local Travel = {
 	ServerKeyPrefix = "server_",
 	PrivateKeyPrefix = "private_",
 	ReservedKeyPrefix = "reserved_",
+	-- Players per mode for the Lobby portal labels (#37, ADR 0015): one entry per mode,
+	-- mode_<PortalMode> = { [jobId] = { c = players, t = Unix time } }, refreshed by each server
+	-- with its presence. Entries older than PresenceTtl do not count. At most ModeMaxServers
+	-- servers per entry (MemoryStore values are limited to 32 KB); beyond that the oldest are
+	-- dropped and the label shows a lower bound.
+	ModeKeyPrefix = "mode_",
+	ModeMaxServers = 400,
+	-- The portal mode a public Simulator server counts towards (Config.Map.PortalModes).
+	SimulatorMode = "Singleplayer",
 
 	-- On-screen message (owner decision 2026-11-10: simple text, the popup is #91).
 	MessageSeconds = 4,

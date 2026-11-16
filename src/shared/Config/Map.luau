@@ -15,7 +15,21 @@ local Map = {
 
 	Tags = table.freeze({
 		UpgradeStand = "UpgradeStand",
+		-- Lobby (ADR 0009 "Lobby (7.1)", bound by #37, ADR 0015).
+		LobbySpawn = "LobbySpawn",
+		Portal = "Portal",
+		GroupChest = "GroupChest",
+		NewsBoard = "NewsBoard",
+		VipCorner = "VipCorner",
 	}),
+
+	-- Portal station attributes (ADR 0009). PortalMode is set by builders; PlayerCount and
+	-- PlayerCountAt are written by the server on every bound portal (PlayerCountAt: Unix time of
+	-- the last refresh, the diagnostic of ADR 0015).
+	PortalModeAttribute = "PortalMode",
+	PortalModes = table.freeze({ "Singleplayer", "Multiplayer" }),
+	PlayerCountAttribute = "PlayerCount",
+	PlayerCountAtAttribute = "PlayerCountAt",
 
 	-- The prompt the server puts on an upgrade stand's PrimaryPart. The client opens the Upgrades
 	-- window when a prompt with PromptTag triggers. Spielraum (concept 7.8: look of the stand).

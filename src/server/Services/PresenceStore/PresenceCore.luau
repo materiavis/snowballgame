@@ -8,6 +8,7 @@
 --   server_<jobId>                { world, count }        players on that Simulator server
 --   private_<privateKey>_<world>  { accessCode, privateServerId }  reserved server of a private context
 --   reserved_<privateServerId>    privateKey              reverse lookup for that reserved server
+--   mode_<PortalMode>             { [jobId] = { c, t } }  players per server in a mode (#37 portal labels)
 --
 -- Everything here is best effort: a failed call returns nil/false and is logged. Losing it only
 -- loses the friend preference or opens a second reserved server, never progress. Values read
@@ -21,6 +22,8 @@ export type Deps = {
 	map: any, -- MemoryStoreHashMap or FakeMemoryStore map
 	wait: (seconds: number) -> (),
 	log: (level: "info" | "warn", message: string) -> (),
+	-- Unix seconds shared by all servers, for the per-mode counts. Defaults to os.time.
+	now: (() -> number)?,
 	config: {
 		PresenceTtl: number,
 		PrivateMappingTtl: number,
@@ -31,6 +34,8 @@ export type Deps = {
 		ServerKeyPrefix: string,
 		PrivateKeyPrefix: string,
 		ReservedKeyPrefix: string,
+		ModeKeyPrefix: string?,
+		ModeMaxServers: number?,
 	},
 }
 
@@ -47,6 +52,7 @@ local PresenceCore = {}
 function PresenceCore.new(deps: Deps)
 	local config = deps.config
 	local map = deps.map
+	local now = deps.now or os.time
 	local store = {}
 
 	-- Runs one map call with a few spaced attempts. Returns ok and the call's result.
@@ -198,6 +204,88 @@ function PresenceCore.new(deps: Deps)
 			return value
 		end
 		return nil
+	end
+
+	local function modeKey(mode: string): string
+		return (config.ModeKeyPrefix or "mode_") .. mode
+	end
+
+	-- A mode entry's servers that are still fresh, with their values checked.
+	local function freshServers(value: any, at: number): { [string]: { c: number, t: number } }
+		local out = {}
+		if type(value) ~= "table" then
+			return out
+		end
+		for jobId, entry in value do
+			if
+				isText(jobId)
+				and type(entry) == "table"
+				and isWhole(entry.c, 0)
+				and type(entry.t) == "number"
+				and entry.t == entry.t
+				and at - entry.t < config.PresenceTtl
+			then
+				out[jobId] = { c = entry.c, t = entry.t }
+			end
+		end
+		return out
+	end
+
+	-- This server's player count in `mode` (the portal labels, #37). Stale servers are dropped on
+	-- every write; above ModeMaxServers the oldest go first. Best effort, like all presence.
+	function store.setModeCount(mode: string, jobId: string, count: number): boolean
+		if not isText(mode) or not isText(jobId) or not isWhole(count, 0) then
+			return false
+		end
+		local limit = config.ModeMaxServers or 400
+		local ok = call(`set {mode} count of {jobId}`, function()
+			return map:UpdateAsync(modeKey(mode), function(old: any): any
+				local at = now()
+				local servers = freshServers(old, at)
+				servers[jobId] = { c = count, t = at }
+				local ids = {}
+				for id in servers do
+					table.insert(ids, id)
+				end
+				if #ids > limit then
+					table.sort(ids, function(a, b)
+						return servers[a].t > servers[b].t
+					end)
+					for index = limit + 1, #ids do
+						servers[ids[index]] = nil
+					end
+				end
+				return servers
+			end, config.PresenceTtl)
+		end)
+		return ok
+	end
+
+	function store.removeModeServer(mode: string, jobId: string): boolean
+		local ok = call(`remove {jobId} from {mode} count`, function()
+			return map:UpdateAsync(modeKey(mode), function(old: any): any
+				local servers = freshServers(old, now())
+				servers[jobId] = nil
+				return servers
+			end, config.PresenceTtl)
+		end)
+		return ok
+	end
+
+	-- Players in `mode` over all fresh servers, or nil when the read failed (the label then keeps
+	-- its last value). No entry is 0.
+	function store.getModeCount(mode: string): number?
+		local ok, value = call(`read {mode} count`, function()
+			return map:GetAsync(modeKey(mode))
+		end)
+		if not ok then
+			return nil
+		end
+		local total = 0
+		for _, entry in freshServers(value, now()) do
+			total += entry.c
+		end
+		return total
 	end
 
 	return table.freeze(store)

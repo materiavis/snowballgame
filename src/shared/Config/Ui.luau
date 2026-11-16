@@ -67,7 +67,19 @@ local Ui = {
 	-- Text keys (in Text) the server may send in a pop-up. Features add theirs here ("MAX!",
 	-- "+3.4K" and "New Pet!" come with #109, #38 and #41). {1} and {2} are numbers, formatted
 	-- with NumberFormat.number (K, M, B ...).
-	PopupTexts = { "PopupTest", "PopupTestNumber", "PromptTriggered", "PlaceholderButton" },
+	PopupTexts = {
+		"PopupTest",
+		"PopupTestNumber",
+		"PromptTriggered",
+		"PlaceholderButton",
+		-- Group chest (#37, ADR 0015).
+		"GroupChestOpened",
+		"GroupChestAlreadyOpened",
+		"GroupChestJoinGroup",
+		"GroupChestNoGroup",
+		"GroupChestTryLater",
+		"GroupChestNotReady",
+	},
 
 	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
 	-- key of the last used device by itself (concept 3.2 glossary). A preset overrides Default.
@@ -85,6 +97,11 @@ local Ui = {
 		Placeholder = table.freeze({
 			ActionText = "PromptTestAction",
 			ObjectText = "PromptTestObject",
+		}),
+		-- Lobby group chest (#37, ADR 0015). The server checks the reach again on trigger.
+		GroupChest = table.freeze({
+			ActionText = "GroupChestAction",
+			ObjectText = "GroupChestObject",
 		}),
 	},
 
@@ -264,6 +281,30 @@ local Ui = {
 		-- shows for good is an open owner question (follow-up issue to #35).
 		BallSizeMax = "MAX!",
 		LoadFailed = "Your progress could not be loaded. Trying again…",
+		-- Lobby portals (#37, ADR 0015). Mode names from the concept's English names appendix.
+		-- {count} is the number of players in the mode, formatted with NumberFormat.number.
+		PortalSingleplayer = "Singleplayer",
+		PortalMultiplayer = "Multiplayer",
+		PortalPlayers = "{count} playing",
+		PortalClosed = "Coming soon",
+		PortalLocked = "Your progress is still loading…",
+		PortalTravelling = "Teleporting…",
+		-- Group chest prompt and pop-ups (#37). {1} Coins, {2} Snow Coins.
+		GroupChestAction = "Open",
+		GroupChestObject = "Group chest",
+		GroupChestOpened = "+{1} Coins  +{2} Snow Coins",
+		GroupChestAlreadyOpened = "Already opened",
+		GroupChestJoinGroup = "Join the Materiavis group",
+		GroupChestNoGroup = "Opens soon",
+		GroupChestTryLater = "Try again in a moment",
+		GroupChestNotReady = "Still loading…",
+		-- News board (#37). {title} is Config.Lobby.News.LastUpdate, {time} the countdown.
+		NewsTitle = "News",
+		NewsLastUpdate = "Latest update: {title}",
+		NewsNextUpdate = "Next update in {time}",
+		NewsNextUpdateSoon = "Next update: coming soon",
+		-- VIP corner sign (#37).
+		VipCornerSign = "VIP",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no
