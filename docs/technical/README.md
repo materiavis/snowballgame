@@ -28,3 +28,4 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0011 | [TravelService, server selection and PresenceStore](0011-travel-service.md) | Accepted with merge of PR #110 |
 | 0012 | [Selling at the scale](0012-selling.md) | Accepted with merge of PR #123 |
 | 0015 | [Lobby portals, player counts, first-join arrow, group chest, news board and VIP corner](0015-lobby-portals.md) | Accepted with merge of PR #126 |
+| 0017 | [Onboarding hints of the first five minutes](0017-onboarding.md) | Accepted with merge of PR #NN |

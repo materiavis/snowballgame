@@ -23,6 +23,10 @@ local Map = {
 		VipCorner = "VipCorner",
 		-- Scale sell area (#38, ADR 0012): a BasePart in a zone area. A ball that touches it is sold.
 		ScalePlate = "ScalePlate",
+		-- Egg station and barrier (ADR 0009). Bound by #41 and #39; until then only the
+		-- onboarding hints (#42, ADR 0017) read them, read-only.
+		EggStation = "EggStation",
+		Barrier = "Barrier",
 	}),
 
 	-- Portal station attributes (ADR 0009). PortalMode is set by builders; PlayerCount and

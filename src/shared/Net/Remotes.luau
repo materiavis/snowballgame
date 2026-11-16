@@ -13,7 +13,7 @@
 --
 -- This module is a function of its dependencies so the headless tests can load it with
 -- plain path requires, while Net/init passes the Roblox modules. Config.Upgrades gives the
--- closed list of upgrade ids.
+-- closed list of upgrade ids, Config.Tutorial the hint ids a client may report (#42).
 
 local function popupArgs(Schema: any, popup: any): { any }
 	local args = { Schema.string({ minLength = 1, maxLength = popup.MaxKeyLength }) }
@@ -26,7 +26,7 @@ local function popupArgs(Schema: any, popup: any): { any }
 	return args
 end
 
-return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: any }
+return function(Schema: any, NetConfig: any, UpgradesConfig: any, TutorialConfig: any): { [string]: any }
 	local limits = NetConfig.RateLimits
 
 	return {
@@ -73,6 +73,17 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			kind = "Event",
 			args = { Schema.number({ min = 0, max = NetConfig.Sale.MaxCoins, integer = true }) },
 			rateLimit = NetConfig.RateLimits.SaleResult,
+		},
+
+		-- Client -> server (#42, ADR 0017): an onboarding hint whose action only the client can
+		-- see is done (the Upgrades window opened). Arg: one of Config.Tutorial.ClientReportable.
+		-- TutorialService accepts it only while that hint is showing for the player and only ever
+		-- sets a known hint to done, never back. Lobby and Simulator handle it; the Arena drops it
+		-- as NoHandler.
+		TutorialHintDone = {
+			kind = "Event",
+			args = { Schema.enum(TutorialConfig.ClientReportable) },
+			rateLimit = limits.TutorialHintDone,
 		},
 	}
 end

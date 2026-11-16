@@ -14,6 +14,7 @@ local Guard = require("../../../src/shared/Net/Guard")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../src/shared/Config/Net")
 local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
+local TutorialConfig = require("../../../src/shared/Config/Tutorial")
 
 local NAN = 0 / 0
 local INF = math.huge
@@ -252,7 +253,7 @@ return T.suite("src/shared/Net/Guard", function(test)
 	-- #36 AC6: the real UpgradeBuy declaration takes exactly one id from Config.Upgrades.Order.
 	test("UpgradeBuy accepts only one known upgrade id and is rate limited", function()
 		local function upgradeBuy()
-			return Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig)).UpgradeBuy
+			return Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig)).UpgradeBuy
 		end
 		for _, id in UpgradesConfig.Order do
 			local h = harness(upgradeBuy())

@@ -11,6 +11,7 @@ local Registry = require("../../../../src/shared/Net/Registry")
 local declareRemotes = require("../../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../../src/shared/Config/Net")
 local UpgradesConfig = require("../../../../src/shared/Config/Upgrades")
+local TutorialConfig = require("../../../../src/shared/Config/Tutorial")
 local MapConfig = require("../../../../src/shared/Config/Map")
 
 local DIR = "src/places/simulator/server/SellService"
@@ -46,7 +47,7 @@ return T.suite("SellService wiring (ADR 0012)", function(test)
 	end)
 
 	test("AC8: SaleResult is declared, bounded and rate limited; nothing handles it on the server", function()
-		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))
+		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig))
 		local remote = definitions.SaleResult
 		T.isTrue(remote ~= nil, "declared")
 		T.equal(remote.kind, "Event")

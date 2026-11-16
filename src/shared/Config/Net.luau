@@ -21,6 +21,9 @@ local Net = {
 		-- Server -> client sale result (#38, ADR 0012). Like Popup: no server handler, so a client
 		-- call is dropped (NoHandler) after this limit.
 		SaleResult = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Onboarding hint done (#42, ADR 0017). A client sends it once per hint, so a small
+		-- budget is plenty; repeats are refused anyway.
+		TutorialHintDone = table.freeze({ Burst = 3, RefillPerSecond = 0.5 }),
 	}),
 
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.

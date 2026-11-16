@@ -8,6 +8,7 @@ local PopupText = require("../../src/shared/PopupText")
 local Ui = require("../../src/shared/Config/Ui") :: any
 local NetConfig = require("../../src/shared/Config/Net") :: any
 local UpgradesConfig = require("../../src/shared/Config/Upgrades") :: any
+local TutorialConfig = require("../../src/shared/Config/Tutorial") :: any
 local Schema = require("../../src/shared/Net/Schema")
 local Registry = require("../../src/shared/Net/Registry")
 local declareRemotes = require("../../src/shared/Net/Remotes")
@@ -57,7 +58,7 @@ return T.suite("PopupText (#90)", function(test)
 	end)
 
 	test("the Popup remote: a bounded key and MaxNumbers optional bounded numbers", function()
-		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))
+		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig))
 		local popup = definitions.Popup
 		T.isTrue(popup ~= nil, "declared")
 		T.equal(popup.kind, "Event")

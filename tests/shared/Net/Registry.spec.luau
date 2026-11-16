@@ -8,6 +8,7 @@ local Registry = require("../../../src/shared/Net/Registry")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../src/shared/Config/Net")
 local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
+local TutorialConfig = require("../../../src/shared/Config/Tutorial")
 
 local LIMIT = { Burst = 1, RefillPerSecond = 1 }
 
@@ -17,7 +18,7 @@ end
 
 return T.suite("src/shared/Net/Registry", function(test)
 	test("every real remote has a schema, a rate limit from Config.Net and a valid kind", function()
-		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))
+		local definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig))
 		local count = 0
 		for name, definition in definitions do
 			count += 1
