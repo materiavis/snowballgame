@@ -4,8 +4,10 @@
 -- character's root is inside a portal's PrimaryPart volume. Inside the open Singleplayer portal
 -- a PortalCountdown starts; walking out cancels; at zero TravelService.ToSimulator runs (last
 -- world and zone from the profile). The closed Multiplayer portal (Vertical Slice) starts
--- nothing. While DataService.IsPortalLocked (profile not loaded) or another travel runs, no
--- portal starts. There is no remote: the client cannot ask for a portal travel at all.
+-- nothing. No portal starts unless the load status is "Loaded" (DataService.IsPortalLocked
+-- and GetLoadStatus, checked at entry, at every step of the countdown and again right before
+-- the travel), and none while another travel runs. There is no remote: the client cannot ask
+-- for a portal travel at all.
 --
 -- Also here: the player counts above the portals (PlayerCounts), the first-join arrow flag
 -- (FirstJoinArrow) and the positions the client needs while a portal is streamed out
@@ -128,7 +130,8 @@ local function apply(player: Player, result: any)
 		local left = core.remaining(player.UserId)
 		player:SetAttribute(A.PORTAL_COUNTDOWN_LEFT, math.ceil(left * 10) / 10)
 		if result.event then
-			local text = `{if result.mode ~= "" then result.mode else "-"} {result.event}`
+			local mode = result.eventMode or result.mode
+			local text = `{if mode ~= "" then mode else "-"} {result.event}`
 			player:SetAttribute(A.PORTAL_LAST, text)
 			log(`{player.Name} ({player.UserId}) {text}`)
 		end
@@ -140,6 +143,10 @@ local function travel(player: Player, mode: string)
 	local outcome = "NoTravel"
 	if run == nil then
 		warn(`[PortalService] {mode} is open but has no travel; nothing happens`)
+	elseif not PortalCore.isOpenFor(DataService.GetLoadStatus(player)) then
+		-- The status changed between the last check and this thread: never travel (or save) for
+		-- a profile that is not loaded (6.5).
+		outcome = "NotLoaded"
 	else
 		local changed = mode == "Singleplayer" and FirstJoinArrow.markSeen(DataService.GetProfile(player))
 		publishArrow(player)
@@ -181,7 +188,9 @@ end
 local function checkPlayer(player: Player)
 	local result = core.step(player.UserId, {
 		inside = insideMode(player),
-		locked = DataService.IsPortalLocked(player),
+		-- The #26 lock and the explicit "Loaded only" gate; both say the same today, and the
+		-- second keeps the portal shut if the first is ever loosened.
+		locked = DataService.IsPortalLocked(player) or not PortalCore.isOpenFor(DataService.GetLoadStatus(player)),
 		travelling = TravelService.IsTraveling(player),
 	})
 	apply(player, result)
