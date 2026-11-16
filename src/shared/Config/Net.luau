@@ -18,6 +18,18 @@ local Net = {
 		-- Server -> client sale result (#38, ADR 0012). Like Popup: no server handler, so a client
 		-- call is dropped (NoHandler) after this limit.
 		SaleResult = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Unlock the next zone at a barrier (#39, ADR 0014). One tap per unlock; a double tap is
+		-- refused by ZoneService as already unlocked, the limit only stops floods.
+		ZoneUnlock = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+		-- Zone teleport (#39). ZoneService also refuses within Config.Zones.ZoneTeleportWait.
+		ZoneTeleport = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+	}),
+
+	-- Zone remotes (#39): the zone argument is a whole number 1..MaxZone. Technical bound, not a
+	-- design value: it equals Config.Zones.ZoneCount (checked by a spec), and ZoneService checks
+	-- the zone against the world, the map and the profile anyway.
+	Zones = table.freeze({
+		MaxZone = 50,
 	}),
 
 	-- EXAMPLE ONLY. Bounds for the example remote's arguments. Not design values.

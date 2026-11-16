@@ -52,6 +52,23 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			rateLimit = NetConfig.RateLimits.UpgradeBuy,
 		},
 
+		-- Unlock zone `zone` at the barrier at the end of zone - 1 (#39, ADR 0014). Arg: the zone
+		-- to open. No price is sent: ZoneService checks world, cap, map, adjacency, the unlocked
+		-- set and the coins itself and computes the price from Formulas.Zones.
+		ZoneUnlock = {
+			kind = "Event",
+			args = { Schema.number({ min = 1, max = NetConfig.Zones.MaxZone, integer = true }) },
+			rateLimit = NetConfig.RateLimits.ZoneUnlock,
+		},
+
+		-- Zone teleport (T, #39): to the start of an unlocked zone. ZoneService checks the unlock,
+		-- the zone start and the wait after the last teleport.
+		ZoneTeleport = {
+			kind = "Event",
+			args = { Schema.number({ min = 1, max = NetConfig.Zones.MaxZone, integer = true }) },
+			rateLimit = NetConfig.RateLimits.ZoneTeleport,
+		},
+
 		-- Server -> client only (#90, ADR 0008): PopupService fires it with a text key from
 		-- Config.Ui.PopupTexts and up to Config.Net.Popup.MaxNumbers numbers. No server handler
 		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
