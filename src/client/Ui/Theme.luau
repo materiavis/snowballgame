@@ -18,6 +18,8 @@ local Theme = {
 	Text = colour(UiConfig.Colours.Text),
 	TextMuted = colour(UiConfig.Colours.TextMuted),
 	Max = colour(UiConfig.Colours.Max),
+	ProgressTrack = colour(UiConfig.Colours.ProgressTrack),
+	ProgressFill = colour(UiConfig.Colours.ProgressFill),
 	FontRegular = (Enum.Font :: any)[UiConfig.Fonts.Regular] :: Enum.Font,
 	FontBold = (Enum.Font :: any)[UiConfig.Fonts.Bold] :: Enum.Font,
 }

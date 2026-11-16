@@ -12,6 +12,17 @@
 -- plain path requires, while Net/init passes the Roblox modules. Config.Upgrades gives the
 -- closed list of upgrade ids.
 
+local function popupArgs(Schema: any, popup: any): { any }
+	local args = { Schema.string({ minLength = 1, maxLength = popup.MaxKeyLength }) }
+	for _ = 1, popup.MaxNumbers do
+		table.insert(
+			args,
+			Schema.optional(Schema.number({ min = -popup.MaxNumberMagnitude, max = popup.MaxNumberMagnitude }))
+		)
+	end
+	return args
+end
+
 return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: any }
 	local example = NetConfig.Example
 
@@ -39,6 +50,15 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			kind = "Event",
 			args = { Schema.enum(UpgradesConfig.Order) },
 			rateLimit = NetConfig.RateLimits.UpgradeBuy,
+		},
+
+		-- Server -> client only (#90, ADR 0008): PopupService fires it with a text key from
+		-- Config.Ui.PopupTexts and up to Config.Net.Popup.MaxNumbers numbers. No server handler
+		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		Popup = {
+			kind = "Event",
+			args = popupArgs(Schema, NetConfig.Popup),
+			rateLimit = NetConfig.RateLimits.Popup,
 		},
 	}
 end

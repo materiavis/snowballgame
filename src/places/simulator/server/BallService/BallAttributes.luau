@@ -103,6 +103,8 @@ function BallAttributesModule.new(config: any, rules: any, diagnostics: boolean)
 		setOn(player, sentPlayer, config.PlayerSizeMetresAttribute, metres)
 		setOn(player, sentPlayer, config.PlayerSizeFractionAttribute, fraction)
 		setOn(player, sentPlayer, config.PlayerIsMaxAttribute, isMax)
+		-- The HUD's progress bar and zone name (#90) read the zone here, next to the size.
+		setOn(player, sentPlayer, config.PlayerZoneAttribute, state.zone)
 
 		if diagnostics then
 			publishDiagnostics(state, part)
