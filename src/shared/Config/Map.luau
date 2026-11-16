@@ -15,6 +15,18 @@ local Map = {
 
 	Tags = table.freeze({
 		UpgradeStand = "UpgradeStand",
+		-- Egg station (7.9, ADR 0009 "Simulator", ADR 0013).
+		EggStation = "EggStation",
+	}),
+
+	-- The prompt the server puts on an egg station's PrimaryPart (Prompts preset "EggStation").
+	-- The server writes the egg number and whether it is on sale on the prompt, so the client
+	-- shows only stations the server bound (ADR 0009 "The client never validates").
+	EggStation = table.freeze({
+		PromptName = "EggStationPrompt",
+		PromptTag = "EggStationPrompt",
+		EggAttribute = "EggIndex", -- number
+		OpenAttribute = "EggOpen", -- bool: false = "Coming soon", the prompt is disabled
 	}),
 
 	-- The prompt the server puts on an upgrade stand's PrimaryPart. The client opens the Upgrades

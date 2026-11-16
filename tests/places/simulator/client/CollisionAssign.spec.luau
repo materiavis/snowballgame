@@ -72,20 +72,39 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
 		-- The one exception is the Upgrades window (#36, ADR 0010): it sends only an upgrade id
 		-- through the declared UpgradeBuy remote, never a size, level or price.
+		-- Pets and eggs (#41, ADR 0013) add two more: the egg station sends EggHatch without
+		-- arguments, and the pets window sends PetEquip with a pet uid and the wanted state.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
+		local eggStation = `{SIMULATOR_DIR}/client/EggStationController/init.luau`
+		local petsPanel = `{SIMULATOR_DIR}/client/PetsWindowController/PetsPanel.luau`
+		local allowed = { upgradesPanel, eggStation, petsPanel }
 		for _, pattern in { "FireServer", "OnServerEvent", "InvokeServer", "OnServerInvoke", "RemoteEvent" } do
 			local found = {}
 			for _, place in offenders(pattern) do
-				if string.sub(place, 1, #upgradesPanel + 1) ~= `{upgradesPanel}:` then
+				local exempt = false
+				for _, path in allowed do
+					if string.sub(place, 1, #path + 1) == `{path}:` then
+						exempt = true
+					end
+				end
+				if not exempt then
 					table.insert(found, place)
 				end
 			end
 			T.equal(#found, 0, `{pattern}: {table.concat(found, ", ")}`)
 		end
-		local panel = fs.readFile(upgradesPanel)
-		local _, fires = string.gsub(panel, "FireServer%(", "")
-		T.equal(fires, 1, "the Upgrades window fires one remote call")
-		T.isTrue(string.find(panel, "remote:FireServer(id)", 1, true) ~= nil, "and sends only the id")
-		T.isTrue(string.find(panel, 'local REMOTE = "UpgradeBuy"', 1, true) ~= nil, "on UpgradeBuy")
+		local function check(path: string, call: string, remote: string, what: string)
+			local source = fs.readFile(path)
+			local _, fires = string.gsub(source, "FireServer%(", "")
+			T.equal(fires, 1, `{what} fires one remote call`)
+			T.isTrue(string.find(source, call, 1, true) ~= nil, `{what} sends only {call}`)
+			T.isTrue(string.find(source, `local REMOTE = "{remote}"`, 1, true) ~= nil, `{what} on {remote}`)
+			for _, other in { "OnServerEvent", "InvokeServer", "OnServerInvoke" } do
+				T.equal(string.find(source, other, 1, true), nil, `{what} has no {other}`)
+			end
+		end
+		check(upgradesPanel, "remote:FireServer(id)", "UpgradeBuy", "the Upgrades window")
+		check(eggStation, "remote:FireServer()", "EggHatch", "the egg station")
+		check(petsPanel, "remote:FireServer(current.uid, not current.equipped)", "PetEquip", "the pets window")
 	end)
 end)

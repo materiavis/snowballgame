@@ -52,6 +52,27 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			rateLimit = NetConfig.RateLimits.UpgradeBuy,
 		},
 
+		-- Hatch one egg (#41, ADR 0013). No arguments: the server finds the egg station the
+		-- character stands at, and decides price, coins, room and the roll itself. Handled in
+		-- the Simulator only; Lobby and Arena drop it as NoHandler.
+		EggHatch = {
+			kind = "Event",
+			args = {},
+			rateLimit = NetConfig.RateLimits.EggHatch,
+		},
+
+		-- Equip (true) or unequip (false) one of the player's own pets by uid (#41, ADR 0013).
+		-- PetService checks that the uid is in the player's inventory and that a slot is free.
+		-- Handled where PetService runs (Lobby and Simulator); the Arena drops it as NoHandler.
+		PetEquip = {
+			kind = "Event",
+			args = {
+				Schema.string({ minLength = 1, maxLength = NetConfig.Pets.MaxUidLength }),
+				Schema.boolean(),
+			},
+			rateLimit = NetConfig.RateLimits.PetEquip,
+		},
+
 		-- Server -> client only (#90, ADR 0008): PopupService fires it with a text key from
 		-- Config.Ui.PopupTexts and up to Config.Net.Popup.MaxNumbers numbers. No server handler
 		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
