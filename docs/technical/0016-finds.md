@@ -1,6 +1,6 @@
 # 0016: Finds
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #127.
 
 Implements `7.7-finds` (#40) from the `FindService` row of [ADR 0003](0003-snow-rush-intake.md): the Alps finds and the secret find at Launch. The collection book UI is #70 (`7.13-collection-book`). Uses the map contract (`FindPoint`, [ADR 0009](0009-map-contract.md)), ZoneService's shared zone resolver ([ADR 0014](0014-zones-barriers.md)), Net ([ADR 0005](0005-net-remotes.md)), DataService ([ADR 0006](0006-player-data.md)), `Rng` and `Formulas.Economy.findValue` ([ADR 0007](0007-economy-config.md)), the HUD pop-ups ([ADR 0008](0008-hud-and-windows.md)), the Magnet upgrade ([ADR 0010](0010-upgrades.md)) and `SellService.AddFindValue` ([ADR 0012](0012-selling.md)).
 

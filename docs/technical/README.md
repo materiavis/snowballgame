@@ -27,4 +27,4 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0010 | [Upgrades, the UpgradeBuy remote and the upgrade stand](0010-upgrades.md) | Accepted with merge of PR #114 |
 | 0012 | [Selling at the scale](0012-selling.md) | Accepted with merge of PR #123 |
 | 0014 | [Zones 1–5, barriers, the zone teleport and the current zone](0014-zones-barriers.md) | Accepted with merge of PR #124 |
-| 0016 | [Finds](0016-finds.md) | Accepted with merge of PR #NN |
+| 0016 | [Finds](0016-finds.md) | Accepted with merge of PR #127 |
