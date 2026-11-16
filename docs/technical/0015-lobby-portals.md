@@ -1,6 +1,6 @@
 # 0015: Lobby portals, player counts, first-join arrow, group chest, news board and VIP corner
 
-**Status:** Accepted with merge of PR #NN.
+**Status:** Accepted with merge of PR #126.
 
 Implements `7.1-lobby-portals` (#37, Vertical Slice scope) on top of the map contract ([ADR 0009](0009-map-contract.md) "Lobby (7.1)" and "StreamingEnabled"), TravelService and PresenceStore ([ADR 0011](0011-travel-service.md)), DataService ([ADR 0006](0006-player-data.md), `IsPortalLocked` from #26), CurrencyService ([ADR 0007](0007-economy-config.md)) and the HUD scaffold ([ADR 0008](0008-hud-and-windows.md): prompts, pop-ups).
 
