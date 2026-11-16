@@ -12,6 +12,7 @@ local Stats = require("../../../src/shared/Net/Stats")
 local Guard = require("../../../src/shared/Net/Guard")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../src/shared/Config/Net")
+local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
 
 local NAN = 0 / 0
 local INF = math.huge
@@ -53,7 +54,7 @@ local function harness(definition: any, handler: Guard.Handler?): Harness
 end
 
 local function exampleDefinition()
-	return Registry.build(declareRemotes(Schema, NetConfig)).NetExample
+	return Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig)).NetExample
 end
 
 local PLAYER = { Name = "Tester" }
@@ -229,5 +230,40 @@ return T.suite("src/shared/Net/Guard", function(test)
 		T.equal(seen[1], "Rejected")
 		T.equal(seen[2], "Accepted")
 		T.equal(h.stats:totalRejected(), 1)
+	end)
+
+	-- #36 AC6: the real UpgradeBuy declaration takes exactly one id from Config.Upgrades.Order.
+	test("UpgradeBuy accepts only one known upgrade id and is rate limited", function()
+		local function upgradeBuy()
+			return Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig)).UpgradeBuy
+		end
+		for _, id in UpgradesConfig.Order do
+			local h = harness(upgradeBuy())
+			h.call(PLAYER, id)
+			T.equal(#h.handled, 1, `{id} reaches the handler`)
+			T.equal(h.handled[1][2], id)
+		end
+		local cases: { { label: string, reason: string, args: { n: number, [number]: any } } } = {
+			{ label = "unknown id", reason = "Args", args = table.pack("speed") },
+			{ label = "wrong case", reason = "Args", args = table.pack("WalkSpeed") },
+			{ label = "number", reason = "Args", args = table.pack(1) },
+			{ label = "table", reason = "Args", args = table.pack({ "growth" }) },
+			{ label = "nil", reason = "Args", args = table.pack(nil) },
+			{ label = "no args", reason = "Arity", args = { n = 0 } },
+			{ label = "a level or price on top", reason = "Arity", args = table.pack("growth", 100) },
+		}
+		for _, case in cases do
+			local h = harness(upgradeBuy())
+			h.call(PLAYER, table.unpack(case.args, 1, case.args.n))
+			T.equal(#h.handled, 0, `{case.label}: handler must not run`)
+			T.equal(h.stats:get("UpgradeBuy").byReason[case.reason], 1, `{case.label}: {case.reason}`)
+		end
+		local h = harness(upgradeBuy())
+		local burst = NetConfig.RateLimits.UpgradeBuy.Burst
+		for _ = 1, burst + 2 do
+			h.call(PLAYER, "growth")
+		end
+		T.equal(#h.handled, burst, "only the burst reaches the handler")
+		T.equal(h.stats:get("UpgradeBuy").byReason.Rate, 2)
 	end)
 end)

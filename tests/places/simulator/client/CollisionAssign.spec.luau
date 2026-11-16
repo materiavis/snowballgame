@@ -70,9 +70,22 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	end)
 
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
+		-- The one exception is the Upgrades window (#36, ADR 0010): it sends only an upgrade id
+		-- through the declared UpgradeBuy remote, never a size, level or price.
+		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
 		for _, pattern in { "FireServer", "OnServerEvent", "InvokeServer", "OnServerInvoke", "RemoteEvent" } do
-			local found = offenders(pattern)
+			local found = {}
+			for _, place in offenders(pattern) do
+				if string.sub(place, 1, #upgradesPanel + 1) ~= `{upgradesPanel}:` then
+					table.insert(found, place)
+				end
+			end
 			T.equal(#found, 0, `{pattern}: {table.concat(found, ", ")}`)
 		end
+		local panel = fs.readFile(upgradesPanel)
+		local _, fires = string.gsub(panel, "FireServer%(", "")
+		T.equal(fires, 1, "the Upgrades window fires one remote call")
+		T.isTrue(string.find(panel, "remote:FireServer(id)", 1, true) ~= nil, "and sends only the id")
+		T.isTrue(string.find(panel, 'local REMOTE = "UpgradeBuy"', 1, true) ~= nil, "on UpgradeBuy")
 	end)
 end)
