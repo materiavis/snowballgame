@@ -87,5 +87,21 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 			args = { Schema.number({ min = 0, max = NetConfig.Sale.MaxCoins, integer = true }) },
 			rateLimit = NetConfig.RateLimits.SaleResult,
 		},
+
+		-- Server -> client only (#40, ADR 0016): FindService tells one player about that player's
+		-- own finds. Action "Spawn" (slot, find id, position), "Remove" (slot), "Collect" (slot,
+		-- find id: it now sticks in the ball), "ClearBall" (the ball was sold) and "Reset" (drop
+		-- every spawned find). The server decides spawns and pickups; no client asks for them. No
+		-- server handler exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		FindUpdate = {
+			kind = "Event",
+			args = {
+				Schema.enum(NetConfig.Finds.Actions),
+				Schema.optional(Schema.number({ min = 1, max = NetConfig.Finds.MaxSlot, integer = true })),
+				Schema.optional(Schema.string({ minLength = 1, maxLength = NetConfig.Finds.MaxIdLength })),
+				Schema.optional(Schema.vector3({ maxMagnitude = NetConfig.Finds.MaxPositionMagnitude })),
+			},
+			rateLimit = NetConfig.RateLimits.FindUpdate,
+		},
 	}
 end

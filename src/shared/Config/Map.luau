@@ -20,6 +20,8 @@ local Map = {
 		-- Zones and barriers (#39, ADR 0009, ADR 0014).
 		ZoneStart = "ZoneStart",
 		Barrier = "Barrier",
+		-- Find point (#40, ADR 0009, ADR 0016): an anchor in a zone area where finds lie.
+		FindPoint = "FindPoint",
 	}),
 
 	-- The prompt the server puts on an upgrade stand's PrimaryPart. The client opens the Upgrades

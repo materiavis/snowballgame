@@ -32,7 +32,7 @@ local function newProfile(): any
 	}
 end
 
-local function world(): World
+local function world(config: any?): World
 	local w = { profile = newProfile(), loaded = true, events = {} } :: any
 	local function getProfile(userId: number): any
 		if userId == USER and w.loaded then
@@ -42,7 +42,7 @@ local function world(): World
 	end
 	w.currency = CurrencyCore.new({ config = CurrencyConfig :: any, getProfile = getProfile, log = function() end })
 	w.core = UpgradeCore.new({
-		config = Upgrades :: any,
+		config = (config or Upgrades) :: any,
 		formulas = E.Upgrades,
 		getProfile = getProfile,
 		spendCoins = function(userId: number, amount: number, reason: string)
@@ -120,8 +120,19 @@ return T.suite("UpgradeService.UpgradeCore (7.8)", function(test)
 		T.equal(E.Upgrades.effect("walkSpeed", 100), 32, "end value 32 studs/s at level 100")
 	end)
 
-	test("R1-1: Magnet is refused with Locked before any coin spend", function()
-		local w = world()
+	-- The lock itself stays (owner decision 2026-11-12): checked with a test-only Locked table,
+	-- since the shipped one is empty since #40.
+	local function lockedConfig(): any
+		return {
+			MaxLevel = Upgrades.MaxLevel,
+			Order = Upgrades.Order,
+			Definitions = Upgrades.Definitions,
+			Locked = table.freeze({ magnet = true }),
+		}
+	end
+
+	test("R1-1: a locked upgrade is refused with Locked before any coin spend", function()
+		local w = world(lockedConfig())
 		local spends = 0
 		local unsubscribe = w.currency.subscribe(function()
 			spends += 1
@@ -151,12 +162,23 @@ return T.suite("UpgradeService.UpgradeCore (7.8)", function(test)
 		T.equal(select(2, w.core.purchase(USER, "magnet", "Remote")), "Locked")
 	end)
 
-	test("R1-1: the lock comes from Config.Upgrades.Locked, the same table the client reads", function()
-		T.equal(Upgrades.Locked.magnet, true)
+	test("#40 AC6: Magnet is unlocked in the shipped Config.Upgrades.Locked and can be bought", function()
+		T.equal(Upgrades.Locked.magnet, nil, "unlocked by finds (#40)")
 		T.equal(Upgrades.Locked.sellValue, nil, "unlocked by selling (#38)")
-		T.equal(Upgrades.Locked.growth, nil)
+		T.equal(next(Upgrades.Locked), nil, "nothing is locked any more")
 		T.isTrue(table.isfrozen(Upgrades.Locked))
-		-- Without a Locked table nothing is locked (what #38/#40 return to).
+		local w = world()
+		for _, id in Upgrades.Order do
+			T.equal(w.core.isLocked(id), false, `{id} buyable`)
+		end
+		give(w, 150)
+		local ok, level = w.core.purchase(USER, "magnet", "Remote")
+		T.equal(ok, true, "Magnet level 1 bought")
+		T.equal(level, 1)
+		T.equal(w.currency.get(USER, "Coins"), 0, "for its base price 150")
+		T.equal(w.profile.sim.upgrades.magnet, 1)
+		T.near(E.Upgrades.effect("magnet", 1), 4.2, 1e-9, "4 studs + 0.2 per level")
+		-- Without a Locked table nothing is locked either.
 		local open = UpgradeCore.new({
 			config = { MaxLevel = Upgrades.MaxLevel, Order = Upgrades.Order, Definitions = Upgrades.Definitions },
 			formulas = E.Upgrades,
@@ -172,8 +194,8 @@ return T.suite("UpgradeService.UpgradeCore (7.8)", function(test)
 		T.equal(open.purchase(USER, "magnet", "Remote"), true)
 	end)
 
-	test("R1-1: UpgradeSetLevel may still set a locked upgrade (saving and the #40 seam)", function()
-		local w = world()
+	test("R1-1: UpgradeSetLevel may still set a locked upgrade", function()
+		local w = world(lockedConfig())
 		T.equal(w.core.setLevel(USER, "magnet", 40, "StudioSwitch"), true)
 		T.equal(w.core.levelOrZero(USER, "magnet"), 40)
 		T.equal(select(2, w.core.purchase(USER, "magnet", "Remote")), "Locked", "still not buyable")

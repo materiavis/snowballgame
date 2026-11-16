@@ -77,6 +77,11 @@ local Ui = {
 		"ZoneUnlocked",
 		"ZoneTeleportWait",
 		"ZoneTeleportFailed",
+		-- Finds (#40, ADR 0016): very rare finds and the secret find's title.
+		"FindRockCrystal",
+		"FindGoldenCowbell",
+		"FindYetiFootprint",
+		"FindNewTitle",
 	},
 
 	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
@@ -298,6 +303,12 @@ local Ui = {
 		ZoneUnlocked = "Zone {1} unlocked!",
 		ZoneTeleportWait = "Teleport ready in {1} s",
 		ZoneTeleportFailed = "Teleport failed",
+		-- Finds (#40, concept 7.7 "Sehr seltene Funde lösen eine kurze Einblendung aus"). The
+		-- rarity is in words and stars, never colour alone (8.5).
+		FindRockCrystal = "★★★★ Epic: Rock Crystal!",
+		FindGoldenCowbell = "★★★★★ Legendary: Golden Cowbell!",
+		FindYetiFootprint = "👑 Secret: Yeti Footprint!",
+		FindNewTitle = "New title: Yeti Tracker",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no
