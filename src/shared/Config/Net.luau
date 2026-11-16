@@ -7,21 +7,17 @@
 
 local Net = {
 	RateLimits = table.freeze({
-		-- EXAMPLE ONLY (see Net/Remotes). Not a design value.
-		NetExample = table.freeze({ Burst = 5, RefillPerSecond = 2 }),
+		-- Simulator "Lobby" button (ADR 0011). A second press while travelling is refused anyway;
+		-- this only caps spam.
+		TravelRequestLobby = table.freeze({ Burst = 2, RefillPerSecond = 0.5 }),
+		-- Server -> client only. Clients never send on it, so the smallest budget is enough.
+		TravelNotice = table.freeze({ Burst = 1, RefillPerSecond = 0.1 }),
 		-- Buy the next level of one upgrade (#36, ADR 0010). Allows quick repeated clicks on the
 		-- buy button; the price and the level are decided on the server.
 		UpgradeBuy = table.freeze({ Burst = 10, RefillPerSecond = 5 }),
 		-- Server -> client pop-up (#90, ADR 0008). The client never sends it; there is no server
 		-- handler, so a client call is dropped (NoHandler) after this limit.
 		Popup = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
-	}),
-
-	-- EXAMPLE ONLY. Bounds for the example remote's arguments. Not design values.
-	Example = table.freeze({
-		MaxAmount = 10,
-		MaxValues = 3,
-		MaxValueMagnitude = 1000,
 	}),
 
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.

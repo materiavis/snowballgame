@@ -78,4 +78,4 @@ The second argument must repeat the id. At PlaceId 0 the command only touches th
 - Any later change to the stored format needs a `Schema` migration step and owner escalation (CLAUDE.md §13). Store names and key prefixes in `Config.Data` are part of the format.
 - Trade ledger entries are keyed by trade id and are not removed by `EraseUser`. Whether entries that name an erased player must be removed or anonymised is an open question for the trade feature (#49).
 - `RemoveAsync` keeps the old versions that Roblox retains for DataStore keys. That is Roblox's documented erasure path, and it is stated here so nobody assumes immediate physical deletion.
-- No remote is added, so `NetExample` stays until the first real remote lands (cleanup moves to that issue, ADR 0005).
+- No remote is added, so `NetExample` stays until the first real remote lands (cleanup moves to that issue, ADR 0005). It was removed with PR #110 (ADR 0011).

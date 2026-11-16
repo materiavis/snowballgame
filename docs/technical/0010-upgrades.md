@@ -78,7 +78,7 @@ As with balances (ADR 0007, 0008), the client only reads them, a client-side wri
 
 - Server start count in World 1 grows by one (`UpgradeService`). Lobby and Arena are unchanged; their NetService still creates `UpgradeBuy` (the declaration list is shared) and drops calls as `NoHandler`.
 - `Net/Remotes` is now a function of `(Schema, Config.Net, Config.Upgrades)` (ADR 0005 said `(Schema, Config.Net)`), so the enum comes from the one id list.
-- `NetExample` and `NetExampleService` are **not** removed here, although ADR 0005 planned that for the first real remote. Removing them touches the Net guard specs and the playtest contract of #24, so it is left to a separate chore.
+- `NetExample` and `NetExampleService` are **not** removed here, although ADR 0005 planned that for the first real remote. Removing them touches the Net guard specs and the playtest contract of #24, so it is left to a separate chore. PR #110 (TravelService, [ADR 0011](0011-travel-service.md)) removed them; the guard spec cases run on a test-only declaration.
 - The source check in `CollisionAssign.spec` that keeps remotes out of Simulator code now allows exactly one `FireServer(id)` on `UpgradeBuy` in `UpgradesPanel`.
 - No save format change: `sim.upgrades` already existed in schema v1.
 - Magnet and Sell value are locked until #40 and #38 remove them from `Config.Upgrades.Locked` and consume their effect.
