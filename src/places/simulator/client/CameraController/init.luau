@@ -3,7 +3,7 @@
 -- automatically the bigger the own ball is, so the whole ball stays in view.
 --
 -- One render step right after the default camera pushes it out to the exact distance at which
--- the whole ball fits the current view (#95). That also undoes the default "Zoom" occlusion,
+-- the whole ball fits the current view (#95), and at least to the zoom minimum. That also undoes the default "Zoom" occlusion,
 -- which pulls the camera in front of the own ball (it has to stay opaque and collidable).
 -- Player.CameraMinZoomDistance is lifted only to what the usual view needs (ball ahead, camera
 -- level or looking down), so a small ball can be looked at from close up; the max rises with
@@ -40,6 +40,7 @@ local hasBall = false -- false: the render step does nothing
 local verticalHalf = 0
 local horizontalHalf = 0
 local clearance = 0
+local minZoomSet = 0 -- the CameraMinZoomDistance update() set; the push never restores less
 local shownViewZoom = -1
 local ballSizeConnection: RBXScriptConnection? = nil
 local cameraConnections: { RBXScriptConnection } = {}
@@ -78,7 +79,7 @@ local function pushCameraOut()
 	local look = cameraCFrame.LookVector
 	local up = cameraCFrame.UpVector
 	local right = cameraCFrame.RightVector
-	local requiredZoom = CameraFit.viewZoom(
+	local viewZoom = CameraFit.viewZoom(
 		offset.X,
 		offset.Y,
 		offset.Z,
@@ -97,12 +98,13 @@ local function pushCameraOut()
 		horizontalHalf
 	)
 	if STUDIO_HOOKS then
-		local shown = math.round(requiredZoom * 100) / 100
+		local shown = math.round(viewZoom * 100) / 100
 		if shown ~= shownViewZoom then
 			shownViewZoom = shown
 			localPlayer:SetAttribute(VIEW_ZOOM_ATTRIBUTE, shown)
 		end
 	end
+	local requiredZoom = CameraFit.pushTarget(viewZoom, minZoomSet)
 	if not CameraFit.needsPush(distance, requiredZoom, BallConfig.CameraPushTolerance) then
 		return
 	end
@@ -155,6 +157,7 @@ local function update()
 	-- Max first, so the minimum is never above the maximum in between.
 	localPlayer.CameraMaxZoomDistance = maxZoom
 	localPlayer.CameraMinZoomDistance = minZoom
+	minZoomSet = minZoom
 	localPlayer:SetAttribute(MIN_ZOOM_ATTRIBUTE, math.round(minZoom * 100) / 100)
 	if STUDIO_HOOKS then
 		localPlayer:SetAttribute(WORST_ZOOM_ATTRIBUTE, math.round(worst * 100) / 100)

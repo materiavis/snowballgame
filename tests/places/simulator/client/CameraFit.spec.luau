@@ -321,6 +321,68 @@ return T.suite("Simulator CameraFit (7.3)", function(test)
 		T.equal(CameraFit.requiredZoom(0, 1, FOV, 1, 1, 3, 6), 0)
 	end)
 
+	test("#95 R1: an occluded camera at a 50-stud ball returns at least to the minimum", function()
+		local diameter = 50
+		local minimum = minimumFor(diameter, 16 / 9)
+		local tolerance = BallConfig.CameraPushTolerance
+		local wallClearance = BallConfig.CameraWallClearance
+		-- Poppercam pulled the camera to 5 studs in front of the ball.
+		local occluded = 5
+		local below = CameraFit.pushTarget(minimum - 11, minimum)
+		T.equal(below, minimum, "viewZoom below the minimum: the minimum")
+		T.isTrue(CameraFit.needsPush(occluded, below, tolerance), "pushed")
+		T.equal(CameraFit.pushedDistance(occluded, below, nil, wallClearance), minimum, "back to the minimum")
+		local above = CameraFit.pushTarget(minimum + 20, minimum)
+		T.equal(above, minimum + 20, "viewZoom above the minimum: viewZoom")
+		T.equal(CameraFit.pushedDistance(occluded, above, nil, wallClearance), minimum + 20)
+		-- A wall closer than both still stops the push (documented limit).
+		T.equal(CameraFit.pushedDistance(occluded, below, 60, wallClearance), 60 - wallClearance, "wall")
+		T.equal(CameraFit.pushedDistance(occluded, above, 60, wallClearance), 60 - wallClearance, "wall")
+		-- A camera already at the minimum is left alone.
+		T.isTrue(not CameraFit.needsPush(minimum, below, tolerance), "at the minimum")
+	end)
+
+	test("#95 R1: turning a 50-stud ball through 150..180 degrees never moves the camera off the minimum", function()
+		local diameter = 50
+		local tolerance = BallConfig.CameraPushTolerance
+		local belowMinimum = 0
+		for _, aspect in AC_ASPECTS do
+			local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+			local minimum = minimumFor(diameter, aspect)
+			for _, focusHeight in FOCUS_HEIGHTS do
+				for pitchDegrees = -80, 0, 5 do
+					-- The camera sits occluded every frame; the push decides where it ends up.
+					local previous = nil :: number?
+					for bearingDegrees = 150, 180 do
+						local view = viewZoomAt(
+							diameter,
+							math.rad(pitchDegrees),
+							math.rad(bearingDegrees),
+							focusHeight,
+							verticalHalf,
+							horizontalHalf
+						)
+						local target = CameraFit.pushTarget(view, minimum)
+						local distance = CameraFit.pushedDistance(5, target, nil, BallConfig.CameraWallClearance)
+						local where =
+							`aspect {aspect} focus {focusHeight} pitch {pitchDegrees} bearing {bearingDegrees}`
+						T.isTrue(distance >= minimum - tolerance, `{where}: {distance} below {minimum}`)
+						if view < minimum then
+							belowMinimum += 1
+							T.isTrue(math.abs(distance - minimum) <= tolerance, `{where}: {distance} off {minimum}`)
+						end
+						if previous and view < minimum then
+							T.isTrue(math.abs(distance - previous) <= tolerance or previous > minimum, where)
+						end
+						previous = distance
+					end
+				end
+			end
+		end
+		-- The playtest case (viewZoom about 101 under a 112.09 minimum) is really covered.
+		T.isTrue(belowMinimum > 0, "some view needs less than the minimum")
+	end)
+
 	test("too close: the camera is pushed out to the required distance", function()
 		T.isTrue(CameraFit.needsPush(2, 100, 0.05))
 		T.equal(CameraFit.pushedDistance(2, 100, nil, 0.5), 100)

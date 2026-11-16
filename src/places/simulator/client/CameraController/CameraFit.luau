@@ -195,6 +195,14 @@ function CameraFit.minimumZoom(
 	return worst
 end
 
+-- Distance the push restores (#95 round 1): never less than the zoom minimum. With the ball
+-- between camera and character the default "Zoom" occlusion pulls the camera in front of the
+-- ball; restoring only `viewZoom` (below the minimum there) left the camera short, and it cut
+-- back to the default camera's zoom target (at least the minimum) the frame the occlusion ended.
+function CameraFit.pushTarget(viewDistance: number, minimumDistance: number): number
+	return math.max(viewDistance, minimumDistance)
+end
+
 -- Whether the camera is closer to its focus than the ball allows. The tolerance keeps the
 -- per-frame work (one raycast) off while the default camera already sits far enough out.
 function CameraFit.needsPush(currentDistance: number, requiredDistance: number, tolerance: number): boolean
