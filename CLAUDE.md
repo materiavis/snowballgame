@@ -100,6 +100,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Never publish a place, never write to production DataStores, never change game settings from an agent.
 - Test only in the local test Place `build/test.rbxl` of the playtest worktree, built with `rojo build` at the tested SHA, with `game.PlaceId == 0`. For multiple Places, build and open each Place separately. No `rojo serve` during a playtest.
 - The playtester is started from the main checkout on `main`, so its definition and hook always come from `main`, never from a Pull Request state. During Play it may set the Studio switches documented in an ADR (`game.ServerScriptService:SetAttribute`) and nothing else; its hook blocks every other change.
+- Never `require` a module from `execute_luau`: it starts a second instance of that module (e.g. a second DataService that loads a profile). Read state through the attributes documented in an ADR. The hook blocks every `require`, `getfenv` and `setfenv`; `.claude/hooks/test-guard-studio-luau.sh` is its regression test.
 - If the playtester cannot reach a state an acceptance criterion needs through input, the implementation adds a documented Studio switch for it, so the criterion can be tested without a person.
 
 ## 10. Third-party assets

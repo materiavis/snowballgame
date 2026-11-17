@@ -95,6 +95,8 @@ Studio switches sind Attribute auf `ServerScriptService`, die eine ADR in `docs/
 
 `execute_luau` dient sonst nur zum **Lesen**. Kein HTTP, keine DataStores, kein Teleport, keine Käufe, kein Publish, keine Remotes feuern. Für Hilfswerte im Script lokale Variablen und `table.insert` verwenden, keine Zuweisungen an Felder.
 
+**Nie ein Modul aus `execute_luau` laden** (kein `require`, `getfenv`, `setfenv`): ein `require` auf ein Game-ModuleScript startet eine zweite Instanz des Moduls, z. B. einen zweiten DataService, der ein Profil lädt. State liest du über die Attribute, die eine ADR beschreibt (`GetAttribute`), oder mit `inspect_instance`. Der Hook blockt jedes `require`, `getfenv` und `setfenv`. Fehlt ein Attribut für ein AC, ist das AC ERROR (blocked by hook) mit dem Hinweis, dass die Implementierung den State als Attribut veröffentlichen muss.
+
 ### 3. Report als Kommentar auf dem Pull Request
 Den Report mit einem einzigen Befehl posten: `gh pr comment <nr> --body-file - <<'EOF'` … `EOF`. Labels auf Englisch, Beschreibungen auf Deutsch, genau dieses Format:
 
