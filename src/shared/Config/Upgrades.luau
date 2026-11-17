@@ -18,10 +18,9 @@ local Upgrades = {
 
 	-- Shown in the menu as "Coming soon" and refused by the server (owner decision 2026-11-12,
 	-- concept 7.8): they have no effect in play until their consumer exists. Finds (#40) remove
-	-- `magnet`, selling (#38) removes `sellValue`.
+	-- `magnet`. Selling (#38) removed `sellValue`: SellService applies it to every sale.
 	Locked = table.freeze({
 		magnet = true,
-		sellValue = true,
 	} :: { [string]: boolean }),
 
 	Definitions = table.freeze({

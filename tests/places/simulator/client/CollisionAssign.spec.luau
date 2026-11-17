@@ -70,13 +70,17 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	end)
 
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
-		-- The one exception is the Upgrades window (#36, ADR 0010): it sends only an upgrade id
-		-- through the declared UpgradeBuy remote, never a size, level or price.
+		-- The exceptions are the Upgrades window (#36, ADR 0010): it sends only an upgrade id
+		-- through the declared UpgradeBuy remote, never a size, level or price; and the onboarding
+		-- hints (#42, ADR 0017): they send only the hint id "UpgradesButton" on TutorialHintDone.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
+		local tutorial = `{SIMULATOR_DIR}/client/TutorialController/init.luau`
 		for _, pattern in { "FireServer", "OnServerEvent", "InvokeServer", "OnServerInvoke", "RemoteEvent" } do
 			local found = {}
 			for _, place in offenders(pattern) do
-				if string.sub(place, 1, #upgradesPanel + 1) ~= `{upgradesPanel}:` then
+				local inPanel = string.sub(place, 1, #upgradesPanel + 1) == `{upgradesPanel}:`
+				local inTutorial = string.sub(place, 1, #tutorial + 1) == `{tutorial}:`
+				if not inPanel and not inTutorial then
 					table.insert(found, place)
 				end
 			end
@@ -87,5 +91,10 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 		T.equal(fires, 1, "the Upgrades window fires one remote call")
 		T.isTrue(string.find(panel, "remote:FireServer(id)", 1, true) ~= nil, "and sends only the id")
 		T.isTrue(string.find(panel, 'local REMOTE = "UpgradeBuy"', 1, true) ~= nil, "on UpgradeBuy")
+		local hints = fs.readFile(tutorial)
+		local _, hintFires = string.gsub(hints, "FireServer%(", "")
+		T.equal(hintFires, 1, "the onboarding hints fire one remote call")
+		T.isTrue(string.find(hints, 'remote:FireServer("UpgradesButton")', 1, true) ~= nil, "with only the hint id")
+		T.isTrue(string.find(hints, 'Net.waitForRemote("TutorialHintDone")', 1, true) ~= nil, "on TutorialHintDone")
 	end)
 end)
