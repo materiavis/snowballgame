@@ -70,22 +70,35 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	end)
 
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
-		-- The exceptions are the Upgrades window (#36, ADR 0010): it sends only an upgrade id
-		-- through the declared UpgradeBuy remote, never a size, level or price; and the onboarding
-		-- hints (#42, ADR 0017): they send only the hint id "UpgradesButton" on TutorialHintDone.
+		-- The exceptions: the Upgrades window (#36, ADR 0010) sends only an upgrade id through the
+		-- declared UpgradeBuy remote, ZoneRequests (#39, ADR 0014) only a zone number through
+		-- ZoneUnlock and ZoneTeleport, and the onboarding hints (#42, ADR 0017) only the hint id
+		-- "UpgradesButton" on TutorialHintDone. Never a size, level, price or position.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
+		local zoneRequests = `{SIMULATOR_DIR}/client/ZoneController/ZoneRequests.luau`
 		local tutorial = `{SIMULATOR_DIR}/client/TutorialController/init.luau`
+		local function allowed(place: string): boolean
+			for _, path in { upgradesPanel, zoneRequests, tutorial } do
+				if string.sub(place, 1, #path + 1) == `{path}:` then
+					return true
+				end
+			end
+			return false
+		end
 		for _, pattern in { "FireServer", "OnServerEvent", "InvokeServer", "OnServerInvoke", "RemoteEvent" } do
 			local found = {}
 			for _, place in offenders(pattern) do
-				local inPanel = string.sub(place, 1, #upgradesPanel + 1) == `{upgradesPanel}:`
-				local inTutorial = string.sub(place, 1, #tutorial + 1) == `{tutorial}:`
-				if not inPanel and not inTutorial then
+				if not allowed(place) then
 					table.insert(found, place)
 				end
 			end
 			T.equal(#found, 0, `{pattern}: {table.concat(found, ", ")}`)
 		end
+		local requests = fs.readFile(zoneRequests)
+		local _, zoneFires = string.gsub(requests, "FireServer%(", "")
+		T.equal(zoneFires, 2, "ZoneRequests fires two remote calls")
+		local _, zoneOnly = string.gsub(requests, "remote:FireServer%(zone%)", "")
+		T.equal(zoneOnly, 2, "both send only the zone")
 		local panel = fs.readFile(upgradesPanel)
 		local _, fires = string.gsub(panel, "FireServer%(", "")
 		T.equal(fires, 1, "the Upgrades window fires one remote call")

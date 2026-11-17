@@ -24,6 +24,18 @@ local Net = {
 		-- Onboarding hint done (#42, ADR 0017). A client sends it once per hint, so a small
 		-- budget is plenty; repeats are refused anyway.
 		TutorialHintDone = table.freeze({ Burst = 3, RefillPerSecond = 0.5 }),
+		-- Unlock the next zone at a barrier (#39, ADR 0014). One tap per unlock; a double tap is
+		-- refused by ZoneService as already unlocked, the limit only stops floods.
+		ZoneUnlock = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+		-- Zone teleport (#39). ZoneService also refuses within Config.Zones.ZoneTeleportWait.
+		ZoneTeleport = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+	}),
+
+	-- Zone remotes (#39): the zone argument is a whole number 1..MaxZone. Technical bound, not a
+	-- design value: it equals Config.Zones.ZoneCount (checked by a spec), and ZoneService checks
+	-- the zone against the world, the map and the profile anyway.
+	Zones = table.freeze({
+		MaxZone = 50,
 	}),
 
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.
