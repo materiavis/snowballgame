@@ -72,6 +72,9 @@ local Ui = {
 		"PopupTestNumber",
 		"PromptTriggered",
 		"PlaceholderButton",
+		-- Pets and eggs (#41).
+		"PetHatched",
+		"PetInventoryFull",
 		-- Zones and barriers (#39, ADR 0014).
 		"BarrierNeedMore",
 		"ZoneUnlocked",
@@ -82,6 +85,13 @@ local Ui = {
 		"FindGoldenCowbell",
 		"FindYetiFootprint",
 		"FindNewTitle",
+		-- Group chest (#37, ADR 0015).
+		"GroupChestOpened",
+		"GroupChestAlreadyOpened",
+		"GroupChestJoinGroup",
+		"GroupChestNoGroup",
+		"GroupChestTryLater",
+		"GroupChestNotReady",
 	},
 
 	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
@@ -101,11 +111,21 @@ local Ui = {
 			ActionText = "PromptTestAction",
 			ObjectText = "PromptTestObject",
 		}),
+		-- Egg station (#41, ADR 0013): E / tap hatches one egg (concept 7.9 "Schlüpfen").
+		EggStation = table.freeze({
+			ActionText = "EggStationAction",
+			ObjectText = "EggStationObject",
+		}),
 		-- Barrier (#39, ADR 0014): the client puts it on a barrier this player can buy; it opens
 		-- the same unlock window (or missing amount) as walking into the barrier.
 		Barrier = table.freeze({
 			ActionText = "BarrierPromptAction",
 			ObjectText = "BarrierPromptObject",
+		}),
+		-- Lobby group chest (#37, ADR 0015). The server checks the reach again on trigger.
+		GroupChest = table.freeze({
+			ActionText = "GroupChestAction",
+			ObjectText = "GroupChestObject",
 		}),
 	},
 
@@ -140,6 +160,33 @@ local Ui = {
 		-- Share of a row's info column for the name; the level takes the rest.
 		NameFraction = 0.65,
 	},
+
+	-- Pets window (#41, ADR 0013). Spielraum (concept 7.9: look of the inventory). Pets show as a
+	-- grid of cells: name, rarity (stars and name in the rarity colour), bonus, and an equip
+	-- button. A cell is three lines; the button line keeps the 44 px floor.
+	PetsWindow = table.freeze({
+		CellMinWidth = 150, -- before scaling; the grid uses as many columns as fit
+		CellGap = 8,
+		LineHeight = 22, -- name and rarity lines, before scaling
+		ScrollBarThickness = 6,
+		-- "×1.15": at most this many decimals, trailing zeros dropped (concept writes ×1.1, ×4.4).
+		MultiplierDecimals = 2,
+	}),
+
+	-- Egg station label (#41, ADR 0013): a BillboardGui at the station's LabelAnchor (or above its
+	-- PrimaryPart) with the price and the chances of every pet (concept 7.9, 8.5: chances always
+	-- visible before the purchase). Sizes in studs, so the label belongs to the station.
+	EggStationLabel = table.freeze({
+		SizeStuds = table.freeze({ 9, 8 }),
+		-- Above the PrimaryPart when the station has no LabelAnchor.
+		OffsetStuds = table.freeze({ 0, 6, 0 }),
+		MaxDistance = 80,
+		-- Lines: title, price, one per pet, the message line.
+		TitleTextSize = 28,
+		LineTextSize = 22,
+		-- How long "Need … more" stays after a tap without enough coins.
+		MissingMessageSeconds = 2,
+	}),
 
 	-- How each upgrade reads in the window (Spielraum). The effect is shown as
 	-- Prefix .. value .. Unit, with value = effect * Scale at Decimals decimals.
@@ -230,6 +277,8 @@ local Ui = {
 
 	DisplayOrder = {
 		Hud = 10,
+		-- Pets window (#41): its own ScreenGui, above the HUD so the window covers HUD parts.
+		PetsHud = 11,
 	},
 	ZIndex = {
 		Hud = 1,
@@ -285,6 +334,25 @@ local Ui = {
 		-- shows for good is an open owner question (follow-up issue to #35).
 		BallSizeMax = "MAX!",
 		LoadFailed = "Your progress could not be loaded. Trying again…",
+		-- Pets and eggs (#41, ADR 0013). Templates with {…} are filled into unlocalised labels.
+		PetHatched = "New Pet!",
+		PetInventoryFull = "Inventory full!",
+		EggStationAction = "Hatch",
+		EggStationObject = "Egg Station",
+		EggPrice = "{price} Coins",
+		EggComingSoon = "Coming soon",
+		-- Like the upgrade decision of 2026-11-12: the missing price, rounded up ("Need 1.2K more").
+		EggNeedMore = "Need {amount} more",
+		EggHatching = "Hatching…",
+		PetsEquip = "Equip",
+		PetsUnequip = "Unequip",
+		PetsSlotsFull = "Slots full",
+		PetsEmpty = "No pets yet. Hatch an egg at the Egg Station!",
+		PetsSlots = "Equipped {used}/{total}",
+		PetsMultiplier = "Coins ×{value}",
+		PetsCount = "{count}/{size} pets",
+		-- A pet's bonus as a multiplier, "×1.1" (concept 7.9 writes it this way).
+		PetsBonus = "×{value}",
 		-- Zones and barriers (#39, ADR 0014, concept 7.6). {zone}, {price} and {name} are filled
 		-- by the client (value labels, AutoLocalize off); {1} in pop-ups by PopupController.
 		BarrierLabel = "Zone {zone} · {price}",
@@ -309,6 +377,30 @@ local Ui = {
 		FindGoldenCowbell = "★★★★★ Legendary: Golden Cowbell!",
 		FindYetiFootprint = "👑 Secret: Yeti Footprint!",
 		FindNewTitle = "New title: Yeti Tracker",
+		-- Lobby portals (#37, ADR 0015). Mode names from the concept's English names appendix.
+		-- {count} is the number of players in the mode, formatted with NumberFormat.number.
+		PortalSingleplayer = "Singleplayer",
+		PortalMultiplayer = "Multiplayer",
+		PortalPlayers = "{count} playing",
+		PortalClosed = "Coming soon",
+		PortalLocked = "Your progress is still loading…",
+		PortalTravelling = "Teleporting…",
+		-- Group chest prompt and pop-ups (#37). {1} Coins, {2} Snow Coins.
+		GroupChestAction = "Open",
+		GroupChestObject = "Group chest",
+		GroupChestOpened = "+{1} Coins  +{2} Snow Coins",
+		GroupChestAlreadyOpened = "Already opened",
+		GroupChestJoinGroup = "Join the Materiavis group",
+		GroupChestNoGroup = "Opens soon",
+		GroupChestTryLater = "Try again in a moment",
+		GroupChestNotReady = "Still loading…",
+		-- News board (#37). {title} is Config.Lobby.News.LastUpdate, {time} the countdown.
+		NewsTitle = "News",
+		NewsLastUpdate = "Latest update: {title}",
+		NewsNextUpdate = "Next update in {time}",
+		NewsNextUpdateSoon = "Next update: coming soon",
+		-- VIP corner sign (#37).
+		VipCornerSign = "VIP",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no

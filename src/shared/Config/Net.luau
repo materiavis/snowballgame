@@ -7,17 +7,28 @@
 
 local Net = {
 	RateLimits = table.freeze({
-		-- EXAMPLE ONLY (see Net/Remotes). Not a design value.
-		NetExample = table.freeze({ Burst = 5, RefillPerSecond = 2 }),
+		-- Simulator "Lobby" button (ADR 0011). A second press while travelling is refused anyway;
+		-- this only caps spam.
+		TravelRequestLobby = table.freeze({ Burst = 2, RefillPerSecond = 0.5 }),
+		-- Server -> client only. Clients never send on it, so the smallest budget is enough.
+		TravelNotice = table.freeze({ Burst = 1, RefillPerSecond = 0.1 }),
 		-- Buy the next level of one upgrade (#36, ADR 0010). Allows quick repeated clicks on the
 		-- buy button; the price and the level are decided on the server.
 		UpgradeBuy = table.freeze({ Burst = 10, RefillPerSecond = 5 }),
+		-- Hatch one egg at the station the player stands at (#41, ADR 0013). A double tap reaches
+		-- the server; its hatch cooldown (Config.Eggs) turns it into one purchase.
+		EggHatch = table.freeze({ Burst = 3, RefillPerSecond = 2 }),
+		-- Equip or unequip one pet (#41, ADR 0013). Allows quick taps through the pets window.
+		PetEquip = table.freeze({ Burst = 10, RefillPerSecond = 5 }),
 		-- Server -> client pop-up (#90, ADR 0008). The client never sends it; there is no server
 		-- handler, so a client call is dropped (NoHandler) after this limit.
 		Popup = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
 		-- Server -> client sale result (#38, ADR 0012). Like Popup: no server handler, so a client
 		-- call is dropped (NoHandler) after this limit.
 		SaleResult = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Onboarding hint done (#42, ADR 0017). A client sends it once per hint, so a small
+		-- budget is plenty; repeats are refused anyway.
+		TutorialHintDone = table.freeze({ Burst = 3, RefillPerSecond = 0.5 }),
 		-- Unlock the next zone at a barrier (#39, ADR 0014). One tap per unlock; a double tap is
 		-- refused by ZoneService as already unlocked, the limit only stops floods.
 		ZoneUnlock = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
@@ -45,16 +56,15 @@ local Net = {
 		MaxZone = 50,
 	}),
 
-	-- EXAMPLE ONLY. Bounds for the example remote's arguments. Not design values.
-	Example = table.freeze({
-		MaxAmount = 10,
-		MaxValues = 3,
-		MaxValueMagnitude = 1000,
-	}),
-
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.
 	-- Technical bounds, not design values: MaxNumberMagnitude is the Coins MaxBalance
 	-- (Config.Currency), so every balance or gain fits.
+	-- Pet uids (#41, ADR 0013): PetCore makes "<userId>_<time hex>_<random hex>", at most 36
+	-- characters. Technical bound, not a design value.
+	Pets = table.freeze({
+		MaxUidLength = 48,
+	}),
+
 	Popup = table.freeze({
 		MaxKeyLength = 64,
 		MaxNumbers = 2,

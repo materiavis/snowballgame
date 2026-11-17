@@ -8,6 +8,7 @@ local fs = require("@lune/fs")
 local T = require("../../../TestKit")
 local SourceSection = require("../../../helpers/SourceSection")
 local E = require("../../../helpers/Economy")
+local TutorialConfig = require("../../../../src/shared/Config/Tutorial")
 local Schema = require("../../../../src/shared/Net/Schema")
 local Registry = require("../../../../src/shared/Net/Registry")
 local declareRemotes = require("../../../../src/shared/Net/Remotes")
@@ -64,7 +65,7 @@ return T.suite("FindService wiring and config (ADR 0016)", function(test)
 	end)
 
 	test("AC9: FindUpdate is declared, server -> client, bounded and rate limited", function()
-		local remote = Registry.build(declareRemotes(Schema, NetConfig, E.Config.Upgrades)).FindUpdate
+		local remote = Registry.build(declareRemotes(Schema, NetConfig, E.Config.Upgrades, TutorialConfig)).FindUpdate
 		T.isTrue(remote ~= nil, "declared")
 		T.equal(remote.kind, "Event")
 		T.equal(#remote.args, 4)

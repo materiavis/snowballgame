@@ -15,14 +15,41 @@ local Map = {
 
 	Tags = table.freeze({
 		UpgradeStand = "UpgradeStand",
-		-- Scale sell area (#38, ADR 0012): a BasePart in a zone area. A ball that touches it is sold.
-		ScalePlate = "ScalePlate",
 		-- Zones and barriers (#39, ADR 0009, ADR 0014).
 		ZoneStart = "ZoneStart",
+		-- Lobby (ADR 0009 "Lobby (7.1)", bound by #37, ADR 0015).
+		LobbySpawn = "LobbySpawn",
+		Portal = "Portal",
+		GroupChest = "GroupChest",
+		NewsBoard = "NewsBoard",
+		VipCorner = "VipCorner",
+		-- Scale sell area (#38, ADR 0012): a BasePart in a zone area. A ball that touches it is sold.
+		ScalePlate = "ScalePlate",
+		-- Egg station and barrier (ADR 0009). Bound by #41 and #39; until then only the
+		-- onboarding hints (#42, ADR 0017) read them, read-only.
+		EggStation = "EggStation",
 		Barrier = "Barrier",
 		-- Find point (#40, ADR 0009, ADR 0016): an anchor in a zone area where finds lie.
 		FindPoint = "FindPoint",
 	}),
+
+	-- The prompt the server puts on an egg station's PrimaryPart (Prompts preset "EggStation").
+	-- The server writes the egg number and whether it is on sale on the prompt, so the client
+	-- shows only stations the server bound (ADR 0009 "The client never validates").
+	EggStation = table.freeze({
+		PromptName = "EggStationPrompt",
+		PromptTag = "EggStationPrompt",
+		EggAttribute = "EggIndex", -- number
+		OpenAttribute = "EggOpen", -- bool: false = "Coming soon", the prompt is disabled
+	}),
+
+	-- Portal station attributes (ADR 0009). PortalMode is set by builders; PlayerCount and
+	-- PlayerCountAt are written by the server on every bound portal (PlayerCountAt: Unix time of
+	-- the last refresh, the diagnostic of ADR 0015).
+	PortalModeAttribute = "PortalMode",
+	PortalModes = table.freeze({ "Singleplayer", "Multiplayer" }),
+	PlayerCountAttribute = "PlayerCount",
+	PlayerCountAtAttribute = "PlayerCountAt",
 
 	-- The prompt the server puts on an upgrade stand's PrimaryPart. The client opens the Upgrades
 	-- window when a prompt with PromptTag triggers. Spielraum (concept 7.8: look of the stand).
