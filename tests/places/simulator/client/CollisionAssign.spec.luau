@@ -70,24 +70,29 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 	end)
 
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
-		-- The one exception is the Upgrades window (#36, ADR 0010): it sends only an upgrade id
-		-- through the declared UpgradeBuy remote, never a size, level or price.
-		-- Pets and eggs (#41, ADR 0013) add two more: the egg station sends EggHatch without
-		-- arguments, and the pets window sends PetEquip with a pet uid and the wanted state.
+		-- The exceptions: the Upgrades window (#36, ADR 0010) sends only an upgrade id through the
+		-- declared UpgradeBuy remote, ZoneRequests (#39, ADR 0014) only a zone number through
+		-- ZoneUnlock and ZoneTeleport, and the onboarding hints (#42, ADR 0017) only the hint id
+		-- "UpgradesButton" on TutorialHintDone. Pets and eggs (#41, ADR 0013): the egg station
+		-- sends EggHatch without arguments, and the pets window sends PetEquip with a pet uid and
+		-- the wanted state. Never a size, level, price or position.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
+		local zoneRequests = `{SIMULATOR_DIR}/client/ZoneController/ZoneRequests.luau`
+		local tutorial = `{SIMULATOR_DIR}/client/TutorialController/init.luau`
 		local eggStation = `{SIMULATOR_DIR}/client/EggStationController/init.luau`
 		local petsPanel = `{SIMULATOR_DIR}/client/PetsWindowController/PetsPanel.luau`
-		local allowed = { upgradesPanel, eggStation, petsPanel }
+		local function allowed(place: string): boolean
+			for _, path in { upgradesPanel, zoneRequests, tutorial, eggStation, petsPanel } do
+				if string.sub(place, 1, #path + 1) == `{path}:` then
+					return true
+				end
+			end
+			return false
+		end
 		for _, pattern in { "FireServer", "OnServerEvent", "InvokeServer", "OnServerInvoke", "RemoteEvent" } do
 			local found = {}
 			for _, place in offenders(pattern) do
-				local exempt = false
-				for _, path in allowed do
-					if string.sub(place, 1, #path + 1) == `{path}:` then
-						exempt = true
-					end
-				end
-				if not exempt then
+				if not allowed(place) then
 					table.insert(found, place)
 				end
 			end
@@ -106,5 +111,15 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 		check(upgradesPanel, "remote:FireServer(id)", "UpgradeBuy", "the Upgrades window")
 		check(eggStation, "remote:FireServer()", "EggHatch", "the egg station")
 		check(petsPanel, "remote:FireServer(current.uid, not current.equipped)", "PetEquip", "the pets window")
+		local requests = fs.readFile(zoneRequests)
+		local _, zoneFires = string.gsub(requests, "FireServer%(", "")
+		T.equal(zoneFires, 2, "ZoneRequests fires two remote calls")
+		local _, zoneOnly = string.gsub(requests, "remote:FireServer%(zone%)", "")
+		T.equal(zoneOnly, 2, "both send only the zone")
+		local hints = fs.readFile(tutorial)
+		local _, hintFires = string.gsub(hints, "FireServer%(", "")
+		T.equal(hintFires, 1, "the onboarding hints fire one remote call")
+		T.isTrue(string.find(hints, 'remote:FireServer("UpgradesButton")', 1, true) ~= nil, "with only the hint id")
+		T.isTrue(string.find(hints, 'Net.waitForRemote("TutorialHintDone")', 1, true) ~= nil, "on TutorialHintDone")
 	end)
 end)

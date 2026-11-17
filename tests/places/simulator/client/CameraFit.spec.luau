@@ -1,6 +1,7 @@
 --!strict
--- CameraFit (issue #33 AC3): the zoom keeps the whole ball in view at every size, screen shape,
--- ball bearing and camera pitch, and the push out of the default occlusion respects walls.
+-- CameraFit (issue #33 AC3, #95): the per-view push keeps the whole ball in view at every size,
+-- screen shape, ball bearing and camera pitch, the small-ball minimum is lower, and the push out
+-- of the default occlusion respects walls.
 
 local fs = require("@lune/fs")
 
@@ -31,6 +32,48 @@ local function zoomFor(diameter: number, aspect: number): number
 		BallConfig.CameraFitMargin,
 		BallConfig.CameraFocusHeightMin,
 		BallConfig.CameraFocusHeightMax
+	)
+end
+
+local AC1_DIAMETERS = { 1.6, 4, 50 }
+local AC3_DIAMETERS = { 1.6, 26.56, 50 }
+local AC_ASPECTS = { 16 / 9, 9 / 19.5 }
+
+-- The player's zoom minimum (#95).
+local function minimumFor(diameter: number, aspect: number): number
+	return CameraFit.minimumZoom(
+		diameter,
+		hold.holdDistance(diameter),
+		FOV,
+		aspect,
+		diameter * BallConfig.CameraFitClearanceShare,
+		BallConfig.CameraFocusHeightMin,
+		BallConfig.CameraFocusHeightMax,
+		BallConfig.CameraMinZoomPitchMinDegrees,
+		BallConfig.CameraMinZoomPitchMaxDegrees,
+		BallConfig.CameraMinZoomStepDegrees
+	)
+end
+
+-- The distance the per-frame push keeps for one view and one real focus height.
+local function viewZoomAt(
+	diameter: number,
+	pitch: number,
+	bearing: number,
+	focusHeight: number,
+	verticalHalf: number,
+	horizontalHalf: number
+): number
+	return CameraFit.restingViewZoom(
+		diameter,
+		hold.holdDistance(diameter),
+		diameter * BallConfig.CameraFitClearanceShare,
+		pitch,
+		bearing,
+		verticalHalf,
+		horizontalHalf,
+		focusHeight,
+		focusHeight
 	)
 end
 
@@ -79,7 +122,7 @@ return T.suite("Simulator CameraFit (7.3)", function(test)
 		T.near(CameraFit.ballReach(0.8, 2.3, 3, 6), 0.8 + math.sqrt(2.3 ^ 2 + 5.2 ^ 2), 1e-9, "small ball")
 	end)
 
-	test("AC3: every frustum plane contains the whole ball with a real margin", function()
+	test("the worst-case zoom (zoom room above) contains the whole ball in every view", function()
 		local startFraction = ZonesConfig.OpticsStartFraction
 		for zone = 1, E.Zones.zoneCount do
 			local zoneDiameter = E.Zones.zoneOptics(zone)
@@ -112,6 +155,152 @@ return T.suite("Simulator CameraFit (7.3)", function(test)
 		end
 	end)
 
+	test("#95 AC3: at the per-view push distance every frustum plane clears the ball", function()
+		local startFraction = ZonesConfig.OpticsStartFraction
+		for zone = 1, E.Zones.zoneCount do
+			local zoneDiameter = E.Zones.zoneOptics(zone)
+			for _, fraction in FRACTIONS do
+				local diameter = zoneDiameter * (startFraction + (1 - startFraction) * fraction)
+				local need = diameter * MIN_CLEARANCE_SHARE - 1e-6
+				local worst = zoomFor(diameter, 16 / 9)
+				for _, aspect in ASPECTS do
+					local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+					worst = zoomFor(diameter, aspect)
+					for _, focusHeight in FOCUS_HEIGHTS do
+						for pitchDegrees = -80, 80, 5 do
+							for bearingDegrees = 0, 345, 15 do
+								local pitch, bearing = math.rad(pitchDegrees), math.rad(bearingDegrees)
+								local zoom =
+									viewZoomAt(diameter, pitch, bearing, focusHeight, verticalHalf, horizontalHalf)
+								local clearance = frustumClearance(diameter, zoom, aspect, pitch, bearing, focusHeight)
+								local where = `zone {zone} fraction {fraction} aspect {aspect} focus {focusHeight} `
+									.. `pitch {pitchDegrees} bearing {bearingDegrees}`
+								T.isTrue(clearance >= need, `{where}: {clearance} < {need}`)
+								-- The zoom room above (max zoom) always covers the push.
+								T.isTrue(zoom <= worst + 1e-6, `{where}: view {zoom} > worst {worst}`)
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	test("#95 AC3: every silhouette point of the ball is in the picture at 1.6, 26.56 and 50", function()
+		for _, diameter in AC3_DIAMETERS do
+			local radius = diameter / 2
+			local holdDistance = hold.holdDistance(diameter)
+			for _, aspect in AC_ASPECTS do
+				local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+				local tanV, tanH = math.tan(verticalHalf), math.tan(horizontalHalf)
+				for _, focusHeight in FOCUS_HEIGHTS do
+					for pitchDegrees = -80, 80, 10 do
+						-- 0 in front, 90/270 beside, 180 between camera and character.
+						for bearingDegrees = 0, 345, 15 do
+							local pitch, bearing = math.rad(pitchDegrees), math.rad(bearingDegrees)
+							local zoom = viewZoomAt(diameter, pitch, bearing, focusHeight, verticalHalf, horizontalHalf)
+							local lookX, lookY = math.cos(pitch), math.sin(pitch)
+							local upX, upY = -math.sin(pitch), math.cos(pitch)
+							-- Ball centre relative to the camera.
+							local bx = math.cos(bearing) * holdDistance + zoom * lookX
+							local by = radius - focusHeight + zoom * lookY
+							local bz = math.sin(bearing) * holdDistance
+							local inside = true
+							for latitude = -90, 90, 15 do
+								local ring = math.cos(math.rad(latitude)) * radius
+								local py = by + math.sin(math.rad(latitude)) * radius
+								for longitude = 0, 345, 15 do
+									local px = bx + math.cos(math.rad(longitude)) * ring
+									local pz = bz + math.sin(math.rad(longitude)) * ring
+									local forward = px * lookX + py * lookY
+									local up = px * upX + py * upY
+									if
+										forward <= 0
+										or math.abs(up) > forward * tanV
+										or math.abs(pz) > forward * tanH
+									then
+										inside = false
+									end
+								end
+							end
+							T.isTrue(
+								inside,
+								`diameter {diameter} aspect {aspect} focus {focusHeight} pitch {pitchDegrees} `
+									.. `bearing {bearingDegrees} zoom {zoom}`
+							)
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	test("#95 AC1: the small-ball minimum is below 12.44 in landscape", function()
+		local zoom = minimumFor(1.6, 16 / 9)
+		T.isTrue(zoom < 12.44, `minimum {zoom}`)
+		for _, diameter in AC1_DIAMETERS do
+			for _, aspect in AC_ASPECTS do
+				-- Farthest the push takes the camera for a resting ball (any view, focus 3..6).
+				local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+				local pushed = 0
+				for pitchDegrees = -80, 80, 5 do
+					for bearingDegrees = 0, 345, 15 do
+						pushed = math.max(
+							pushed,
+							CameraFit.restingViewZoom(
+								diameter,
+								hold.holdDistance(diameter),
+								diameter * BallConfig.CameraFitClearanceShare,
+								math.rad(pitchDegrees),
+								math.rad(bearingDegrees),
+								verticalHalf,
+								horizontalHalf,
+								BallConfig.CameraFocusHeightMin,
+								BallConfig.CameraFocusHeightMax
+							)
+						)
+					end
+				end
+				print(
+					string.format(
+						"  [AC1] diameter %.2f aspect %.3f: old min %.2f, new min %.2f, farthest push %.2f",
+						diameter,
+						aspect,
+						zoomFor(diameter, aspect),
+						minimumFor(diameter, aspect),
+						pushed
+					)
+				)
+			end
+		end
+	end)
+
+	test("#95: in the usual view the minimum already fits, so only other views are pushed", function()
+		for _, diameter in AC1_DIAMETERS do
+			for _, aspect in AC_ASPECTS do
+				local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+				local minimum = minimumFor(diameter, aspect)
+				T.isTrue(minimum > 0 and minimum <= zoomFor(diameter, aspect), `diameter {diameter} aspect {aspect}`)
+				for _, focusHeight in FOCUS_HEIGHTS do
+					for pitchDegrees = BallConfig.CameraMinZoomPitchMinDegrees, BallConfig.CameraMinZoomPitchMaxDegrees do
+						local zoom =
+							viewZoomAt(diameter, math.rad(pitchDegrees), 0, focusHeight, verticalHalf, horizontalHalf)
+						T.isTrue(
+							zoom <= minimum + 1e-6,
+							`diameter {diameter} aspect {aspect} focus {focusHeight} pitch {pitchDegrees}: {zoom}`
+						)
+					end
+				end
+			end
+		end
+	end)
+
+	test("viewZoom is zero without a ball and never negative", function()
+		T.equal(CameraFit.viewZoom(1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.6), 0)
+		-- A tiny ball far in front of the camera needs no distance at all.
+		T.equal(CameraFit.viewZoom(100, 0, 0, 0.1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.6), 0)
+	end)
+
 	test("the zoom grows with the ball", function()
 		local previous = 0
 		for zone = 1, E.Zones.zoneCount do
@@ -130,6 +319,68 @@ return T.suite("Simulator CameraFit (7.3)", function(test)
 		local zoom = CameraFit.requiredZoom(4, hold.holdDistance(4), FOV, 0 / 0, 1, 3, 6)
 		T.isTrue(zoom == zoom and zoom > 0)
 		T.equal(CameraFit.requiredZoom(0, 1, FOV, 1, 1, 3, 6), 0)
+	end)
+
+	test("#95 R1: an occluded camera at a 50-stud ball returns at least to the minimum", function()
+		local diameter = 50
+		local minimum = minimumFor(diameter, 16 / 9)
+		local tolerance = BallConfig.CameraPushTolerance
+		local wallClearance = BallConfig.CameraWallClearance
+		-- Poppercam pulled the camera to 5 studs in front of the ball.
+		local occluded = 5
+		local below = CameraFit.pushTarget(minimum - 11, minimum)
+		T.equal(below, minimum, "viewZoom below the minimum: the minimum")
+		T.isTrue(CameraFit.needsPush(occluded, below, tolerance), "pushed")
+		T.equal(CameraFit.pushedDistance(occluded, below, nil, wallClearance), minimum, "back to the minimum")
+		local above = CameraFit.pushTarget(minimum + 20, minimum)
+		T.equal(above, minimum + 20, "viewZoom above the minimum: viewZoom")
+		T.equal(CameraFit.pushedDistance(occluded, above, nil, wallClearance), minimum + 20)
+		-- A wall closer than both still stops the push (documented limit).
+		T.equal(CameraFit.pushedDistance(occluded, below, 60, wallClearance), 60 - wallClearance, "wall")
+		T.equal(CameraFit.pushedDistance(occluded, above, 60, wallClearance), 60 - wallClearance, "wall")
+		-- A camera already at the minimum is left alone.
+		T.isTrue(not CameraFit.needsPush(minimum, below, tolerance), "at the minimum")
+	end)
+
+	test("#95 R1: turning a 50-stud ball through 150..180 degrees never moves the camera off the minimum", function()
+		local diameter = 50
+		local tolerance = BallConfig.CameraPushTolerance
+		local belowMinimum = 0
+		for _, aspect in AC_ASPECTS do
+			local verticalHalf, horizontalHalf = CameraFit.halfAngles(FOV, aspect)
+			local minimum = minimumFor(diameter, aspect)
+			for _, focusHeight in FOCUS_HEIGHTS do
+				for pitchDegrees = -80, 0, 5 do
+					-- The camera sits occluded every frame; the push decides where it ends up.
+					local previous = nil :: number?
+					for bearingDegrees = 150, 180 do
+						local view = viewZoomAt(
+							diameter,
+							math.rad(pitchDegrees),
+							math.rad(bearingDegrees),
+							focusHeight,
+							verticalHalf,
+							horizontalHalf
+						)
+						local target = CameraFit.pushTarget(view, minimum)
+						local distance = CameraFit.pushedDistance(5, target, nil, BallConfig.CameraWallClearance)
+						local where =
+							`aspect {aspect} focus {focusHeight} pitch {pitchDegrees} bearing {bearingDegrees}`
+						T.isTrue(distance >= minimum - tolerance, `{where}: {distance} below {minimum}`)
+						if view < minimum then
+							belowMinimum += 1
+							T.isTrue(math.abs(distance - minimum) <= tolerance, `{where}: {distance} off {minimum}`)
+						end
+						if previous and view < minimum then
+							T.isTrue(math.abs(distance - previous) <= tolerance or previous > minimum, where)
+						end
+						previous = distance
+					end
+				end
+			end
+		end
+		-- The playtest case (viewZoom about 101 under a 112.09 minimum) is really covered.
+		T.isTrue(belowMinimum > 0, "some view needs less than the minimum")
 	end)
 
 	test("too close: the camera is pushed out to the required distance", function()

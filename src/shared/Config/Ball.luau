@@ -32,7 +32,7 @@ local Ball = {
 	GroundCheckMargin = 0.5, -- ground ray length = radius + margin + radius * per-radius margin
 	GroundCheckMarginPerRadius = 0.02,
 
-	DefaultZone = 1, -- until ZoneService exists every ball is in zone 1
+	DefaultZone = 1, -- a new ball starts here; ZoneService then moves it to the player's zone (#39)
 	-- The part is resized only when the visual diameter changed by this share of the current
 	-- diameter, so the solver sees a few resizes per second at most instead of one per sample.
 	ResizeStepFraction = 0.02,
@@ -232,9 +232,18 @@ local Ball = {
 	ReboundWatchTime = 3,
 	MoveDeadzone = 0.1, -- Humanoid.MoveDirection below this counts as standing still
 
-	-- Camera (client): the zoom is kept at least so far that the whole ball fits in the
-	-- narrower field of view on every bearing around the camera focus, times CameraFitMargin.
-	-- Only lifted while the ball needs it.
+	-- Camera (client, ADR 0002 "Camera", #95): every frame the camera is pushed out to the exact
+	-- distance at which the whole ball fits the current view, with each picture edge clearing
+	-- the ball by CameraFitClearanceShare of its diameter. The player's zoom minimum is what the
+	-- usual view needs: ball straight ahead, camera pitch from CameraMinZoomPitchMinDegrees
+	-- (looking down; Roblox's camera stops at -80) to CameraMinZoomPitchMaxDegrees (level),
+	-- checked every CameraMinZoomStepDegrees. Every other view is covered by the push.
+	CameraFitClearanceShare = 0.1,
+	CameraMinZoomPitchMinDegrees = -80,
+	CameraMinZoomPitchMaxDegrees = 0,
+	CameraMinZoomStepDegrees = 1,
+	-- The zoom room above: the worst case over every view (ball reach / sin(narrower half field
+	-- of view)) times CameraFitMargin, plus CameraMaxZoomExtra.
 	CameraFitMargin = 1.1,
 	CameraMaxZoomExtra = 20, -- studs of player zoom room above the required distance
 	-- Camera focus above the ground the ball rests on (Roblox aims about 1.5 above the root part).

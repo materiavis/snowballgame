@@ -12,11 +12,12 @@ local Guard = require("../../../src/shared/Net/Guard")
 local declareRemotes = require("../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../src/shared/Config/Net")
 local UpgradesConfig = require("../../../src/shared/Config/Upgrades")
+local TutorialConfig = require("../../../src/shared/Config/Tutorial")
 
 local PLAYER = { Name = "Tester" }
 
 local function harness(name: string)
-	local definition = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))[name]
+	local definition = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig))[name]
 	local stats = Stats.new()
 	local handled = {}
 	local guarded = Guard.new(definition, {

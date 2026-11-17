@@ -7,8 +7,11 @@
 
 local Net = {
 	RateLimits = table.freeze({
-		-- EXAMPLE ONLY (see Net/Remotes). Not a design value.
-		NetExample = table.freeze({ Burst = 5, RefillPerSecond = 2 }),
+		-- Simulator "Lobby" button (ADR 0011). A second press while travelling is refused anyway;
+		-- this only caps spam.
+		TravelRequestLobby = table.freeze({ Burst = 2, RefillPerSecond = 0.5 }),
+		-- Server -> client only. Clients never send on it, so the smallest budget is enough.
+		TravelNotice = table.freeze({ Burst = 1, RefillPerSecond = 0.1 }),
 		-- Buy the next level of one upgrade (#36, ADR 0010). Allows quick repeated clicks on the
 		-- buy button; the price and the level are decided on the server.
 		UpgradeBuy = table.freeze({ Burst = 10, RefillPerSecond = 5 }),
@@ -20,13 +23,24 @@ local Net = {
 		-- Server -> client pop-up (#90, ADR 0008). The client never sends it; there is no server
 		-- handler, so a client call is dropped (NoHandler) after this limit.
 		Popup = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Server -> client sale result (#38, ADR 0012). Like Popup: no server handler, so a client
+		-- call is dropped (NoHandler) after this limit.
+		SaleResult = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+		-- Onboarding hint done (#42, ADR 0017). A client sends it once per hint, so a small
+		-- budget is plenty; repeats are refused anyway.
+		TutorialHintDone = table.freeze({ Burst = 3, RefillPerSecond = 0.5 }),
+		-- Unlock the next zone at a barrier (#39, ADR 0014). One tap per unlock; a double tap is
+		-- refused by ZoneService as already unlocked, the limit only stops floods.
+		ZoneUnlock = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+		-- Zone teleport (#39). ZoneService also refuses within Config.Zones.ZoneTeleportWait.
+		ZoneTeleport = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
 	}),
 
-	-- EXAMPLE ONLY. Bounds for the example remote's arguments. Not design values.
-	Example = table.freeze({
-		MaxAmount = 10,
-		MaxValues = 3,
-		MaxValueMagnitude = 1000,
+	-- Zone remotes (#39): the zone argument is a whole number 1..MaxZone. Technical bound, not a
+	-- design value: it equals Config.Zones.ZoneCount (checked by a spec), and ZoneService checks
+	-- the zone against the world, the map and the profile anyway.
+	Zones = table.freeze({
+		MaxZone = 50,
 	}),
 
 	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.
@@ -42,6 +56,11 @@ local Net = {
 		MaxKeyLength = 64,
 		MaxNumbers = 2,
 		MaxNumberMagnitude = 1e30,
+	}),
+
+	-- Sale result remote (#38): the coins of one sale. Technical bound: the Coins MaxChange.
+	Sale = table.freeze({
+		MaxCoins = 1e30,
 	}),
 }
 

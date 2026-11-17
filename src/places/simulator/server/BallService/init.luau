@@ -21,6 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local BallConfig = require(Config:WaitForChild("Ball")) :: any
 local ZonesConfig = require(Config:WaitForChild("Zones")) :: any
+local MapConfig = require(Config:WaitForChild("Map")) :: any
 local Formulas = require(Shared:WaitForChild("Formulas")) :: any
 
 local AfterHit = require(script:WaitForChild("AfterHit"))
@@ -60,7 +61,7 @@ modifiers.setLevelSource(UpgradeService.GetLevel)
 local obstacleRules = ObstacleRules.new(BallConfig)
 local recoveryRules = RecoveryRules.new(BallConfig)
 local obstacles = Obstacles.new(BallConfig, obstacleRules, studioTools)
-local attributes = BallAttributes.new(BallConfig, rules, studioTools)
+local attributes = BallAttributes.new(BallConfig, rules, studioTools, MapConfig.FolderName)
 local states: { [Player]: BallState } = {}
 local ballsFolder: Folder
 local groundParams = RaycastParams.new()
@@ -389,14 +390,50 @@ function BallService.Start()
 	)
 end
 
--- Zone of the player's ball. ZoneService (#29/#39) calls SetZone; until then it is
--- Config.Ball.DefaultZone. Returns false for an unknown player or an invalid zone.
+-- Sets the zone and keeps the size fraction (the ball resizes to the same share of the new
+-- zone). Used by the BallSetZone switch (ADR 0002). Returns false for an unknown player or an
+-- invalid zone. Gameplay zone changes use EnterZone.
 function BallService.SetZone(player: Player, zone: number): boolean
 	local state = states[player]
 	if state == nil or not Formulas.Zones.isZone(zone) then
 		return false
 	end
 	setZone(state, zone)
+	return true
+end
+
+-- ZoneService (#39, ADR 0014): the player is now in `zone`. The ball keeps its size in metres
+-- (concept 7.6, decision 2026-10-08) and grows on to the new zone's maximum; in a lower zone it
+-- is capped at that zone's maximum (GrowthRules.carryFraction). Returns false for an unknown
+-- player or an invalid zone.
+function BallService.EnterZone(player: Player, zone: number): boolean
+	local state = states[player]
+	if state == nil or not Formulas.Zones.isZone(zone) then
+		return false
+	end
+	if state.zone == zone then
+		return true
+	end
+	state.fraction = rules.carryFraction(state.zone, state.fraction, zone)
+	state.zone = zone
+	-- A new measurement of the time to the maximum starts in the new zone.
+	state.growthStartedAt = nil
+	state.measuredTimeToMax = nil
+	applyOptics(state, true)
+	return true
+end
+
+-- ZoneService (#39): the server moved the character (zone start, zone teleport); put the ball in
+-- front of it again, not counted as a recovery. False while BallService has not bound this
+-- character yet: its own CharacterAdded handler then places the ball at the moved character.
+function BallService.PlaceAtCharacter(player: Player): boolean
+	local state = states[player]
+	local character = player.Character
+	local root = state and state.root
+	if state == nil or root == nil or character == nil or root.Parent ~= character then
+		return false
+	end
+	recovery.place(state, root)
 	return true
 end
 
@@ -415,6 +452,34 @@ end
 function BallService.GetSizeMetres(player: Player): number?
 	local state = states[player]
 	return if state then rules.sizeMetres(state.zone, state.fraction) else nil
+end
+
+-- For selling (#38, ADR 0012): the ball part as the server sees it, nil without a ball.
+function BallService.GetBallPart(player: Player): BasePart?
+	local state = states[player]
+	return if state and state.part.Parent then state.part else nil
+end
+
+-- Whether the owner's living character is at the ball: the growth range of 7.4.
+function BallService.IsHeld(player: Player): boolean
+	local state = states[player]
+	local root = state and state.root
+	local humanoid = state and state.humanoid
+	if not state or not root or not root.Parent or not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	local offset = root.Position - state.part.Position
+	return rules.inGrowthRange(Vector3.new(offset.X, 0, offset.Z).Magnitude, offset.Y, state.part.Size.X)
+end
+
+-- Shrinks the ball to the start size of its zone (after a sale, 7.5). False without a ball.
+function BallService.ResetSize(player: Player): boolean
+	local state = states[player]
+	if state == nil then
+		return false
+	end
+	setFraction(state, 0)
+	return true
 end
 
 return BallService

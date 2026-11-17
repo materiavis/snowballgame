@@ -75,6 +75,18 @@ local Ui = {
 		-- Pets and eggs (#41).
 		"PetHatched",
 		"PetInventoryFull",
+		-- Zones and barriers (#39, ADR 0014).
+		"BarrierNeedMore",
+		"ZoneUnlocked",
+		"ZoneTeleportWait",
+		"ZoneTeleportFailed",
+		-- Group chest (#37, ADR 0015).
+		"GroupChestOpened",
+		"GroupChestAlreadyOpened",
+		"GroupChestJoinGroup",
+		"GroupChestNoGroup",
+		"GroupChestTryLater",
+		"GroupChestNotReady",
 	},
 
 	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
@@ -98,6 +110,17 @@ local Ui = {
 		EggStation = table.freeze({
 			ActionText = "EggStationAction",
 			ObjectText = "EggStationObject",
+		}),
+		-- Barrier (#39, ADR 0014): the client puts it on a barrier this player can buy; it opens
+		-- the same unlock window (or missing amount) as walking into the barrier.
+		Barrier = table.freeze({
+			ActionText = "BarrierPromptAction",
+			ObjectText = "BarrierPromptObject",
+		}),
+		-- Lobby group chest (#37, ADR 0015). The server checks the reach again on trigger.
+		GroupChest = table.freeze({
+			ActionText = "GroupChestAction",
+			ObjectText = "GroupChestObject",
 		}),
 	},
 
@@ -325,6 +348,48 @@ local Ui = {
 		PetsCount = "{count}/{size} pets",
 		-- A pet's bonus as a multiplier, "×1.1" (concept 7.9 writes it this way).
 		PetsBonus = "×{value}",
+		-- Zones and barriers (#39, ADR 0014, concept 7.6). {zone}, {price} and {name} are filled
+		-- by the client (value labels, AutoLocalize off); {1} in pop-ups by PopupController.
+		BarrierLabel = "Zone {zone} · {price}",
+		-- A barrier that cannot open in this Place yet (map or Config.Zones.HighestOpenZone).
+		BarrierClosed = "Zone {zone} · Coming soon",
+		BarrierPromptAction = "Unlock",
+		BarrierPromptObject = "Barrier",
+		ZoneUnlockTitle = "Unlock zone",
+		ZoneUnlockQuestion = "Unlock Zone {zone} for {price}?",
+		ZoneUnlockYes = "Yes",
+		ZoneUnlockNo = "No",
+		ZoneTeleportTitle = "Zone teleport",
+		ZoneTeleportRow = "Zone {zone} · {name}",
+		-- Pop-ups. BarrierNeedMore is the missing amount, rounded up like a price (ADR 0014).
+		BarrierNeedMore = "Need {1} more",
+		ZoneUnlocked = "Zone {1} unlocked!",
+		ZoneTeleportWait = "Teleport ready in {1} s",
+		ZoneTeleportFailed = "Teleport failed",
+		-- Lobby portals (#37, ADR 0015). Mode names from the concept's English names appendix.
+		-- {count} is the number of players in the mode, formatted with NumberFormat.number.
+		PortalSingleplayer = "Singleplayer",
+		PortalMultiplayer = "Multiplayer",
+		PortalPlayers = "{count} playing",
+		PortalClosed = "Coming soon",
+		PortalLocked = "Your progress is still loading…",
+		PortalTravelling = "Teleporting…",
+		-- Group chest prompt and pop-ups (#37). {1} Coins, {2} Snow Coins.
+		GroupChestAction = "Open",
+		GroupChestObject = "Group chest",
+		GroupChestOpened = "+{1} Coins  +{2} Snow Coins",
+		GroupChestAlreadyOpened = "Already opened",
+		GroupChestJoinGroup = "Join the Materiavis group",
+		GroupChestNoGroup = "Opens soon",
+		GroupChestTryLater = "Try again in a moment",
+		GroupChestNotReady = "Still loading…",
+		-- News board (#37). {title} is Config.Lobby.News.LastUpdate, {time} the countdown.
+		NewsTitle = "News",
+		NewsLastUpdate = "Latest update: {title}",
+		NewsNextUpdate = "Next update in {time}",
+		NewsNextUpdateSoon = "Next update: coming soon",
+		-- VIP corner sign (#37).
+		VipCornerSign = "VIP",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no

@@ -49,6 +49,9 @@ local Economy = {
 	GroupChestCoins = 500,
 	GroupChestEggIndex = 1, -- plus one hatch from egg 1
 	GroupChestSnowCoins = 100, -- plus a hat
+	-- Roblox group id of Materiavis. 0 is a placeholder that humans fill in, like Config.Places:
+	-- with 0 nobody is a member on a live server and the chest says so (ADR 0015).
+	GroupId = 0,
 }
 
 return table.freeze(Economy)
