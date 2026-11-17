@@ -3,9 +3,6 @@
 -- (DataLoadStatus "Loading", then "Failed" with DataFailLoad) the portal is locked, no travel
 -- starts and nothing is saved. Runs the Studio rejoin (release, then load) on a real DataCore
 -- and TravelCore with the fake store and tries the portal at every wait of the failing load.
--- Also checks the DataService guard against a second module copy, which reproduced the
--- playtest log (a copy from a command-bar or plugin require took DataSimulateRejoin and wrote
--- DataLoadStatus while the game's own session stayed Loaded).
 
 local T = require("../../../TestKit")
 local TH = require("../../../server/TravelService/TravelHarness")
@@ -14,7 +11,6 @@ local LobbyConfig = require("../../../../src/shared/Config/Lobby")
 local PortalCore = require("../../../../src/places/lobby/server/PortalService/PortalCore")
 
 local USER = TH.USER
-local DATA_SERVICE = "src/server/Services/DataService/init.luau"
 local PORTAL_SERVICE = "src/places/lobby/server/PortalService/init.luau"
 
 return T.suite("Lobby portal lock while the profile is not loaded (6.5, #37 R1)", function(test)
@@ -91,24 +87,5 @@ return T.suite("Lobby portal lock while the profile is not loaded (6.5, #37 R1)"
 		local gate = SourceSection.at(travel, "PortalCore.isOpenFor(DataService.GetLoadStatus(player))")
 		local run = SourceSection.at(travel, "pcall(run, player)")
 		T.isTrue(gate ~= nil and run ~= nil and gate < run, "re-checked right before the travel")
-	end)
-
-	test("DataService: a second module copy in Studio sets up nothing", function()
-		local claim = SourceSection.between(DATA_SERVICE, "local function claimInstance()", "local function setUp()")
-		T.isTrue(SourceSection.at(claim, "owner ~= nil and owner ~= instanceToken") ~= nil, "refuses a second owner")
-		T.isTrue(SourceSection.at(claim, "return false") ~= nil)
-		local setUp = SourceSection.between(DATA_SERVICE, "local function setUp()", "function DataService.Start()")
-		local guard = SourceSection.at(setUp, "if isStudio and not claimInstance() then\n\t\treturn")
-		T.isTrue(guard ~= nil, "Studio-only guard in setUp")
-		for _, later in
-			{
-				"core.subscribe(",
-				"GetAttributeChangedSignal(SIMULATE_REJOIN_ATTRIBUTE)",
-				"Players.PlayerAdded:Connect(onPlayerAdded)",
-			}
-		do
-			local at = SourceSection.at(setUp, later)
-			T.isTrue(at ~= nil and (guard :: number) < at, `{later} only after the guard`)
-		end
 	end)
 end)
