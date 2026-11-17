@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = script.Parent:WaitForChild("Config")
 local NetConfig = require(Config:WaitForChild("Net"))
 local UpgradesConfig = require(Config:WaitForChild("Upgrades"))
+local TutorialConfig = require(Config:WaitForChild("Tutorial"))
 local Registry = require(script:WaitForChild("Registry"))
 local Schema = require(script:WaitForChild("Schema"))
 local declareRemotes = require(script:WaitForChild("Remotes"))
@@ -18,7 +19,7 @@ local declareRemotes = require(script:WaitForChild("Remotes"))
 local Net = {
 	FOLDER_NAME = "Remotes",
 	Schema = Schema,
-	Definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig)),
+	Definitions = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig)),
 }
 
 function Net.isDeclared(name: string): boolean

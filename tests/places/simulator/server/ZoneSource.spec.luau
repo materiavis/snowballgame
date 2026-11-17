@@ -18,13 +18,14 @@ local declareRemotes = require("../../../../src/shared/Net/Remotes")
 local NetConfig = require("../../../../src/shared/Config/Net")
 local MapConfig = require("../../../../src/shared/Config/Map")
 local UpgradesConfig = require("../../../../src/shared/Config/Upgrades")
+local TutorialConfig = require("../../../../src/shared/Config/Tutorial")
 local ZoneUi = require("../../../../src/shared/Config/ZoneUi")
 
 local SERVICE = "src/places/simulator/server/ZoneService/init.luau"
 local BALL = "src/places/simulator/server/BallService/init.luau"
 
 local function guarded(name: string)
-	local definition = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig))[name]
+	local definition = Registry.build(declareRemotes(Schema, NetConfig, UpgradesConfig, TutorialConfig))[name]
 	local clock = FakeClock.new()
 	local stats = Stats.new()
 	local handled: { { any } } = {}

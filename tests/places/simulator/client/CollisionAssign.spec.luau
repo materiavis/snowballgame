@@ -71,12 +71,14 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 
 	test("no simulator code fires or handles a remote (the client never sends a size)", function()
 		-- The exceptions: the Upgrades window (#36, ADR 0010) sends only an upgrade id through the
-		-- declared UpgradeBuy remote, and ZoneRequests (#39, ADR 0014) only a zone number through
-		-- ZoneUnlock and ZoneTeleport. Never a size, level, price or position.
+		-- declared UpgradeBuy remote, ZoneRequests (#39, ADR 0014) only a zone number through
+		-- ZoneUnlock and ZoneTeleport, and the onboarding hints (#42, ADR 0017) only the hint id
+		-- "UpgradesButton" on TutorialHintDone. Never a size, level, price or position.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
 		local zoneRequests = `{SIMULATOR_DIR}/client/ZoneController/ZoneRequests.luau`
+		local tutorial = `{SIMULATOR_DIR}/client/TutorialController/init.luau`
 		local function allowed(place: string): boolean
-			for _, path in { upgradesPanel, zoneRequests } do
+			for _, path in { upgradesPanel, zoneRequests, tutorial } do
 				if string.sub(place, 1, #path + 1) == `{path}:` then
 					return true
 				end
@@ -102,5 +104,10 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 		T.equal(fires, 1, "the Upgrades window fires one remote call")
 		T.isTrue(string.find(panel, "remote:FireServer(id)", 1, true) ~= nil, "and sends only the id")
 		T.isTrue(string.find(panel, 'local REMOTE = "UpgradeBuy"', 1, true) ~= nil, "on UpgradeBuy")
+		local hints = fs.readFile(tutorial)
+		local _, hintFires = string.gsub(hints, "FireServer%(", "")
+		T.equal(hintFires, 1, "the onboarding hints fire one remote call")
+		T.isTrue(string.find(hints, 'remote:FireServer("UpgradesButton")', 1, true) ~= nil, "with only the hint id")
+		T.isTrue(string.find(hints, 'Net.waitForRemote("TutorialHintDone")', 1, true) ~= nil, "on TutorialHintDone")
 	end)
 end)
