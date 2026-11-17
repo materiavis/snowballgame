@@ -32,6 +32,8 @@ local FAIL_LOAD_ATTRIBUTE = "DataFailLoad"
 local FAIL_SAVE_ATTRIBUTE = "DataFailSave"
 local AUTOSAVE_NOW_ATTRIBUTE = "DataAutosaveNow"
 local SIMULATE_REJOIN_ATTRIBUTE = "DataSimulateRejoin"
+-- Studio: which copy of this module owns the sessions (see setUp).
+local INSTANCE_ATTRIBUTE = "DataServiceInstance"
 
 export type LoadStatus = "Loading" | "Loaded" | "Failed" | "Lost" | "Teleported" | "Released"
 
@@ -60,6 +62,7 @@ local core: any = nil
 local globals: any = nil
 local storeMode: StoreMode = "Fake"
 local started = false
+local instanceToken = tostring(DataService)
 
 local function log(level: "info" | "warn", message: string)
 	if level == "warn" then
@@ -172,12 +175,33 @@ local function bindToClose()
 	end
 end
 
+-- Studio: a require from the command bar or a plugin (e.g. a playtest tool) can get its own copy
+-- of this module. If that copy set up too, it would load the players into its own fake store,
+-- take Studio switches such as DataSimulateRejoin away from the real one and overwrite
+-- DataLoadStatus, so the HUD and the playtester would see a status the game's sessions do not
+-- have (#37 round 1). The first copy owns the server; a later one sets up nothing.
+local function claimInstance(): boolean
+	local owner = ServerScriptService:GetAttribute(INSTANCE_ATTRIBUTE)
+	if owner ~= nil and owner ~= instanceToken then
+		warn(
+			`[DataService] another copy ({owner}) already runs this server; this copy (command bar or plugin require) has no sessions and binds no switches`
+		)
+		return false
+	end
+	ServerScriptService:SetAttribute(INSTANCE_ATTRIBUTE, instanceToken)
+	return true
+end
+
 local function setUp()
 	if started then
 		return
 	end
 	started = true
 	ensureCore()
+
+	if isStudio and not claimInstance() then
+		return
+	end
 
 	core.subscribe(function(event: Event)
 		if event.kind == "Status" then
