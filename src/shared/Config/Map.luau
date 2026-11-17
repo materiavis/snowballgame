@@ -31,6 +31,16 @@ local Map = {
 		Barrier = "Barrier",
 	}),
 
+	-- The prompt the server puts on an egg station's PrimaryPart (Prompts preset "EggStation").
+	-- The server writes the egg number and whether it is on sale on the prompt, so the client
+	-- shows only stations the server bound (ADR 0009 "The client never validates").
+	EggStation = table.freeze({
+		PromptName = "EggStationPrompt",
+		PromptTag = "EggStationPrompt",
+		EggAttribute = "EggIndex", -- number
+		OpenAttribute = "EggOpen", -- bool: false = "Coming soon", the prompt is disabled
+	}),
+
 	-- Portal station attributes (ADR 0009). PortalMode is set by builders; PlayerCount and
 	-- PlayerCountAt are written by the server on every bound portal (PlayerCountAt: Unix time of
 	-- the last refresh, the diagnostic of ADR 0015).

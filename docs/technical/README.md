@@ -27,6 +27,7 @@ An ADR written in the build loop gets its final status in its own PR: `**Status:
 | 0010 | [Upgrades, the UpgradeBuy remote and the upgrade stand](0010-upgrades.md) | Accepted with merge of PR #114 |
 | 0011 | [TravelService, server selection and PresenceStore](0011-travel-service.md) | Accepted with merge of PR #110 |
 | 0012 | [Selling at the scale](0012-selling.md) | Accepted with merge of PR #123 |
+| 0013 | [Pets and Egg 1 (Vertical Slice slice of 7.9)](0013-pets-egg1.md) | Accepted with merge of PR #125 |
 | 0014 | [Zones 1–5, barriers, the zone teleport and the current zone](0014-zones-barriers.md) | Accepted with merge of PR #124 |
 | 0015 | [Lobby portals, player counts, first-join arrow, group chest, news board and VIP corner](0015-lobby-portals.md) | Accepted with merge of PR #126 |
 | 0017 | [Onboarding hints of the first five minutes](0017-onboarding.md) | Accepted with merge of PR #128 |

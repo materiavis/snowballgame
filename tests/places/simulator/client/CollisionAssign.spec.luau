@@ -73,12 +73,16 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 		-- The exceptions: the Upgrades window (#36, ADR 0010) sends only an upgrade id through the
 		-- declared UpgradeBuy remote, ZoneRequests (#39, ADR 0014) only a zone number through
 		-- ZoneUnlock and ZoneTeleport, and the onboarding hints (#42, ADR 0017) only the hint id
-		-- "UpgradesButton" on TutorialHintDone. Never a size, level, price or position.
+		-- "UpgradesButton" on TutorialHintDone. Pets and eggs (#41, ADR 0013): the egg station
+		-- sends EggHatch without arguments, and the pets window sends PetEquip with a pet uid and
+		-- the wanted state. Never a size, level, price or position.
 		local upgradesPanel = `{SIMULATOR_DIR}/client/SimulatorHudController/UpgradesPanel.luau`
 		local zoneRequests = `{SIMULATOR_DIR}/client/ZoneController/ZoneRequests.luau`
 		local tutorial = `{SIMULATOR_DIR}/client/TutorialController/init.luau`
+		local eggStation = `{SIMULATOR_DIR}/client/EggStationController/init.luau`
+		local petsPanel = `{SIMULATOR_DIR}/client/PetsWindowController/PetsPanel.luau`
 		local function allowed(place: string): boolean
-			for _, path in { upgradesPanel, zoneRequests, tutorial } do
+			for _, path in { upgradesPanel, zoneRequests, tutorial, eggStation, petsPanel } do
 				if string.sub(place, 1, #path + 1) == `{path}:` then
 					return true
 				end
@@ -94,16 +98,24 @@ return T.suite("Simulator CollisionAssign (ADR 0003 rev. 2 + ADR 0002)", functio
 			end
 			T.equal(#found, 0, `{pattern}: {table.concat(found, ", ")}`)
 		end
+		local function check(path: string, call: string, remote: string, what: string)
+			local source = fs.readFile(path)
+			local _, fires = string.gsub(source, "FireServer%(", "")
+			T.equal(fires, 1, `{what} fires one remote call`)
+			T.isTrue(string.find(source, call, 1, true) ~= nil, `{what} sends only {call}`)
+			T.isTrue(string.find(source, `local REMOTE = "{remote}"`, 1, true) ~= nil, `{what} on {remote}`)
+			for _, other in { "OnServerEvent", "InvokeServer", "OnServerInvoke" } do
+				T.equal(string.find(source, other, 1, true), nil, `{what} has no {other}`)
+			end
+		end
+		check(upgradesPanel, "remote:FireServer(id)", "UpgradeBuy", "the Upgrades window")
+		check(eggStation, "remote:FireServer()", "EggHatch", "the egg station")
+		check(petsPanel, "remote:FireServer(current.uid, not current.equipped)", "PetEquip", "the pets window")
 		local requests = fs.readFile(zoneRequests)
 		local _, zoneFires = string.gsub(requests, "FireServer%(", "")
 		T.equal(zoneFires, 2, "ZoneRequests fires two remote calls")
 		local _, zoneOnly = string.gsub(requests, "remote:FireServer%(zone%)", "")
 		T.equal(zoneOnly, 2, "both send only the zone")
-		local panel = fs.readFile(upgradesPanel)
-		local _, fires = string.gsub(panel, "FireServer%(", "")
-		T.equal(fires, 1, "the Upgrades window fires one remote call")
-		T.isTrue(string.find(panel, "remote:FireServer(id)", 1, true) ~= nil, "and sends only the id")
-		T.isTrue(string.find(panel, 'local REMOTE = "UpgradeBuy"', 1, true) ~= nil, "on UpgradeBuy")
 		local hints = fs.readFile(tutorial)
 		local _, hintFires = string.gsub(hints, "FireServer%(", "")
 		T.equal(hintFires, 1, "the onboarding hints fire one remote call")
