@@ -17,11 +17,10 @@ local Upgrades = {
 	Order = table.freeze({ "growth", "walkSpeed", "magnet", "sellValue", "stability" }),
 
 	-- Shown in the menu as "Coming soon" and refused by the server (owner decision 2026-11-12,
-	-- concept 7.8): they have no effect in play until their consumer exists. Finds (#40) remove
-	-- `magnet`. Selling (#38) removed `sellValue`: SellService applies it to every sale.
-	Locked = table.freeze({
-		magnet = true,
-	} :: { [string]: boolean }),
+	-- concept 7.8): they have no effect in play until their consumer exists. Selling (#38)
+	-- removed `sellValue` (SellService applies it to every sale) and finds (#40) removed `magnet`
+	-- (FindService reads it at every pickup check). Empty: every upgrade can be bought.
+	Locked = table.freeze({} :: { [string]: boolean }),
 
 	Definitions = table.freeze({
 		-- Seconds to the maximum on normal snow: 40 s to 8 s.

@@ -34,6 +34,19 @@ local Net = {
 		ZoneUnlock = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
 		-- Zone teleport (#39). ZoneService also refuses within Config.Zones.ZoneTeleportWait.
 		ZoneTeleport = table.freeze({ Burst = 3, RefillPerSecond = 1 }),
+		-- Server -> client find updates (#40, ADR 0016). Like Popup: no server handler, so a client
+		-- call is dropped (NoHandler) after this limit.
+		FindUpdate = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+	}),
+
+	-- Find update remote (#40): an action, then the point's slot, the find id and the position the
+	-- action needs. Technical bounds, not design values: slots count up per server, ids are
+	-- Config.Finds.Items keys (the client checks them again), positions are map coordinates.
+	Finds = table.freeze({
+		Actions = table.freeze({ "Spawn", "Remove", "Collect", "ClearBall", "Reset" }),
+		MaxSlot = 1e6,
+		MaxIdLength = 32,
+		MaxPositionMagnitude = 1e6,
 	}),
 
 	-- Zone remotes (#39): the zone argument is a whole number 1..MaxZone. Technical bound, not a

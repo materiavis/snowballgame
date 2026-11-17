@@ -113,6 +113,22 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any, TutorialConfig
 			rateLimit = NetConfig.RateLimits.SaleResult,
 		},
 
+		-- Server -> client only (#40, ADR 0016): FindService tells one player about that player's
+		-- own finds. Action "Spawn" (slot, find id, position), "Remove" (slot), "Collect" (slot,
+		-- find id: it now sticks in the ball), "ClearBall" (the ball was sold) and "Reset" (drop
+		-- every spawned find). The server decides spawns and pickups; no client asks for them. No
+		-- server handler exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		FindUpdate = {
+			kind = "Event",
+			args = {
+				Schema.enum(NetConfig.Finds.Actions),
+				Schema.optional(Schema.number({ min = 1, max = NetConfig.Finds.MaxSlot, integer = true })),
+				Schema.optional(Schema.string({ minLength = 1, maxLength = NetConfig.Finds.MaxIdLength })),
+				Schema.optional(Schema.vector3({ maxMagnitude = NetConfig.Finds.MaxPositionMagnitude })),
+			},
+			rateLimit = NetConfig.RateLimits.FindUpdate,
+		},
+
 		-- Client -> server (#42, ADR 0017): an onboarding hint whose action only the client can
 		-- see is done (the Upgrades window opened). Arg: one of Config.Tutorial.ClientReportable.
 		-- TutorialService accepts it only while that hint is showing for the player and only ever

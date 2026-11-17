@@ -80,6 +80,11 @@ local Ui = {
 		"ZoneUnlocked",
 		"ZoneTeleportWait",
 		"ZoneTeleportFailed",
+		-- Finds (#40, ADR 0016): very rare finds and the secret find's title.
+		"FindRockCrystal",
+		"FindGoldenCowbell",
+		"FindYetiFootprint",
+		"FindNewTitle",
 		-- Group chest (#37, ADR 0015).
 		"GroupChestOpened",
 		"GroupChestAlreadyOpened",
@@ -366,6 +371,12 @@ local Ui = {
 		ZoneUnlocked = "Zone {1} unlocked!",
 		ZoneTeleportWait = "Teleport ready in {1} s",
 		ZoneTeleportFailed = "Teleport failed",
+		-- Finds (#40, concept 7.7 "Sehr seltene Funde lösen eine kurze Einblendung aus"). The
+		-- rarity is in words and stars, never colour alone (8.5).
+		FindRockCrystal = "★★★★ Epic: Rock Crystal!",
+		FindGoldenCowbell = "★★★★★ Legendary: Golden Cowbell!",
+		FindYetiFootprint = "👑 Secret: Yeti Footprint!",
+		FindNewTitle = "New title: Yeti Tracker",
 		-- Lobby portals (#37, ADR 0015). Mode names from the concept's English names appendix.
 		-- {count} is the number of players in the mode, formatted with NumberFormat.number.
 		PortalSingleplayer = "Singleplayer",

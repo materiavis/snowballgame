@@ -29,6 +29,8 @@ local Map = {
 		-- onboarding hints (#42, ADR 0017) read them, read-only.
 		EggStation = "EggStation",
 		Barrier = "Barrier",
+		-- Find point (#40, ADR 0009, ADR 0016): an anchor in a zone area where finds lie.
+		FindPoint = "FindPoint",
 	}),
 
 	-- The prompt the server puts on an egg station's PrimaryPart (Prompts preset "EggStation").

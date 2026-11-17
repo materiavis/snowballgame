@@ -48,7 +48,7 @@ Constraints: StreamingEnabled is on in every Place, so a client may not have a p
 | Entry (concept) | Tag | Instance kind | Attributes | Count per zone | Missing or invalid |
 |---|---|---|---|---|---|
 | Zone start: spawn and zone-teleport target (7.6) | `ZoneStart` (zone) | Anchor. The character is placed on it, facing its `LookVector` | — | exactly 1 | 0 or more than 1: warn once, the zone has no start. Zone teleport into it is refused with the normal failure message, and a barrier into it stays closed. |
-| Find point (7.7) | `FindPoint` (zone) | Anchor at the spot the find lies on | — | any (6.2 asks 8–12; checked in the #29 review, not by code) | Outside a zone: ignored with the warning |
+| Find point (7.7) | `FindPoint` (zone) | Anchor at the spot the find lies on | — | any (6.2 asks 8–12; checked in the #29 review, not by code) | Outside a zone: ignored with the warning. Confirmed by #40 ([ADR 0016](0016-finds.md)): an Attachment or a BasePart; any other kind warns once and is ignored; zone (from ZoneService's resolver) and position are read once when it binds. |
 | Egg station (7.9) | `EggStation` (zone) | Station | — . The egg is the `k` with `Formulas.Pets.eggZone(k) == ZoneIndex` (Config `EggZones`: egg 1 in zone 1, egg 2 in zone 5) | 0 or 1 | In a zone without an egg: warn, ignored. More than 1: warn, all work. Whether that egg can be bought yet (egg 2 with #103) is decided in code, not by the map. |
 | Upgrade stand (7.8) | `UpgradeStand` (zone) | Station; opens the same menu as U | — | any (6.2: one at the zone end) | Outside a zone: ignored with the warning |
 | Scale (7.5, 7.6) | `ScaleAnchor` (unchanged) | Anchor | — | 1 (7.6 Fix) | See "Existing names" |
