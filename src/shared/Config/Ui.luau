@@ -33,11 +33,83 @@ local Ui = {
 		CoinsWidth = 150,
 		BallSizeWidth = 130,
 		MenuButtonWidth = 120,
+		-- The load hint sits in the top row (#90: under the ball size is now the progress bar),
+		-- right of the ball size in the Simulator and centred in the Lobby, one row high.
 		HintWidth = 300,
-		HintHeight = 48,
-		HintMinHeight = 20, -- the hint shrinks to this on short screens to stay off the ball
 		-- Caption ("Coins") share of a HUD panel's height; the value takes the rest.
 		CaptionFraction = 0.35,
+		-- Progress bar under the ball size (#90): same width as the ball size field. The zone
+		-- name under it shrinks down to ZoneNameMinHeight on short screens to stay off the ball.
+		ProgressGap = 3,
+		ProgressBarHeight = 16,
+		ZoneNameHeight = 16,
+		ZoneNameMinHeight = 10,
+	},
+
+	-- Left-edge menu buttons (concept 10.2, #90), top to bottom. A button other than Upgrades is
+	-- hidden until its feature registers it (owner decision 2026-11-16): Pets with #41, Zonen-
+	-- Teleport with #39, Lobby with the Travel follow-up. Each id has a Text entry (label) and a
+	-- Keybinds entry. When the column would reach the joystick, the buttons wrap into columns.
+	LeftButtons = { "Upgrades", "Pets", "ZoneTeleport", "Lobby" },
+
+	-- Short centre pop-ups (concept 10.2, #90). A pop-up shows for DurationSeconds; pop-ups that
+	-- arrive meanwhile wait, at most MaxQueued of them (the oldest waiting one is dropped).
+	-- Width and height shrink (down to the minimums) to stay off the joystick and the HUD.
+	Popup = {
+		Width = 260,
+		Height = 48,
+		MinWidth = 90,
+		MinHeight = 28,
+		DurationSeconds = 1.5,
+		MaxQueued = 3,
+		-- How many numbers a pop-up may carry and how large they may be: Config.Net.Popup.
+	},
+	-- Text keys (in Text) the server may send in a pop-up. Features add theirs here ("MAX!",
+	-- "+3.4K" and "New Pet!" come with #109, #38 and #41). {1} and {2} are numbers, formatted
+	-- with NumberFormat.number (K, M, B ...).
+	PopupTexts = {
+		"PopupTest",
+		"PopupTestNumber",
+		"PromptTriggered",
+		"PlaceholderButton",
+		-- Group chest (#37, ADR 0015).
+		"GroupChestOpened",
+		"GroupChestAlreadyOpened",
+		"GroupChestJoinGroup",
+		"GroupChestNoGroup",
+		"GroupChestTryLater",
+		"GroupChestNotReady",
+	},
+
+	-- ProximityPrompt presets for Prompts.create (#90). Roblox's default prompt style shows the
+	-- key of the last used device by itself (concept 3.2 glossary). A preset overrides Default.
+	-- ActionText and ObjectText are keys in Text; key codes are Enum.KeyCode names. Spielraum:
+	-- features add their presets (#37, #38, #39, #41).
+	Prompts = {
+		Default = table.freeze({
+			KeyboardKeyCode = "E",
+			GamepadKeyCode = "ButtonX",
+			HoldDuration = 0, -- seconds
+			MaxActivationDistance = 10, -- studs
+			RequiresLineOfSight = false,
+		}),
+		-- Studio-only placeholder prompt (HudTestPrompt, ADR 0008 "Studio switches").
+		Placeholder = table.freeze({
+			ActionText = "PromptTestAction",
+			ObjectText = "PromptTestObject",
+		}),
+		-- Lobby group chest (#37, ADR 0015). The server checks the reach again on trigger.
+		GroupChest = table.freeze({
+			ActionText = "GroupChestAction",
+			ObjectText = "GroupChestObject",
+		}),
+	},
+
+	-- Studio-only test geometry (HudTestPrompt): the placeholder part stands this far in front of
+	-- and above the first SpawnLocation (studs, in the spawn's frame). Not design values.
+	StudioTest = {
+		PromptOffset = table.freeze({ 0, 2, -10 }),
+		PromptPartSize = table.freeze({ 2, 2, 2 }),
 	},
 
 	Window = {
@@ -101,6 +173,7 @@ local Ui = {
 		Title = 24,
 		Body = 18,
 		Hint = 16,
+		Popup = 28,
 	},
 
 	Fonts = {
@@ -117,6 +190,10 @@ local Ui = {
 		TextMuted = table.freeze({ 200, 200, 205 }),
 		-- The ball-size caption while the ball is at MAX (same yellow as the MAX arrow, 7.4).
 		Max = table.freeze({ 255, 210, 60 }),
+		-- Progress bar to the zone maximum (#90): track and fill. The bar also carries its value
+		-- as text, so the fill colour is never the only cue.
+		ProgressTrack = table.freeze({ 20, 20, 24 }),
+		ProgressFill = table.freeze({ 90, 140, 200 }),
 	},
 	PanelTransparency = 0.15,
 
@@ -129,6 +206,20 @@ local Ui = {
 			Toggle = table.freeze({ "U" }), -- opens, or closes when open
 			Open = table.freeze({ "DPadRight" }), -- opens; passes through while a GUI is selected
 		}),
+		-- Left-edge buttons of #90 (owner decision 2026-11-16). Bound only while registered.
+		Pets = table.freeze({
+			Toggle = table.freeze({ "P" }),
+			Open = table.freeze({ "DPadLeft" }),
+		}),
+		ZoneTeleport = table.freeze({
+			Toggle = table.freeze({ "T" }),
+			Open = table.freeze({ "DPadUp" }),
+		}),
+		-- No D-pad: all four directions are taken. Controllers reach it by GUI selection.
+		Lobby = table.freeze({
+			Toggle = table.freeze({ "L" }),
+			Open = table.freeze({}),
+		}),
 	},
 	-- ContextActionService priority (Enum.ContextActionPriority.High), above default gameplay binds.
 	ActionPriority = 3000,
@@ -139,6 +230,8 @@ local Ui = {
 	ZIndex = {
 		Hud = 1,
 		Window = 10,
+		-- Above the HUD, below windows: a pop-up never hides an open window's buttons.
+		Popup = 5,
 	},
 
 	-- English source strings; Roblox automatic translation picks up the static ones. Numbers are
@@ -147,6 +240,25 @@ local Ui = {
 		Coins = "Coins",
 		BallSize = "Size",
 		Upgrades = "Upgrades",
+		-- Left-edge buttons (#90). "Teleport" is the zone teleport (concept: Zonen-Teleport).
+		Pets = "Pets",
+		ZoneTeleport = "Teleport",
+		Lobby = "Lobby",
+		-- Lobby HUD (#90).
+		SnowCoins = "Snow Coins",
+		-- Progress bar and zone name (#90): shown while the zone or the size is unknown.
+		ZoneNamePlaceholder = "–",
+		ProgressPlaceholder = "–",
+		-- Between the ball size and the zone maximum on the progress bar ("1.2 m / 2 m").
+		ProgressSeparator = " / ",
+		-- Pop-ups (#90). Test texts for the Studio switches; features add their own.
+		PopupTest = "Test popup",
+		PopupTestNumber = "+{1}",
+		PromptTriggered = "Prompt used!",
+		PlaceholderButton = "Coming soon",
+		-- Studio placeholder prompt (HudTestPrompt).
+		PromptTestAction = "Test",
+		PromptTestObject = "Placeholder prompt",
 		-- Upgrades window (#36). The values next to them are separate, unlocalised labels.
 		UpgradeBuy = "Buy",
 		-- Shown briefly when a greyed buy button is tapped; {amount} is the missing price, e.g.
@@ -169,6 +281,30 @@ local Ui = {
 		-- shows for good is an open owner question (follow-up issue to #35).
 		BallSizeMax = "MAX!",
 		LoadFailed = "Your progress could not be loaded. Trying again…",
+		-- Lobby portals (#37, ADR 0015). Mode names from the concept's English names appendix.
+		-- {count} is the number of players in the mode, formatted with NumberFormat.number.
+		PortalSingleplayer = "Singleplayer",
+		PortalMultiplayer = "Multiplayer",
+		PortalPlayers = "{count} playing",
+		PortalClosed = "Coming soon",
+		PortalLocked = "Your progress is still loading…",
+		PortalTravelling = "Teleporting…",
+		-- Group chest prompt and pop-ups (#37). {1} Coins, {2} Snow Coins.
+		GroupChestAction = "Open",
+		GroupChestObject = "Group chest",
+		GroupChestOpened = "+{1} Coins  +{2} Snow Coins",
+		GroupChestAlreadyOpened = "Already opened",
+		GroupChestJoinGroup = "Join the Materiavis group",
+		GroupChestNoGroup = "Opens soon",
+		GroupChestTryLater = "Try again in a moment",
+		GroupChestNotReady = "Still loading…",
+		-- News board (#37). {title} is Config.Lobby.News.LastUpdate, {time} the countdown.
+		NewsTitle = "News",
+		NewsLastUpdate = "Latest update: {title}",
+		NewsNextUpdate = "Next update in {time}",
+		NewsNextUpdateSoon = "Next update: coming soon",
+		-- VIP corner sign (#37).
+		VipCornerSign = "VIP",
 	},
 
 	-- DataLoadStatus (ADR 0006) -> key in Text for the load hint. A status not listed shows no
@@ -181,6 +317,11 @@ local Ui = {
 for _, key in
 	{
 		"Hud",
+		"LeftButtons",
+		"Popup",
+		"PopupTexts",
+		"Prompts",
+		"StudioTest",
 		"Window",
 		"UpgradesWindow",
 		"UpgradeRows",

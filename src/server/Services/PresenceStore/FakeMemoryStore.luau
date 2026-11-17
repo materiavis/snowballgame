@@ -11,6 +11,7 @@ export type FakeMap = {
 	GetAsync: (self: FakeMap, key: string) -> any,
 	SetAsync: (self: FakeMap, key: string, value: any, expiration: number) -> boolean,
 	RemoveAsync: (self: FakeMap, key: string) -> (),
+	UpdateAsync: (self: FakeMap, key: string, transform: (old: any) -> any, expiration: number) -> any,
 	setFailing: (self: FakeMap, failing: boolean) -> (),
 	size: (self: FakeMap) -> number,
 }
@@ -73,14 +74,32 @@ function FakeMemoryStore.newMap(now: () -> number): FakeMap
 		return copy(entry.value)
 	end
 
+	local function checkExpiration(expiration: any)
+		if type(expiration) ~= "number" or expiration <= 0 or expiration > MAX_EXPIRATION then
+			error(`FakeMemoryStore: expiration must be 0 < s <= {MAX_EXPIRATION}`, 3)
+		end
+	end
+
 	function map.SetAsync(_self: FakeMap, key: string, value: any, expiration: number): boolean
 		guard(key)
-		if type(expiration) ~= "number" or expiration <= 0 or expiration > MAX_EXPIRATION then
-			error(`FakeMemoryStore: expiration must be 0 < s <= {MAX_EXPIRATION}`, 2)
-		end
+		checkExpiration(expiration)
 		checkValue(value)
 		entries[key] = { value = copy(value), expires = now() + expiration }
 		return true
+	end
+
+	-- Like MemoryStoreHashMap:UpdateAsync: transform gets a copy of the live value (nil if none)
+	-- and returns the new value, or nil to leave the entry unchanged. Returns the stored value.
+	function map.UpdateAsync(self: FakeMap, key: string, transform: (old: any) -> any, expiration: number): any
+		guard(key)
+		checkExpiration(expiration)
+		local new = transform(map.GetAsync(self, key))
+		if new == nil then
+			return nil
+		end
+		checkValue(new)
+		entries[key] = { value = copy(new), expires = now() + expiration }
+		return copy(new)
 	end
 
 	function map.RemoveAsync(_self: FakeMap, key: string)

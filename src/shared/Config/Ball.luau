@@ -271,6 +271,9 @@ local Ball = {
 	PlayerSizeMetresAttribute = "BallSizeMetres",
 	PlayerSizeFractionAttribute = "BallSizeFraction",
 	PlayerIsMaxAttribute = "BallIsMax",
+	-- The zone of the ball (#90), for the progress bar and the zone name. Same value as the
+	-- ball's ZoneAttribute.
+	PlayerZoneAttribute = "BallZone",
 	PlayerScaleAnchorAttribute = "BallScaleAnchor", -- Vector3, set when the ball reaches MAX
 	-- Read-only diagnostics on the ball, written only in Studio at PlaceId 0.
 	DiagnosticAttributes = {

@@ -34,6 +34,22 @@ local Zones = {
 	OpticsPerZone = 0.94,
 	VisualCap = 50,
 	OpticsStartFraction = 0.4,
+
+	-- Zone names shown under the progress bar (#90). Startwerte from the concept appendix, 🟦
+	-- proposal: Game Design reviews them later. Index = zone; a zone without a name shows
+	-- Config.Ui.Text.ZoneNamePlaceholder.
+	Names = table.freeze({
+		"Snowline",
+		"Pine Forest",
+		"Alpine Hut",
+		"Mountain Lake",
+		"Rocky Ridge",
+		"Ski Slope",
+		"Avalanche Slope",
+		"Glacier Edge",
+		"Glacier",
+		"Summit",
+	}),
 }
 
 return table.freeze(Zones)

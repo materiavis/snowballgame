@@ -6,8 +6,9 @@
 --
 -- At game.PlaceId == 0 the backend is FakeMemoryStore and MemoryStoreService is never fetched.
 -- Not a service (no Start), so the loader requires it but does not count it; it sets up on
--- the first call. Later MemoryStore users (portal counts #37, matchmaking 7.14) extend this
--- module instead of opening their own.
+-- the first call. Later MemoryStore users (matchmaking 7.14) extend this module instead of
+-- opening their own. Portal player counts (#37, ADR 0015): every public Simulator server's
+-- presence refresh also writes its count into the Singleplayer mode entry; the Lobby reads it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -49,6 +50,7 @@ local function ensure(): any
 			task.wait(seconds)
 		end,
 		log = log,
+		now = os.time,
 		config = TravelConfig,
 	})
 	log("info", `store={storeMode} (PlaceId {game.PlaceId}) ttl={TravelConfig.PresenceTtl}s`)
@@ -71,12 +73,30 @@ function PresenceStore.SetServer(jobId: string, world: number, count: number): b
 	return ensure().setServer(jobId, world, count)
 end
 
+-- Also takes the server out of the Simulator's mode count (only Simulator servers publish).
 function PresenceStore.RemoveServer(jobId: string): boolean
-	return ensure().removeServer(jobId)
+	local store = ensure()
+	store.removeModeServer(TravelConfig.SimulatorMode, jobId)
+	return store.removeServer(jobId)
 end
 
+-- One refresh of a public Simulator server. The mode count write is best effort and not part
+-- of the returned number of presence writes.
 function PresenceStore.PublishServer(jobId: string, world: number, userIds: { number }): number
-	return ensure().publishServer(jobId, world, userIds)
+	local store = ensure()
+	store.setModeCount(TravelConfig.SimulatorMode, jobId, #userIds)
+	return store.publishServer(jobId, world, userIds)
+end
+
+-- Players in a portal mode (Config.Map.PortalModes) over all servers, nil if the read failed.
+function PresenceStore.GetModeCount(mode: string): number?
+	return ensure().getModeCount(mode)
+end
+
+-- For a server that is counted in a mode without being a Simulator server (the Arena, 7.14),
+-- and for the Studio fake Simulator server of LobbyStudioSimulatorPlayers.
+function PresenceStore.SetModeCount(mode: string, jobId: string, count: number): boolean
+	return ensure().setModeCount(mode, jobId, count)
 end
 
 function PresenceStore.FindFriendServer(

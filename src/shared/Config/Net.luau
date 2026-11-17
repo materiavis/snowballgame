@@ -1,5 +1,5 @@
 --!strict
--- Per-remote rate limits for src/shared/Net.
+-- Per-remote rate limits and argument bounds for src/shared/Net.
 -- Every remote declared in Net/Remotes takes its limit from RateLimits by its own name, so a
 -- new remote without an entry here fails at startup instead of running unlimited.
 --
@@ -15,6 +15,18 @@ local Net = {
 		-- Buy the next level of one upgrade (#36, ADR 0010). Allows quick repeated clicks on the
 		-- buy button; the price and the level are decided on the server.
 		UpgradeBuy = table.freeze({ Burst = 10, RefillPerSecond = 5 }),
+		-- Server -> client pop-up (#90, ADR 0008). The client never sends it; there is no server
+		-- handler, so a client call is dropped (NoHandler) after this limit.
+		Popup = table.freeze({ Burst = 1, RefillPerSecond = 1 }),
+	}),
+
+	-- Pop-up remote (#90): a text key from Config.Ui.PopupTexts and up to MaxNumbers numbers.
+	-- Technical bounds, not design values: MaxNumberMagnitude is the Coins MaxBalance
+	-- (Config.Currency), so every balance or gain fits.
+	Popup = table.freeze({
+		MaxKeyLength = 64,
+		MaxNumbers = 2,
+		MaxNumberMagnitude = 1e30,
 	}),
 }
 
