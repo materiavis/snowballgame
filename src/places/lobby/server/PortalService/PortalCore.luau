@@ -4,7 +4,8 @@
 --
 -- step(userId, input) is called every Config.Lobby.PortalCheckInterval with:
 --   inside      the PortalMode whose walk-in volume holds the character root, or nil
---   locked      DataService.IsPortalLocked (profile not loaded, concept 6.5)
+--   locked      not PortalCore.isOpenFor(DataService.GetLoadStatus(player)): every status but
+--               "Loaded" (Loading, Failed, Teleported, Lost, Released, none) locks (concept 6.5)
 --   travelling  TravelService.IsTraveling (a travel started elsewhere)
 --
 -- States:
@@ -28,6 +29,8 @@ export type Result = {
 	changed: boolean, -- state, mode or endsAt changed in this step
 	travel: boolean, -- true once: start the travel of `mode` now
 	event: string?, -- for the log: Started, Cancelled, CancelledLocked, Closed, Locked, Busy, Travel
+	-- The mode the event is about: for Cancelled the portal just left, otherwise `mode`.
+	eventMode: string?,
 }
 
 export type Deps = {
@@ -39,6 +42,12 @@ export type Deps = {
 type Entry = { state: State, mode: string, endsAt: number }
 
 local PortalCore = {}
+
+-- The 6.5 portal gate: open only for a loaded profile. Anything else (still loading after a
+-- join or a rejoin, failed, teleported, lost, released, no session yet) is locked.
+function PortalCore.isOpenFor(loadStatus: any): boolean
+	return loadStatus == "Loaded"
+end
 
 function PortalCore.new(deps: Deps)
 	local entries: { [number]: Entry } = {}
@@ -62,6 +71,7 @@ function PortalCore.new(deps: Deps)
 		travel: boolean
 	): Result
 		local changed = entry.state ~= state or entry.mode ~= mode or entry.endsAt ~= endsAt
+		local eventMode = if mode ~= "" then mode else entry.mode
 		entry.state, entry.mode, entry.endsAt = state, mode, endsAt
 		return {
 			state = state,
@@ -70,6 +80,7 @@ function PortalCore.new(deps: Deps)
 			changed = changed,
 			travel = travel,
 			event = if changed then event else nil,
+			eventMode = if changed and event then eventMode else nil,
 		}
 	end
 
