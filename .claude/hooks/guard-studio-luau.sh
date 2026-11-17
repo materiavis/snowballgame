@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse-Hook für mcp__Roblox_Studio__execute_luau (Playtester), Version 2.
+# PreToolUse-Hook für mcp__Roblox_Studio__execute_luau (Playtester), Version 3.
 # Wird aus dem Control Checkout auf `main` geladen, in dem der Playtester läuft. Der getestete
 # Stand liegt in einer separaten Playtest Worktree, ein Pull Request kann den Hook also nicht
 # abschwächen. Exit 2 = blockieren, stderr geht an den Agent zurück. Läuft in Git Bash, ohne jq.
@@ -7,6 +7,7 @@
 # Erlaubt: State lesen und die Studio switches der ADRs setzen, und zwar nur in der Form
 #   game.ServerScriptService:SetAttribute("<Name>", <Wert>)
 # Alles andere, was den Place, Daten, Netzwerk oder den Spielzustand verändert, wird geblockt.
+# Regressionstest: bash .claude/hooks/test-guard-studio-luau.sh
 
 input="$(cat)"
 
@@ -31,7 +32,12 @@ check 'MarketplaceService|PromptPurchase|PromptProductPurchase|PromptGamePassPur
 # Teleports
 check 'TeleportService|TeleportAsync|:Teleport\(' 'Teleport'
 # Instances erzeugen, löschen, umhängen, Scripts ändern
-check 'Instance\.new|:Destroy\(|:Remove\(|:Clone\(|:ClearAllChildren\(|ChangeHistoryService|require\([[:space:]]*[0-9]' 'Änderung am Place / externes require'
+check 'Instance\.new|:Destroy\(|:Remove\(|:Clone\(|:ClearAllChildren\(|ChangeHistoryService' 'Änderung am Place'
+# Jedes require, getfenv und setfenv. Ein require auf ein Game-ModuleScript startet in execute_luau
+# eine zweite Instanz des Moduls (z. B. einen zweiten DataService, der ein Profil lädt, #130 / #37).
+# State wird über die Attribute gelesen, die eine ADR beschreibt. getfenv/setfenv öffnen den Weg
+# zu require über die Environment. Vor dem Wort darf ein JSON-Escape (\n, \t, \r) stehen.
+check '(^|[^A-Za-z0-9_]|\\[nrt])(require|getfenv|setfenv)([^A-Za-z0-9_]|$)' 'require / getfenv / setfenv. Kein Modul aus execute_luau laden, State über die ADR-Attribute lesen'
 # Spielzustand per Code statt per Input verändern (Bewegung, Physik, Remotes, Tags, Character)
 check ':(PivotTo|MoveTo|SetPrimaryPartCFrame|TranslateBy|ApplyImpulse|ApplyAngularImpulse|ApplyImpulseAtPosition|SetNetworkOwner|SetNetworkOwnershipAuto|BreakJoints|TakeDamage|LoadCharacter|Kick|Move|ChangeState|SetStateEnabled|AddTag|RemoveTag|FireServer|FireClient|FireAllClients|InvokeServer|InvokeClient|Fire)\(' 'Spielzustand per Code verändern (Bewegung, Physik, Remotes, Tags). Gespielt wird über character_navigation, user_keyboard_input und user_mouse_input'
 # Zuweisung an Properties oder Felder (x.y = …, auch +=). Vergleiche (==, ~=, <=, >=) sind erlaubt.
