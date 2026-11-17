@@ -69,6 +69,7 @@ The second argument must repeat the id. At PlaceId 0 the command only touches th
   - `DataFailSave` (bool): every profile save, release and teleport save fails.
   - `DataAutosaveNow` (bool): set `true` to run one autosave pass now. It resets itself to `false`.
   - `DataSimulateRejoin` (number): set to a player's UserId (`Player1` = `-1`, `Player2` = `-2` in a local server test; your own UserId in Play solo) to release and load that player again without disconnecting. This is how a load failure is tested with a connected player. It resets itself to `0`.
+- One owner per server (#26 follow-up, found in the #37 playtest): a `require` of DataService from the command bar or a plugin (for example the playtest tool's `execute_luau`) can get its own module copy. If it set up too, it would load the players into its own fake store, take `DataSimulateRejoin` away from the game's copy and overwrite `DataLoadStatus`. The first copy writes its token to the `ServerScriptService` attribute `DataServiceInstance`; a later copy warns `[DataService] another copy (…) already runs this server; …` and sets up nothing. Such a copy has no sessions, so `GetProfile` returns `nil` there. Observe player data through the attributes above, not through `require`. Checked by `tests/server/DataService/SecondCopy.spec.luau`.
 
 ## Consequences
 
