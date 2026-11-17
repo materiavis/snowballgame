@@ -32,7 +32,7 @@ local Ball = {
 	GroundCheckMargin = 0.5, -- ground ray length = radius + margin + radius * per-radius margin
 	GroundCheckMarginPerRadius = 0.02,
 
-	DefaultZone = 1, -- until ZoneService exists every ball is in zone 1
+	DefaultZone = 1, -- a new ball starts here; ZoneService then moves it to the player's zone (#39)
 	-- The part is resized only when the visual diameter changed by this share of the current
 	-- diameter, so the solver sees a few resizes per second at most instead of one per sample.
 	ResizeStepFraction = 0.02,
@@ -271,6 +271,9 @@ local Ball = {
 	PlayerSizeMetresAttribute = "BallSizeMetres",
 	PlayerSizeFractionAttribute = "BallSizeFraction",
 	PlayerIsMaxAttribute = "BallIsMax",
+	-- The zone of the ball (#90), for the progress bar and the zone name. Same value as the
+	-- ball's ZoneAttribute.
+	PlayerZoneAttribute = "BallZone",
 	PlayerScaleAnchorAttribute = "BallScaleAnchor", -- Vector3, set when the ball reaches MAX
 	-- Read-only diagnostics on the ball, written only in Studio at PlaceId 0.
 	DiagnosticAttributes = {

@@ -39,6 +39,7 @@ export type GrowthRules = {
 	startSize: (zone: number) -> number,
 	sizeMetres: (zone: number, fraction: number) -> number,
 	fractionForSize: (zone: number, metres: number) -> number,
+	carryFraction: (fromZone: number, fraction: number, toZone: number) -> number,
 	fractionPerStud: (timeToMax: number) -> number,
 	surfaceMultiplier: (surface: string) -> number,
 	consumeCredit: (credit: number, distance: number, elapsed: number) -> (number, number),
@@ -71,6 +72,13 @@ function GrowthRulesModule.new(config: GrowthConfig, maxSize: (zone: number) -> 
 	local function fractionForSize(zone: number, metres: number): number
 		local start = startSize(zone)
 		return math.clamp((metres - start) / (maxSize(zone) - start), 0, 1)
+	end
+
+	-- Zone change (concept 7.6, decision 2026-10-08, #39): the ball keeps its size in metres, so
+	-- the fraction is recomputed in the new zone. Clamped to the new zone's range: a ball above
+	-- the new maximum (a lower zone) is capped at it, one below the new start size starts there.
+	local function carryFraction(fromZone: number, fraction: number, toZone: number): number
+		return fractionForSize(toZone, sizeMetres(fromZone, fraction))
 	end
 
 	-- Q-G (ADR 0003): the time to the maximum is measured at the unupgraded pushing speed, so a
@@ -161,6 +169,7 @@ function GrowthRulesModule.new(config: GrowthConfig, maxSize: (zone: number) -> 
 		startSize = startSize,
 		sizeMetres = sizeMetres,
 		fractionForSize = fractionForSize,
+		carryFraction = carryFraction,
 		fractionPerStud = fractionPerStud,
 		surfaceMultiplier = surfaceMultiplier,
 		consumeCredit = consumeCredit,

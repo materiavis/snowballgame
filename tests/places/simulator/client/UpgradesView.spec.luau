@@ -12,9 +12,18 @@ local UpgradesView = require("../../../../src/places/simulator/client/SimulatorH
 
 local Upgrades = E.Config.Upgrades
 
-local function input(levels: { [string]: any }, coins: any, status: any?): UpgradesView.Input
+-- The lock itself stays (owner decision 2026-11-12): checked with a test-only Locked table,
+-- since the shipped one is empty since #40.
+local LockedMagnet = table.freeze({
+	MaxLevel = Upgrades.MaxLevel,
+	Order = Upgrades.Order,
+	Definitions = Upgrades.Definitions,
+	Locked = table.freeze({ magnet = true }),
+})
+
+local function input(levels: { [string]: any }, coins: any, status: any?, upgrades: any?): UpgradesView.Input
 	return {
-		upgrades = Upgrades,
+		upgrades = upgrades or Upgrades,
 		formulas = E.Upgrades,
 		formatPrice = E.NumberFormat.price,
 		ui = Ui,
@@ -49,8 +58,10 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		T.equal(rows.growth.levelText, "0/100")
 		T.equal(rows.growth.effectText, "40.00 → 39.68 s to MAX")
 		T.equal(rows.walkSpeed.effectText, "16.00 → 16.16 studs/s")
-		T.equal(rows.magnet.effectText, "4.0 studs", "locked: the current effect only")
-		T.equal(rows.sellValue.effectText, "×1.00", "locked: the current effect only")
+		T.equal(rows.magnet.effectText, "4.0 → 4.2 studs", "unlocked by finds (#40)")
+		local locked = byId(UpgradesView.rows(input(ZERO, 1000, nil, LockedMagnet)))
+		T.equal(locked.magnet.effectText, "4.0 studs", "a locked row shows the current effect only")
+		T.equal(rows.sellValue.effectText, "×1.00 → ×1.05", "unlocked by selling (#38)")
 		T.equal(rows.stability.effectText, "10.00 → 9.92 % lost per hit")
 	end)
 
@@ -110,12 +121,20 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 		T.equal(UpgradesView.missingText("{amount}", "50%"), "50%", "a % in the amount is kept")
 	end)
 
-	test("R1-1: Magnet and Sell value are visible, locked and marked Coming soon", function()
-		T.equal(Upgrades.Locked.magnet, true)
-		T.equal(Upgrades.Locked.sellValue, true)
+	test("#40 AC6: Magnet is unlocked: price and buy button like every other row", function()
+		T.equal(Upgrades.Locked.magnet, nil, "unlocked by finds (#40)")
+		T.equal(Upgrades.Locked.sellValue, nil, "unlocked by selling (#38)")
+		local rows = byId(UpgradesView.rows(input(ZERO, 150)))
+		T.equal(rows.magnet.state, "Buy")
+		T.equal(rows.magnet.canBuy, true)
+		T.equal(rows.magnet.priceText, "150")
+		T.equal(byId(UpgradesView.rows(input(ZERO, 149))).magnet.state, "TooFewCoins")
+	end)
+
+	test("R1-1: a locked upgrade is visible, locked and marked Coming soon", function()
 		for _, coins in { 0, 1e30 } do
-			local rows = byId(UpgradesView.rows(input(ZERO, coins)))
-			for _, id in { "magnet", "sellValue" } do
+			local rows = byId(UpgradesView.rows(input(ZERO, coins, nil, LockedMagnet)))
+			for _, id in { "magnet" } do
 				local row = rows[id]
 				T.equal(row.state, "Locked", id)
 				T.equal(row.canBuy, false, `{id} never buyable`)
@@ -125,11 +144,11 @@ return T.suite("Upgrades window rows (7.8)", function(test)
 				T.equal(row.name, Ui.UpgradeRows[id].Name, "still listed by name")
 				T.equal(row.levelText, "0/100")
 			end
-			for _, id in { "growth", "walkSpeed", "stability" } do
+			for _, id in { "growth", "walkSpeed", "sellValue", "stability" } do
 				T.isTrue(rows[id].state ~= "Locked", `{id} is not locked`)
 			end
 		end
-		local notLoaded = UpgradesView.row(input(ZERO, 1000, "Loading"), "magnet")
+		local notLoaded = UpgradesView.row(input(ZERO, 1000, "Loading", LockedMagnet), "magnet")
 		T.equal(notLoaded.state, "Locked", "locked also while loading")
 		T.equal(notLoaded.levelText, Ui.Text.Missing)
 	end)

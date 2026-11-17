@@ -8,27 +8,42 @@
 --   rateLimit a Config.Net.RateLimits entry (per player)
 --   authorize optional hook for ownership, distance, cooldowns and other game-state checks
 --
+-- A server -> client event is declared the same way. It gets no server handler, so anything a
+-- client fires on it is dropped (Rate, Arity or NoHandler) and counted.
+--
 -- This module is a function of its dependencies so the headless tests can load it with
 -- plain path requires, while Net/init passes the Roblox modules. Config.Upgrades gives the
--- closed list of upgrade ids.
+-- closed list of upgrade ids, Config.Tutorial the hint ids a client may report (#42).
 
-return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: any }
-	local example = NetConfig.Example
+local function popupArgs(Schema: any, popup: any): { any }
+	local args = { Schema.string({ minLength = 1, maxLength = popup.MaxKeyLength }) }
+	for _ = 1, popup.MaxNumbers do
+		table.insert(
+			args,
+			Schema.optional(Schema.number({ min = -popup.MaxNumberMagnitude, max = popup.MaxNumberMagnitude }))
+		)
+	end
+	return args
+end
+
+return function(Schema: any, NetConfig: any, UpgradesConfig: any, TutorialConfig: any): { [string]: any }
+	local limits = NetConfig.RateLimits
 
 	return {
-		-- EXAMPLE ONLY, not gameplay. Lets the playtester exercise the guard in Studio
-		-- (NetExampleService handles it). Remove it once the first real remote exists.
-		-- Args: a whole number 1..MaxAmount and a list of up to MaxValues bounded numbers.
-		NetExample = {
+		-- Client -> server, no arguments: the Simulator "Lobby" button (ADR 0011). TravelService
+		-- refuses it outside the Simulator and while a travel is in progress. The destination is
+		-- always the Lobby, so the client has nothing to choose.
+		TravelRequestLobby = {
 			kind = "Event",
-			args = {
-				Schema.number({ min = 1, max = example.MaxAmount, integer = true }),
-				Schema.array(
-					Schema.number({ min = -example.MaxValueMagnitude, max = example.MaxValueMagnitude }),
-					{ maxLength = example.MaxValues }
-				),
-			},
-			rateLimit = NetConfig.RateLimits.NetExample,
+			args = {},
+			rateLimit = limits.TravelRequestLobby,
+		},
+
+		-- Server -> client: TravelService sends one Config.Travel.Messages key (ADR 0011).
+		TravelNotice = {
+			kind = "Event",
+			args = {},
+			rateLimit = limits.TravelNotice,
 		},
 
 		-- Buy the next level of one upgrade (#36, ADR 0010). Arg: the upgrade id, one of
@@ -38,7 +53,91 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 		UpgradeBuy = {
 			kind = "Event",
 			args = { Schema.enum(UpgradesConfig.Order) },
-			rateLimit = NetConfig.RateLimits.UpgradeBuy,
+			rateLimit = limits.UpgradeBuy,
+		},
+
+		-- Unlock zone `zone` at the barrier at the end of zone - 1 (#39, ADR 0014). Arg: the zone
+		-- to open. No price is sent: ZoneService checks world, cap, map, adjacency, the unlocked
+		-- set and the coins itself and computes the price from Formulas.Zones.
+		ZoneUnlock = {
+			kind = "Event",
+			args = { Schema.number({ min = 1, max = NetConfig.Zones.MaxZone, integer = true }) },
+			rateLimit = NetConfig.RateLimits.ZoneUnlock,
+		},
+
+		-- Zone teleport (T, #39): to the start of an unlocked zone. ZoneService checks the unlock,
+		-- the zone start and the wait after the last teleport.
+		ZoneTeleport = {
+			kind = "Event",
+			args = { Schema.number({ min = 1, max = NetConfig.Zones.MaxZone, integer = true }) },
+			rateLimit = NetConfig.RateLimits.ZoneTeleport,
+		},
+
+		-- Hatch one egg (#41, ADR 0013). No arguments: the server finds the egg station the
+		-- character stands at, and decides price, coins, room and the roll itself. Handled in
+		-- the Simulator only; Lobby and Arena drop it as NoHandler.
+		EggHatch = {
+			kind = "Event",
+			args = {},
+			rateLimit = NetConfig.RateLimits.EggHatch,
+		},
+
+		-- Equip (true) or unequip (false) one of the player's own pets by uid (#41, ADR 0013).
+		-- PetService checks that the uid is in the player's inventory and that a slot is free.
+		-- Handled where PetService runs (Lobby and Simulator); the Arena drops it as NoHandler.
+		PetEquip = {
+			kind = "Event",
+			args = {
+				Schema.string({ minLength = 1, maxLength = NetConfig.Pets.MaxUidLength }),
+				Schema.boolean(),
+			},
+			rateLimit = NetConfig.RateLimits.PetEquip,
+		},
+
+		-- Server -> client only (#90, ADR 0008): PopupService fires it with a text key from
+		-- Config.Ui.PopupTexts and up to Config.Net.Popup.MaxNumbers numbers. No server handler
+		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		Popup = {
+			kind = "Event",
+			args = popupArgs(Schema, NetConfig.Popup),
+			rateLimit = NetConfig.RateLimits.Popup,
+		},
+
+		-- Server -> client only (#38, ADR 0012): SellService fires it with the whole coins of one
+		-- sale, and SaleController shows "+3.4K" flying to the Coins display. The server decides
+		-- the sale from the ball touching a scale plate; no client asks for it. No server handler
+		-- exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		SaleResult = {
+			kind = "Event",
+			args = { Schema.number({ min = 0, max = NetConfig.Sale.MaxCoins, integer = true }) },
+			rateLimit = NetConfig.RateLimits.SaleResult,
+		},
+
+		-- Server -> client only (#40, ADR 0016): FindService tells one player about that player's
+		-- own finds. Action "Spawn" (slot, find id, position), "Remove" (slot), "Collect" (slot,
+		-- find id: it now sticks in the ball), "ClearBall" (the ball was sold) and "Reset" (drop
+		-- every spawned find). The server decides spawns and pickups; no client asks for them. No
+		-- server handler exists, so a client call is dropped as NoHandler. The schema still bounds it.
+		FindUpdate = {
+			kind = "Event",
+			args = {
+				Schema.enum(NetConfig.Finds.Actions),
+				Schema.optional(Schema.number({ min = 1, max = NetConfig.Finds.MaxSlot, integer = true })),
+				Schema.optional(Schema.string({ minLength = 1, maxLength = NetConfig.Finds.MaxIdLength })),
+				Schema.optional(Schema.vector3({ maxMagnitude = NetConfig.Finds.MaxPositionMagnitude })),
+			},
+			rateLimit = NetConfig.RateLimits.FindUpdate,
+		},
+
+		-- Client -> server (#42, ADR 0017): an onboarding hint whose action only the client can
+		-- see is done (the Upgrades window opened). Arg: one of Config.Tutorial.ClientReportable.
+		-- TutorialService accepts it only while that hint is showing for the player and only ever
+		-- sets a known hint to done, never back. Lobby and Simulator handle it; the Arena drops it
+		-- as NoHandler.
+		TutorialHintDone = {
+			kind = "Event",
+			args = { Schema.enum(TutorialConfig.ClientReportable) },
+			rateLimit = limits.TutorialHintDone,
 		},
 	}
 end

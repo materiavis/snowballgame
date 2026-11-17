@@ -20,13 +20,13 @@ CLAUDE.md §6 requires every remote handler to validate type, range and rate, an
 - **Pure core, thin service.** `Schema`, `Registry`, `RateLimiter`, `Stats` and `Guard` have no requires and no service access, so `lune run tests` loads them. The clock is injected (`os.clock` live, a fake clock in tests). `Remotes.luau` is a function of `(Schema, Config.Net)` for the same reason. `NetService` creates the instances and wires the pieces.
 - **"Net initialises first" without changing the loaders.** `NetService` sets up on the first `Start()` or `handle()` call. The loaders start services in no fixed order, so a dependent service that calls `NetService.handle` first still finds the remotes. Each remote's guard is connected when the remote is created, before any handler exists, so there is never an unguarded window. Calls before a handler is registered are dropped as `NoHandler`.
 - **Studio-only counters on the instances.** In Studio, every remote carries `NetAccepted`, `NetRejected`, `NetRejected<Reason>`, `NetHandlerErrors` and `NetLastRejection` attributes, so a playtest can read them from server or client. Live servers skip this, because clients do not need to learn why their calls are dropped.
-- **One example remote, `NetExample`,** handled by `NetExampleService`. Both are marked as examples and are removed when the first real remote lands.
+- **One example remote, `NetExample`,** handled by `NetExampleService`. Both are marked as examples and are removed when the first real remote lands. They were removed with PR #110 (TravelService, [ADR 0011](0011-travel-service.md)); `tests/shared/Net/Guard.spec.luau` keeps the guard cases on a test-only declaration.
 
 ## Consequences
 
 - Adding a remote means one entry in `Net/Remotes` and one in `Config.Net.RateLimits`, then `NetService.handle(name, fn)` on the server and `Net.waitForRemote(name)` on the client. Nothing else may create a remote or connect `OnServerEvent` / `OnServerInvoke`.
 - `ReplicatedStorage.Remotes` must not be mapped by any Rojo project; `NetService` refuses to start if it already exists.
-- Server start counts grow by two (`NetService`, `NetExampleService`): 4 in Lobby and World 1, 3 in Arena (ADR 0004 recorded 2 and 1 before this change).
+- Server start counts grow by two (`NetService`, `NetExampleService`): 4 in Lobby and World 1, 3 in Arena (ADR 0004 recorded 2 and 1 before this change). `NetExampleService` was removed with PR #110; ADR 0011 records the counts after that.
 - No `InvokeClient`. The server never calls `RemoteFunction:InvokeClient`: a client can reply late, never, or with an error, and the waiting server thread would hang or break. The server sends with `FireClient` / `FireAllClients`; if it needs an answer, the client sends it back through its own declared remote, which the guard checks like any other call.
 - Server-to-client traffic (`FireClient`) is not validated by `Net`; the server trusts its own values. Whether server-only events also need declared schemas is open.
 - Not save-relevant: `Net` reads and writes no player data.

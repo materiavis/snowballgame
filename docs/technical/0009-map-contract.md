@@ -48,11 +48,11 @@ Constraints: StreamingEnabled is on in every Place, so a client may not have a p
 | Entry (concept) | Tag | Instance kind | Attributes | Count per zone | Missing or invalid |
 |---|---|---|---|---|---|
 | Zone start: spawn and zone-teleport target (7.6) | `ZoneStart` (zone) | Anchor. The character is placed on it, facing its `LookVector` | — | exactly 1 | 0 or more than 1: warn once, the zone has no start. Zone teleport into it is refused with the normal failure message, and a barrier into it stays closed. |
-| Find point (7.7) | `FindPoint` (zone) | Anchor at the spot the find lies on | — | any (6.2 asks 8–12; checked in the #29 review, not by code) | Outside a zone: ignored with the warning |
+| Find point (7.7) | `FindPoint` (zone) | Anchor at the spot the find lies on | — | any (6.2 asks 8–12; checked in the #29 review, not by code) | Outside a zone: ignored with the warning. Confirmed by #40 ([ADR 0016](0016-finds.md)): an Attachment or a BasePart; any other kind warns once and is ignored; zone (from ZoneService's resolver) and position are read once when it binds. |
 | Egg station (7.9) | `EggStation` (zone) | Station | — . The egg is the `k` with `Formulas.Pets.eggZone(k) == ZoneIndex` (Config `EggZones`: egg 1 in zone 1, egg 2 in zone 5) | 0 or 1 | In a zone without an egg: warn, ignored. More than 1: warn, all work. Whether that egg can be bought yet (egg 2 with #103) is decided in code, not by the map. |
 | Upgrade stand (7.8) | `UpgradeStand` (zone) | Station; opens the same menu as U | — | any (6.2: one at the zone end) | Outside a zone: ignored with the warning |
 | Scale (7.5, 7.6) | `ScaleAnchor` (unchanged) | Anchor | — | 1 (7.6 Fix) | See "Existing names" |
-| Scale sell area (7.5) | `ScalePlate` (zone) | BasePart: the volume a ball must touch to sell | — | at least 1 | None in a zone: that zone has no selling, warn once per zone. #38 confirms or replaces this entry. |
+| Scale sell area (7.5) | `ScalePlate` (zone) | BasePart: the volume a ball must touch to sell | — | at least 1 | None in a zone: that zone has no selling, warn once per zone. Confirmed by #38 ([ADR 0012](0012-selling.md)): a ball touching it is sold while its owner is at it; also not a BasePart or not in a valid zone: warn once per instance, ignored. |
 | Barrier (7.6) | `Barrier` (zone) | Station. Its blocking parts are inside the Model | — . It opens `ZoneIndex + 1`; the price is `Formulas.Zones.barrierPrice(ZoneIndex)` | 1, except the last zone of a world (`Formulas.Zones.isWorldGate`) and zone 50 | In a world-gate zone or zone 50: warn, ignored. 0: warn, the next zone is unreachable. More than 1: warn, all work. |
 | World gate (7.6) | `WorldGate` (zone) | Station | — . Target world is `PlaceInfo.WorldIndex + 1`, price as the barrier of its zone | 1, only where `isWorldGate(ZoneIndex)` | Elsewhere: warn, ignored |
 
@@ -100,6 +100,6 @@ The feature issues put the names they use into `src/shared/Config/*`, not this A
 - Design values exist only in Config and Formulas, so a price or egg change never touches a map file.
 - A built zone in `main` stays closed until the cap is raised in a reviewed PR, so #104 can merge before #105 without opening zone 6.
 - `Placeholder` has no `ZoneIndex`. It keeps working for surfaces, obstacles and `ScaleAnchor`; zone-bound features need real zone areas (#29) or a `ZoneIndex` on a test area.
-- The current `ScaleAnchor` lookup (`BallService/BallAttributes`) does not filter to `Workspace.Map`. Kit templates must not carry `ScaleAnchor` until #38 adds that filter.
+- The `ScaleAnchor` lookup (`BallService/BallAttributes`) filters to `Workspace.Map` since #38 (ADR 0012), so a Kit template with `ScaleAnchor` elsewhere is ignored.
 - Stations must be Models with `PrimaryPart` and `Atomic` streaming. An exported area that loses `PrimaryPart` shows up as a warning at start, not as a silent dead station.
 - New tags and attributes after this ADR need an ADR update or a note in the feature PR that adds them.

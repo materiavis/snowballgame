@@ -69,6 +69,52 @@ local Pets = {
 	InventoryExpansionPriceBalls = 10,
 	InventoryExpansionMax = 150,
 	InventoryGamepassSlots = 100, -- Big inventory game pass (9.2)
+
+	-- Pet catalogue (concept 7.9, appendix "Pet-Katalog", English names from the appendix "Englische
+	-- Namen"). The key is the pet's `kind` in the save format (sim.pets[uid].kind, ADR 0003), so a
+	-- key is never renamed. Egg 1 only in the Vertical Slice; Egg 2 comes with #103 (ADR 0013).
+	Catalogue = table.freeze({
+		SnowHare = table.freeze({ Name = "Snow Hare", Egg = 1, Rarity = "Common" }),
+		AlpineChough = table.freeze({ Name = "Alpine Chough", Egg = 1, Rarity = "Uncommon" }),
+		Marmot = table.freeze({ Name = "Marmot", Egg = 1, Rarity = "Rare" }),
+		RedFox = table.freeze({ Name = "Red Fox", Egg = 1, Rarity = "Epic" }),
+		SnowyOwl = table.freeze({ Name = "Snowy Owl", Egg = 1, Rarity = "Legendary" }),
+	}),
+
+	-- Server-written player attributes (ADR 0013). MultiplierAttribute is the interface to selling
+	-- (#38): 1 + the bonuses of the equipped pets, written on every server on load and after every
+	-- equip change. The others are the client contract of the pets window and the followers.
+	MultiplierAttribute = "PetMultiplier",
+	Attributes = table.freeze({
+		Inventory = "PetInventory", -- "<uid>:<kind>:<0|1>;..." (PetCodec)
+		Equipped = "PetEquipped", -- "<uid>:<kind>;..." (PetCodec), read by every client
+		Slots = "PetSlots", -- equip slots now
+		InventorySize = "PetInventorySize", -- how many pets fit
+	}),
+
+	-- Equipped pets following their player (concept 7.9 Spielraum "Laufverhalten", "vereinfachte
+	-- Darstellung fremder Pets", ADR 0003 R2). Placeholder shapes until the pet models exist.
+	-- Distances in studs, rates per second. Not design values, look and feel only.
+	Follow = table.freeze({
+		-- PlaceRole values where pets follow. The Lobby joins with #103; never the Arena (15.10).
+		Roles = table.freeze({ Simulator = true }),
+		BackDistance = 5, -- behind the character
+		Spacing = 3.5, -- side by side
+		RowDepth = 3, -- between rows when more pets than PerRow are equipped
+		PerRow = 3,
+		Sharpness = 10, -- how fast a pet closes the gap (1 / s, exponential smoothing)
+		SnapDistance = 60, -- further than this from its place: jump there (teleport, respawn)
+		BobHeight = 0.3,
+		BobSpeed = 4, -- radians per second
+		-- Own pets: body and head, a name label, every frame.
+		OwnBodySize = 2,
+		OwnHeadSize = 1.2,
+		LabelMaxDistance = 40,
+		-- Pets of other players (R2): one part, no label, no bob, a lower update rate, hidden far away.
+		ForeignBodySize = 2,
+		ForeignUpdateRate = 10,
+		ForeignMaxDistance = 150,
+	}),
 }
 
 return table.freeze(Pets)

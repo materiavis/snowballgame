@@ -61,6 +61,8 @@ local function hudRects(s: Screen): { [string]: Rect }
 	return {
 		coins = hud.coins,
 		ballSize = hud.ballSize,
+		progress = hud.progress,
+		zoneName = hud.zoneName,
 		hint = hud.hint,
 		upgrades = hud.menuButtons[1],
 	}
@@ -155,7 +157,7 @@ return T.suite("Ui Layout (10.2)", function(test)
 			T.near(hud.ballSize.x + hud.ballSize.width / 2, s.width / 2, 0.5, `ball size centred {name(s)}`)
 			T.equal(hud.ballSize.y, hud.coins.y, "same top row")
 			local rects = hudRects(s)
-			local parts = { "coins", "ballSize", "hint", "upgrades" }
+			local parts = { "coins", "ballSize", "progress", "zoneName", "hint", "upgrades" }
 			for i = 1, #parts do
 				for j = i + 1, #parts do
 					local a, b = parts[i], parts[j]

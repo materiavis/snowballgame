@@ -27,6 +27,13 @@ local Zones = {
 	-- Zone teleport (T): wait after a teleport to a zone start, seconds.
 	ZoneTeleportWait = 3,
 
+	-- Highest zone a barrier may open (owner decision 2026-11-10 on #39 and the review of
+	-- PR #106, ADR 0009 "Closed without a code change per Place"). A barrier at the end of zone n
+	-- opens only if this Place has a valid zone area n + 1 and n + 1 <= HighestOpenZone. Vertical
+	-- Slice: 5 (zones 1-5); #105 raises it for the Launch. Missing or invalid (not a whole number
+	-- 1..ZoneCount): every barrier stays closed.
+	HighestOpenZone = 5,
+
 	-- Zone optics (7.3): OpticsBase + OpticsPerZone * (zone - 1) studs, at most VisualCap.
 	-- Inside a zone the ball grows visually from OpticsStartFraction to 100 % of that.
 	-- Development may lower VisualCap after the PR #7 playtest.
@@ -34,6 +41,22 @@ local Zones = {
 	OpticsPerZone = 0.94,
 	VisualCap = 50,
 	OpticsStartFraction = 0.4,
+
+	-- Zone names shown under the progress bar (#90). Startwerte from the concept appendix, 🟦
+	-- proposal: Game Design reviews them later. Index = zone; a zone without a name shows
+	-- Config.Ui.Text.ZoneNamePlaceholder.
+	Names = table.freeze({
+		"Snowline",
+		"Pine Forest",
+		"Alpine Hut",
+		"Mountain Lake",
+		"Rocky Ridge",
+		"Ski Slope",
+		"Avalanche Slope",
+		"Glacier Edge",
+		"Glacier",
+		"Summit",
+	}),
 }
 
 return table.freeze(Zones)
