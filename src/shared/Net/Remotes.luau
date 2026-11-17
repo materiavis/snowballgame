@@ -8,27 +8,31 @@
 --   rateLimit a Config.Net.RateLimits entry (per player)
 --   authorize optional hook for ownership, distance, cooldowns and other game-state checks
 --
+-- A server -> client event is declared the same way. It gets no server handler, so anything a
+-- client fires on it is dropped (Rate, Arity or NoHandler) and counted.
+--
 -- This module is a function of its dependencies so the headless tests can load it with
 -- plain path requires, while Net/init passes the Roblox modules. Config.Upgrades gives the
 -- closed list of upgrade ids.
 
 return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: any }
-	local example = NetConfig.Example
+	local limits = NetConfig.RateLimits
 
 	return {
-		-- EXAMPLE ONLY, not gameplay. Lets the playtester exercise the guard in Studio
-		-- (NetExampleService handles it). Remove it once the first real remote exists.
-		-- Args: a whole number 1..MaxAmount and a list of up to MaxValues bounded numbers.
-		NetExample = {
+		-- Client -> server, no arguments: the Simulator "Lobby" button (ADR 0011). TravelService
+		-- refuses it outside the Simulator and while a travel is in progress. The destination is
+		-- always the Lobby, so the client has nothing to choose.
+		TravelRequestLobby = {
 			kind = "Event",
-			args = {
-				Schema.number({ min = 1, max = example.MaxAmount, integer = true }),
-				Schema.array(
-					Schema.number({ min = -example.MaxValueMagnitude, max = example.MaxValueMagnitude }),
-					{ maxLength = example.MaxValues }
-				),
-			},
-			rateLimit = NetConfig.RateLimits.NetExample,
+			args = {},
+			rateLimit = limits.TravelRequestLobby,
+		},
+
+		-- Server -> client: TravelService sends one Config.Travel.Messages key (ADR 0011).
+		TravelNotice = {
+			kind = "Event",
+			args = {},
+			rateLimit = limits.TravelNotice,
 		},
 
 		-- Buy the next level of one upgrade (#36, ADR 0010). Arg: the upgrade id, one of
@@ -38,7 +42,7 @@ return function(Schema: any, NetConfig: any, UpgradesConfig: any): { [string]: a
 		UpgradeBuy = {
 			kind = "Event",
 			args = { Schema.enum(UpgradesConfig.Order) },
-			rateLimit = NetConfig.RateLimits.UpgradeBuy,
+			rateLimit = limits.UpgradeBuy,
 		},
 	}
 end

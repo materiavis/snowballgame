@@ -25,7 +25,7 @@ return T.suite("src/shared/Net/Registry", function(test)
 			T.isTrue(NetConfig.RateLimits[name] ~= nil, `{name} has a Config.Net.RateLimits entry`)
 			T.equal(definition.rateLimit, NetConfig.RateLimits[name], `{name} uses its own Config.Net limit`)
 		end
-		T.isTrue(count >= 1, "at least the example remote is declared")
+		T.isTrue(count >= 1, "at least one remote is declared")
 		T.isTrue(table.isfrozen(definitions), "definitions are frozen")
 	end)
 

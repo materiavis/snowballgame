@@ -46,7 +46,9 @@ function Harness.world(): World
 	}
 end
 
-function Harness.server(world: World, jobId: string): Server
+-- injectFault is DataCore's Studio fault switch (DataFailLoad / DataFailSave in Studio), so a
+-- test can force exactly the failure the playtester forces.
+function Harness.server(world: World, jobId: string, injectFault: ((purpose: "Load" | "Save") -> boolean)?): Server
 	local server: Server = {
 		core = nil,
 		boards = nil,
@@ -92,6 +94,7 @@ function Harness.server(world: World, jobId: string): Server
 			table.insert(server.kicks, { userId = userId, message = message })
 		end,
 		log = log,
+		injectFault = injectFault,
 		boards = server.boards,
 		config = DataConfig,
 	})
