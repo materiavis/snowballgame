@@ -36,8 +36,8 @@ check 'Instance\.new|:Destroy\(|:Remove\(|:Clone\(|:ClearAllChildren\(|ChangeHis
 # Jedes require, getfenv und setfenv. Ein require auf ein Game-ModuleScript startet in execute_luau
 # eine zweite Instanz des Moduls (z. B. einen zweiten DataService, der ein Profil lädt, #130 / #37).
 # State wird über die Attribute gelesen, die eine ADR beschreibt. getfenv/setfenv öffnen den Weg
-# zu require über die Environment. Vor dem Wort darf ein JSON-Escape (\n, \t, \r) stehen.
-check '(^|[^A-Za-z0-9_]|\\[nrt])(require|getfenv|setfenv)([^A-Za-z0-9_]|$)' 'require / getfenv / setfenv. Kein Modul aus execute_luau laden, State über die ADR-Attribute lesen'
+# zu require über die Environment. Vor dem Wort darf ein JSON-Escape (\n, \t, \r, \f, \b, \uXXXX) stehen.
+check '(^|[^A-Za-z0-9_]|\\[bfnrt]|\\u[0-9a-fA-F]{4})(require|getfenv|setfenv)([^A-Za-z0-9_]|$)' 'require / getfenv / setfenv. Kein Modul aus execute_luau laden, State über die ADR-Attribute lesen'
 # Spielzustand per Code statt per Input verändern (Bewegung, Physik, Remotes, Tags, Character)
 check ':(PivotTo|MoveTo|SetPrimaryPartCFrame|TranslateBy|ApplyImpulse|ApplyAngularImpulse|ApplyImpulseAtPosition|SetNetworkOwner|SetNetworkOwnershipAuto|BreakJoints|TakeDamage|LoadCharacter|Kick|Move|ChangeState|SetStateEnabled|AddTag|RemoveTag|FireServer|FireClient|FireAllClients|InvokeServer|InvokeClient|Fire)\(' 'Spielzustand per Code verändern (Bewegung, Physik, Remotes, Tags). Gespielt wird über character_navigation, user_keyboard_input und user_mouse_input'
 # Zuweisung an Properties oder Felder (x.y = …, auch +=). Vergleiche (==, ~=, <=, >=) sind erlaubt.
