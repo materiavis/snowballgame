@@ -1,8 +1,9 @@
 --!strict
 -- AC1 for #24: malformed, out-of-range, over-rate and unauthorised calls are dropped and
--- counted, the handler never sees them, and nothing throws. Runs a test-only declaration
--- (the old NetExample remote, removed with #28) and, for #36, the real UpgradeBuy
--- declaration with its Config.Net limit; the clock is faked, players are plain tables.
+-- counted, the handler never sees them, and nothing throws. Runs a test-only fixture
+-- remote (TestRemote, declared here so the guard is tested apart from any game remote)
+-- and, for #36, the real UpgradeBuy declaration with its Config.Net limit; the clock is
+-- faked, players are plain tables.
 
 local T = require("../../TestKit")
 local FakeClock = require("../../helpers/FakeClock")
@@ -57,24 +58,24 @@ end
 
 -- Test fixture, not a design value: a whole number 1..MaxAmount and a list of up to
 -- MaxValues bounded numbers.
-local example = { MaxAmount = 10, MaxValues = 3, MaxValueMagnitude = 1000 }
-local exampleLimit = { Burst = 5, RefillPerSecond = 2 }
-local exampleBurst = exampleLimit.Burst
+local fixture = { MaxAmount = 10, MaxValues = 3, MaxValueMagnitude = 1000 }
+local fixtureLimit = { Burst = 5, RefillPerSecond = 2 }
+local fixtureBurst = fixtureLimit.Burst
 
-local function exampleDefinition()
+local function fixtureDefinition()
 	return Registry.build({
-		NetExample = {
+		TestRemote = {
 			kind = "Event",
 			args = {
-				Schema.number({ min = 1, max = example.MaxAmount, integer = true }),
+				Schema.number({ min = 1, max = fixture.MaxAmount, integer = true }),
 				Schema.array(
-					Schema.number({ min = -example.MaxValueMagnitude, max = example.MaxValueMagnitude }),
-					{ maxLength = example.MaxValues }
+					Schema.number({ min = -fixture.MaxValueMagnitude, max = fixture.MaxValueMagnitude }),
+					{ maxLength = fixture.MaxValues }
 				),
 			},
-			rateLimit = exampleLimit,
+			rateLimit = fixtureLimit,
 		},
-	}).NetExample
+	}).TestRemote
 end
 
 local PLAYER = { Name = "Tester" }
@@ -82,13 +83,13 @@ local OTHER = { Name = "Other" }
 
 return T.suite("src/shared/Net/Guard", function(test)
 	test("a valid call reaches the handler with its arguments", function()
-		local h = harness(exampleDefinition())
+		local h = harness(fixtureDefinition())
 		h.call(PLAYER, 1, { 0.5, -2 })
 		T.equal(#h.handled, 1)
 		T.equal(h.handled[1][1], PLAYER, "handler gets the calling player first")
 		T.equal(h.handled[1][2], 1)
-		T.equal(h.stats:get("NetExample").accepted, 1)
-		T.equal(h.stats:get("NetExample").rejected, 0)
+		T.equal(h.stats:get("TestRemote").accepted, 1)
+		T.equal(h.stats:get("TestRemote").rejected, 0)
 	end)
 
 	test("malformed calls are dropped, counted and never throw", function()
@@ -109,9 +110,9 @@ return T.suite("src/shared/Net/Guard", function(test)
 		}
 		for _, case in cases do
 			-- A fresh harness per case keeps the rate limit out of the way.
-			local h = harness(exampleDefinition())
+			local h = harness(fixtureDefinition())
 			h.call(PLAYER, table.unpack(case.args, 1, case.args.n))
-			local counts = h.stats:get("NetExample")
+			local counts = h.stats:get("TestRemote")
 			T.equal(#h.handled, 0, `{case.label}: handler must not run`)
 			T.equal(counts.rejected, 1, `{case.label}: counted`)
 			T.equal(counts.byReason[case.reason], 1, `{case.label}: reason {case.reason}`)
@@ -121,47 +122,47 @@ return T.suite("src/shared/Net/Guard", function(test)
 	test("out-of-range calls are dropped and counted", function()
 		local cases = {
 			{ label = "count below min", args = table.pack(0, {}) },
-			{ label = "count above max", args = table.pack(example.MaxAmount + 1, {}) },
-			{ label = "value above max", args = table.pack(1, { example.MaxValueMagnitude + 1 }) },
-			{ label = "value below min", args = table.pack(1, { -example.MaxValueMagnitude - 1 }) },
-			{ label = "too many values", args = table.pack(1, table.create(example.MaxValues + 1, 0)) },
+			{ label = "count above max", args = table.pack(fixture.MaxAmount + 1, {}) },
+			{ label = "value above max", args = table.pack(1, { fixture.MaxValueMagnitude + 1 }) },
+			{ label = "value below min", args = table.pack(1, { -fixture.MaxValueMagnitude - 1 }) },
+			{ label = "too many values", args = table.pack(1, table.create(fixture.MaxValues + 1, 0)) },
 		}
 		for _, case in cases do
-			local h = harness(exampleDefinition())
+			local h = harness(fixtureDefinition())
 			h.call(PLAYER, table.unpack(case.args, 1, case.args.n))
 			T.equal(#h.handled, 0, `{case.label}: handler must not run`)
-			T.equal(h.stats:get("NetExample").byReason.Args, 1, `{case.label}: counted as Args`)
+			T.equal(h.stats:get("TestRemote").byReason.Args, 1, `{case.label}: counted as Args`)
 		end
-		local h = harness(exampleDefinition())
-		h.call(PLAYER, example.MaxAmount, table.create(example.MaxValues, example.MaxValueMagnitude))
+		local h = harness(fixtureDefinition())
+		h.call(PLAYER, fixture.MaxAmount, table.create(fixture.MaxValues, fixture.MaxValueMagnitude))
 		T.equal(#h.handled, 1, "the bounds themselves are allowed")
 	end)
 
 	test("over-rate calls are dropped and counted per player, and allowed again after refill", function()
-		local h = harness(exampleDefinition())
-		for _ = 1, exampleBurst + 3 do
+		local h = harness(fixtureDefinition())
+		for _ = 1, fixtureBurst + 3 do
 			h.call(PLAYER, 1, {})
 		end
-		local counts = h.stats:get("NetExample")
-		T.equal(#h.handled, exampleBurst, "only the burst reaches the handler")
+		local counts = h.stats:get("TestRemote")
+		T.equal(#h.handled, fixtureBurst, "only the burst reaches the handler")
 		T.equal(counts.byReason.Rate, 3, "the rest are counted as Rate")
 
 		h.call(OTHER, 1, {})
-		T.equal(#h.handled, exampleBurst + 1, "another player has their own budget")
+		T.equal(#h.handled, fixtureBurst + 1, "another player has their own budget")
 
-		h.clock.advance(1 / exampleLimit.RefillPerSecond)
+		h.clock.advance(1 / fixtureLimit.RefillPerSecond)
 		h.call(PLAYER, 1, {})
-		T.equal(#h.handled, exampleBurst + 2, "one token back after one refill interval")
+		T.equal(#h.handled, fixtureBurst + 2, "one token back after one refill interval")
 	end)
 
 	test("malformed calls also spend rate budget, so floods stay capped", function()
-		local h = harness(exampleDefinition())
-		for _ = 1, exampleBurst do
+		local h = harness(fixtureDefinition())
+		for _ = 1, fixtureBurst do
 			h.call(PLAYER, "junk")
 		end
 		h.call(PLAYER, 1, {})
 		T.equal(#h.handled, 0)
-		T.equal(h.stats:get("NetExample").byReason.Rate, 1)
+		T.equal(h.stats:get("TestRemote").byReason.Rate, 1)
 	end)
 
 	test("the authorize hook can drop a call, and an erroring hook drops it too", function()
@@ -189,11 +190,11 @@ return T.suite("src/shared/Net/Guard", function(test)
 	end)
 
 	test("a handler error is caught, counted and reported on the server only", function()
-		local h = harness(exampleDefinition(), function()
+		local h = harness(fixtureDefinition(), function()
 			error("handler bug")
 		end)
 		h.call(PLAYER, 1, {})
-		local counts = h.stats:get("NetExample")
+		local counts = h.stats:get("TestRemote")
 		T.equal(counts.handlerErrors, 1)
 		T.equal(counts.accepted, 0)
 		T.equal(#h.errors, 1)
@@ -202,7 +203,7 @@ return T.suite("src/shared/Net/Guard", function(test)
 
 	test("a call without a registered handler is dropped and counted", function()
 		local stats = Stats.new()
-		local definition = exampleDefinition()
+		local definition = fixtureDefinition()
 		local guarded = Guard.new(definition, {
 			limiter = RateLimiter.new(definition.rateLimit, FakeClock.new().now),
 			stats = stats,
@@ -212,7 +213,7 @@ return T.suite("src/shared/Net/Guard", function(test)
 			reportError = function() end,
 		})
 		T.isTrue(pcall(guarded, PLAYER, 1, {}))
-		T.equal(stats:get("NetExample").byReason.NoHandler, 1)
+		T.equal(stats:get("TestRemote").byReason.NoHandler, 1)
 	end)
 
 	test("a Function remote returns handler values, and nothing when rejected", function()
@@ -235,7 +236,7 @@ return T.suite("src/shared/Net/Guard", function(test)
 	end)
 
 	test("a subscriber that errors does not break the call", function()
-		local h = harness(exampleDefinition())
+		local h = harness(fixtureDefinition())
 		local seen: { string } = {}
 		h.stats:subscribe(function()
 			error("listener bug")
