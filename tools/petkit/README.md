@@ -44,14 +44,14 @@ Die Slugs aller 51 Pets stehen in `pets_meta.py`. Ablauf: Pet ändern → bauen 
 - Körperhöhe nach Seltenheit: 2.7 / 2.9 / 3.1 / 3.4 / 3.7 / 3.9 Studs
 - Varianten tauschen nur die Textur, das Mesh bleibt gleich
 
-## Import in Roblox Studio (Test offen)
+## Import in Roblox Studio
 
-Mit 2–3 Pets aus `build2/` (oder aus Pets.zip) im 3D Importer prüfen:
+Getestet am 18.11.2026 auf einer lokalen Baseplate: Schneehase und Rotfuchs mit dem 3D Importer.
 
-1. **Grösse:** Ein Gewöhnlich-Pet muss etwa 2.7 Studs hoch sein. glTF gilt als Meter; ist das Pet rund 3.5-mal zu gross, im Importer die Einheit auf Studs stellen.
-2. **Ausrichtung:** Gesicht zeigt nach +Z. Roblox-Modelle schauen mit `LookVector` nach −Z, darum im Script beim Folgen evtl. um 180° drehen.
-3. **Textur:** Wird die eingebettete Textur nicht übernommen, `*_textur.png` aus `varianten.py` von Hand als `TextureID` setzen.
-4. **Variante:** `TextureID` auf `*_gold.png` tauschen, das Pet muss golden werden, Augen bleiben gleich.
+1. **Grösse:** stimmt mit `pets.json` überein (Rotfuchs 4.23 × 3.74 × 3.39, Schneehase 1.74 × 2.70 × 1.69 Studs). Keine Einheit anpassen.
+2. **Ausrichtung:** automatisch korrekt, keine Drehung nötig.
+3. **Textur:** die eingebettete Textur ist sichtbar.
+4. **Variante:** `TextureID` auf `*_gold.png` getauscht, das Pet wird golden.
 
 Upload unter der Gruppe Materiavis (siehe Notion «Asset-Berechtigungen»). Asset-IDs nie von Hand eintippen.
 

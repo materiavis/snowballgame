@@ -21,11 +21,11 @@ Alle 51 Pets aus dem Konzept «02 - Snow Rush» (Abschnitt 7.9 und Anhang Pet-Ka
 
 ## Import in Roblox Studio
 
-Noch nicht getestet. Bitte zuerst zwei, drei Pets mit dem 3D Importer laden und prüfen:
+Getestet am 18.11.2026 auf einer lokalen Baseplate: Schneehase und Rotfuchs mit dem 3D Importer.
 
-1. Stimmt die Grösse (Tabelle in `pets.json`)? Wenn nicht, die Einheit im Importer anpassen.
-2. Zeigt das Pet nach vorne? Sonst im Importer oder per Script um 180° drehen.
-3. Ist die Textur sichtbar? Sonst die PNG aus `texturen/` von Hand als Textur setzen.
+1. Die Grösse stimmt mit `pets.json` überein (Rotfuchs 4.23 × 3.74 × 3.39, Schneehase 1.74 × 2.70 × 1.69 Studs).
+2. Die Ausrichtung ist automatisch korrekt, keine Drehung nötig.
+3. Die eingebettete Textur ist sichtbar. Die Gold-Textur lässt sich per `TextureID` tauschen.
 
 ## Varianten
 
@@ -39,6 +39,5 @@ Gold, Regenbogen und Frostig brauchen kein eigenes Modell: Es reicht, die Textur
 
 ## Offen
 
-- Import in Roblox Studio testen
 - Englische Namen ab Ei 3 fehlen noch (Konzept: Development übersetzt nach demselben Muster)
 - Goldener Yeti: Das Konzept sagt in 7.9 «ab Welt 2», die Roadmap sagt Update 3
