@@ -12,7 +12,7 @@ Before you start:
 1. Read `CLAUDE.md` in full (sections 4, 5, 10 and 15 matter most).
 2. Read `docs/technical/0009-map-contract.md`: it defines the tags, stations and anchors your parts carry.
 3. Read the GitHub issue you were given (`gh issue view <n>`). The issue is your scope. It must name:
-   - the kit (one kit per world folder, e.g. `world1`),
+   - the kit (one kit per world folder, `world/<world>/`),
    - the list of parts with their role (prop, obstacle, knock-over obstacle, station shell, ground piece),
    - the style reference (a link in Notion or Materiavis Files),
    - the triangle budget per part.
@@ -32,7 +32,7 @@ Before you start:
 
 1. **Reuse the toolchain.** Build meshes with the `tools/petkit` modules (SDF shapes, marching cubes, reduction, baked AO, GLB export) and its conventions: 1 unit = 1 stud, Y up, front +Z, origin at the bottom centre. Add kit-specific code under `tools/kit/<kit>/`; change `tools/petkit` only where the issue allows it.
 2. **Mesh is only the look.** Every visual `MeshPart` has `CanCollide`, `CanQuery` and `CanTouch` off. Collision, contact tests and tags sit on invisible box parts (`Transparency = 1`, `Anchored`) under the same template Model.
-3. **Tags per ADR 0009, on the right instance.** `Obstacle` (and `KnockOverSize` for knock-over obstacles) on the collision BasePart. Station shells (`UpgradeStand`, `EggStation`, `Barrier`, `WorldGate`, `Portal` …) are Models with the tag on the Model, `PrimaryPart` set to a part inside it and `ModelStreamingMode = Atomic`; add a `LabelAnchor` Attachment where a label belongs. Never put design values (prices, odds, names, rewards) on a part. Templates live outside `Workspace.Map`, so their tags stay inactive until the world-builder places a copy.
+3. **Tags per ADR 0009, on the right instance.** Which tag needs which instance kind is listed in `Config.Map.ZoneContract` (`PartTags`, `AnchorTags`, `StationTags`, `KnockOverTag`/`KnockOverAttribute`); the issue says which tag a part gets. Part tags go on the collision BasePart. Station shells are Models with the tag on the Model, `PrimaryPart` set to a part inside it and `ModelStreamingMode = Atomic`; add a `LabelAnchor` Attachment where a label belongs. Never put design values (prices, odds, names, rewards) on a part. Templates live outside `Workspace.Map`, so their tags stay inactive until the world-builder places a copy.
 4. **Variants by seed.** Each part gets the number of variants the issue asks for (default 2–3), each from a fixed seed (size, rotation, colour). Record the seed per variant in `parts.json`. Same seed, same mesh.
 5. **Triangle budget.** Every mesh stays within the budget from the issue. Check it with `python3 tools/petkit/pruefen.py` (or a kit check built the same way) and list the triangle count per part in the PR.
 6. **No typed asset IDs.** You never write an `rbxassetid://` by hand. Uploading is done by a human in Roblox Studio under the group Materiavis (Notion «Asset-Berechtigungen»). The human writes the IDs into `tools/kit/<kit>/upload-list.json`: `{ "<part>_<variant>": { "meshId": <number>, "textureId": <number or null> } }`. Your kit model reads IDs only from that file. A part without an ID stays out of the kit model and is listed as "waiting for upload".

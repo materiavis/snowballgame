@@ -17,10 +17,16 @@ local NO_COUNTS: ZoneContract.Rules = { Counts = {} }
 
 -- The fixtures use the names from the contract config, so they hold for any game.
 local Contract = Map.ZoneContract
-local PART_TAG = Contract.PartTags[#Contract.PartTags]
+-- A part tag other than the knock-over tag, so the ground is not counted as an obstacle.
+local PART_TAG = if Contract.PartTags[1] ~= Contract.KnockOverTag then Contract.PartTags[1] else Contract.PartTags[2]
 local OBSTACLE = Contract.KnockOverTag
 local KNOCK_OVER = Contract.KnockOverAttribute
 local START = Contract.StartTag
+-- Second anchor tag and three station tags, whatever their names are.
+local ANCHOR = Contract.AnchorTags[#Contract.AnchorTags]
+local STATION_A = Contract.StationTags[1]
+local STATION_B = Contract.StationTags[2]
+local STATION_C = Contract.StationTags[3]
 
 local function part(name: string, parent: any, tags: { string }?): any
 	local p = Instance.new("Part")
@@ -63,8 +69,8 @@ local function goodZone(zoneIndex: number): any
 	part("PartB", multiPart, { OBSTACLE })
 	local single = part("SingleObstacle", root, { OBSTACLE })
 	single:SetAttribute(KNOCK_OVER, 4)
-	part("Find1", root, { "FindPoint" })
-	station("Stand", "UpgradeStand", root)
+	part("AnchorPart", root, { ANCHOR })
+	station("StationA", STATION_A, root)
 	local bounds = Instance.new("Folder")
 	bounds.Name = Map.ZoneContract.BoundsFolderName
 	bounds.Parent = root
@@ -164,16 +170,16 @@ return T.suite("tests/world/ZoneContract", function(test)
 
 	test("stations need a Model, a PrimaryPart and Atomic streaming", function()
 		local noPrimary = goodZone(1)
-		station("Egg", "EggStation", noPrimary, false)
+		station("StationB", STATION_B, noPrimary, false)
 		expectProblem(noPrimary, "needs a PrimaryPart")
 
 		local streaming = goodZone(1)
-		streaming:FindFirstChild("Stand").ModelStreamingMode = Enum.ModelStreamingMode.Default
+		streaming:FindFirstChild("StationA").ModelStreamingMode = Enum.ModelStreamingMode.Default
 		expectProblem(streaming, "needs ModelStreamingMode Atomic")
 
 		local notModel = goodZone(1)
-		part("Gate", notModel, { "Barrier" })
-		expectProblem(notModel, "Barrier must be a Model")
+		part("StationPart", notModel, { STATION_C })
+		expectProblem(notModel, `{STATION_C} must be a Model`)
 	end)
 
 	test("parts: part tags need a BasePart, the knock-over attribute is positive", function()
@@ -208,7 +214,7 @@ return T.suite("tests/world/ZoneContract", function(test)
 		T.equal(#ZoneContract.check(root, nil, { Counts = { [OBSTACLE] = { Min = 2, Max = 2 } } }), 0)
 		expectProblem(root, `{OBSTACLE} objects: 2, needs at least 3`, { Counts = { [OBSTACLE] = { Min = 3 } } })
 		expectProblem(root, `{OBSTACLE} objects: 2, allows at most 1`, { Counts = { [OBSTACLE] = { Max = 1 } } })
-		expectProblem(root, "FindPoint objects: 1, needs at least 2", { Counts = { FindPoint = { Min = 2 } } })
+		expectProblem(root, `{ANCHOR} objects: 1, needs at least 2`, { Counts = { [ANCHOR] = { Min = 2 } } })
 	end)
 
 	test("knock-over share counts objects that can be knocked over", function()

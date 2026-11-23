@@ -34,11 +34,7 @@ return T.suite("src/shared/Config/Map ZoneContract names", function(test)
 	end)
 
 	test("part tags match game code", function()
-		local expected = { Map.Tags.ScalePlate, Ball.ObstacleTag }
-		for _, surface in Ball.Surfaces do
-			table.insert(expected, surface)
-		end
-		sameSet(Contract.PartTags, expected, "PartTags")
+		sameSet(Contract.PartTags, { Map.Tags.ScalePlate, Ball.ObstacleTag }, "PartTags")
 	end)
 
 	test("station tags match game code", function()

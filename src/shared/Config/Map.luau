@@ -102,7 +102,7 @@ local Map = {
 
 	-- Zone contract check (tests/world/ZoneContract.spec.luau, used by the world-builder agent).
 	-- Structure rules come from ADR 0009 and are always checked. Counts is empty on purpose:
-	-- the team fills it per world from the approved spec, e.g. Obstacle = { Min = 1, Max = 9 }.
+	-- the team fills it per world from the approved spec, e.g. [<tag>] = { Min = 1, Max = 9 }.
 	-- A tag without an entry is not counted. KnockOverShare (0..1, e.g. { Min = 0.4, Max = 0.6 })
 	-- is the share of obstacle objects that can be knocked over; nil means not checked.
 	ZoneContract = table.freeze({
@@ -115,7 +115,7 @@ local Map = {
 		-- it knows no game names; a test keeps them equal to the names game code binds to.
 		StartTag = "ZoneStart", -- exactly one per zone
 		AnchorTags = table.freeze({ "ZoneStart", "FindPoint", "ScaleAnchor" }), -- Attachment or BasePart
-		PartTags = table.freeze({ "ScalePlate", "Obstacle", "Snow", "DeepSnow", "Ice", "Grass" }), -- BasePart
+		PartTags = table.freeze({ "ScalePlate", "Obstacle" }), -- BasePart
 		StationTags = table.freeze({ "UpgradeStand", "EggStation", "Barrier", "WorldGate" }), -- atomic Model
 		-- Obstacles that can be knocked over carry this positive number attribute.
 		KnockOverTag = "Obstacle",
