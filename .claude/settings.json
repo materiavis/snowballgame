@@ -26,6 +26,7 @@
       "Bash(rojo sourcemap:*)",
       "Bash(stylua:*)",
       "Bash(selene:*)",
+      "Bash(lune run tests:*)",
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)",
       "Bash(gh pr view:*)",

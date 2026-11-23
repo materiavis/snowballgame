@@ -100,6 +100,28 @@ local Map = {
 		StreamTimeout = 5,
 	}),
 
+	-- Zone contract check (tests/world/ZoneContract.spec.luau, used by the world-builder agent).
+	-- Structure rules come from ADR 0009 and are always checked. Counts is empty on purpose:
+	-- the team fills it per world from the approved spec, e.g. Obstacle = { Min = 1, Max = 9 }.
+	-- A tag without an entry is not counted. KnockOverShare (0..1, e.g. { Min = 0.4, Max = 0.6 })
+	-- is the share of obstacle objects that can be knocked over; nil means not checked.
+	ZoneContract = table.freeze({
+		-- Zone area files checked: world/<world>/ZoneNN.rbxmx (NN = ZoneIndex, two digits).
+		FilePattern = "^Zone(%d%d)%.rbxmx$",
+		-- Folder in every zone area root with the invisible walls at the zone edge.
+		BoundsFolderName = "Bounds",
+		MaxZoneIndex = 50,
+		Counts = table.freeze({}) :: { [string]: { Min: number?, Max: number? } },
+		KnockOverShare = nil :: { Min: number?, Max: number? }?,
+		-- Per-world overrides: Worlds[<folder name>] = { Counts = ..., KnockOverShare = ... }.
+		Worlds = table.freeze({}) :: {
+			[string]: {
+				Counts: { [string]: { Min: number?, Max: number? } }?,
+				KnockOverShare: { Min: number?, Max: number? }?,
+			},
+		},
+	}),
+
 	-- Studio-only test zones (ZoneTestGeometry, ADR 0014): areas ZoneTest01..ZoneTest06 in a row
 	-- along +X beyond the +X edge of the Placeholder ground, so falling off the side is a real
 	-- fall into the void. Test fixtures, not design values.
