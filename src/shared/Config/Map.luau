@@ -117,6 +117,19 @@ local Map = {
 		LabelHeight = 3, -- LabelAnchor above the top of the gate
 	}),
 
+	-- Level-design limits per Simulator zone (concept 6.2), checked on the map files by
+	-- tests/world/ZoneContract.spec.luau before a zone PR. No game code reads them, and they are
+	-- the one design-value exception in this module. Counting (owner decision 2026-11-23): one kit
+	-- object = one Model, however many Obstacle parts it holds; one deep-snow field = one Folder
+	-- of DeepSnow parts. Min and Max are inclusive.
+	LevelDesign = table.freeze({
+		Obstacles = table.freeze({ Min = 15, Max = 25 }),
+		-- Share of obstacle Models whose Obstacle parts carry KnockOverSize ("about half").
+		KnockOverShare = table.freeze({ Min = 0.4, Max = 0.6 }),
+		DeepSnowFields = table.freeze({ Min = 2, Max = 3 }),
+		FindPoints = table.freeze({ Min = 8, Max = 12 }),
+	}),
+
 	-- Studio-only test geometry for the stand (UpgradeStandTestGeometry, ADR 0010): how far in
 	-- front of the target character the test stand stands, and its part size. Not design values.
 	StandTest = table.freeze({
