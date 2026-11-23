@@ -23,18 +23,18 @@ Before you start:
 
 | Output | Where |
 |---|---|
-| Generator code (Python, the `tools/petkit` toolchain extended where needed) | `tools/kit/<kit>/` in this repo |
+| Generator and check code (Python) | `tools/kit/<kit>/` in this repo |
 | Mesh exports (`.glb`) and preview images | Materiavis Files, `AI-Output/kits/<kit>/` (never in the repo, CLAUDE.md section 15) |
 | Kit model with the templates | `world/kits/<kit>.rbxmx` in this repo |
 | Part list | `tools/kit/<kit>/parts.json` in this repo |
 
 ## Rules
 
-1. **Reuse the toolchain.** Build meshes with the `tools/petkit` modules (SDF shapes, marching cubes, reduction, baked AO, GLB export) and its conventions: 1 unit = 1 stud, Y up, front +Z, origin at the bottom centre. Add kit-specific code under `tools/kit/<kit>/`; change `tools/petkit` only where the issue allows it.
+1. **Own generator.** Build meshes with your own Python generator under `tools/kit/<kit>/` (for example SDF shapes, marching cubes, mesh reduction, baked AO, GLB export with `numpy`, `scipy`, `scikit-image`, `Pillow`). Conventions: 1 unit = 1 stud, Y up, front +Z, origin at the bottom centre. Do not import or change any other folder under `tools/`.
 2. **Mesh is only the look.** Every visual `MeshPart` has `CanCollide`, `CanQuery` and `CanTouch` off. Collision, contact tests and tags sit on invisible box parts (`Transparency = 1`, `Anchored`) under the same template Model.
 3. **Tags per ADR 0009, on the right instance.** Which tag needs which instance kind is listed in `Config.Map.ZoneContract` (`PartTags`, `AnchorTags`, `StationTags`, `KnockOverTag`/`KnockOverAttribute`); the issue says which tag a part gets. Part tags go on the collision BasePart. Station shells are Models with the tag on the Model, `PrimaryPart` set to a part inside it and `ModelStreamingMode = Atomic`; add a `LabelAnchor` Attachment where a label belongs. Never put design values (prices, odds, names, rewards) on a part. Templates live outside `Workspace.Map`, so their tags stay inactive until the world-builder places a copy.
 4. **Variants by seed.** Each part gets the number of variants the issue asks for (default 2–3), each from a fixed seed (size, rotation, colour). Record the seed per variant in `parts.json`. Same seed, same mesh.
-5. **Triangle budget.** Every mesh stays within the budget from the issue. Check it with `python3 tools/petkit/pruefen.py` (or a kit check built the same way) and list the triangle count per part in the PR.
+5. **Triangle budget.** Every mesh stays within the budget from the issue. Check it with your own `tools/kit/<kit>/check.py` (structure, triangle count, origin, size, front +Z, UV, texture) and list the triangle count per part in the PR.
 6. **No typed asset IDs.** You never write an `rbxassetid://` by hand. Uploading is done by a human in Roblox Studio under the group Materiavis (Notion «Asset-Berechtigungen»). The human writes the IDs into `tools/kit/<kit>/upload-list.json`: `{ "<part>_<variant>": { "meshId": <number>, "textureId": <number or null> } }`. Your kit model reads IDs only from that file. A part without an ID stays out of the kit model and is listed as "waiting for upload".
 7. **Kit model layout.** `world/kits/<kit>.rbxmx` has one root `Folder` named after the kit. Each template is a `Model` named `<Part>_<Variant>` with `PrimaryPart` set to its collision or base part and the attributes `KitPart` (string, the part name), `KitScaleMin` and `KitScaleMax` (numbers, the scale range the world-builder may use, from the issue).
 8. **Gallery.** For the review, render every part and variant side by side with a reference size (the sizes the issue names) and save the images to `AI-Output/kits/<kit>/gallery/`. Link them in the PR.
