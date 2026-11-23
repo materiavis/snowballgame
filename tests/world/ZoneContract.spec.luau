@@ -9,20 +9,18 @@ local roblox = require("@lune/roblox")
 local T = require("../TestKit")
 local ZoneContract = require("../helpers/ZoneContract")
 local Map = require("../../src/shared/Config/Map")
-local Ball = require("../../src/shared/Config/Ball")
 
 local Instance = roblox.Instance
 local Enum = roblox.Enum
 
 local NO_COUNTS: ZoneContract.Rules = { Counts = {} }
 
--- Any surface tag from Config; the checker treats them all alike.
-local surfaceNames = {}
-for _, name in Ball.Surfaces do
-	table.insert(surfaceNames, name)
-end
-table.sort(surfaceNames)
-local SURFACE_TAG = surfaceNames[1]
+-- The fixtures use the names from the contract config, so they hold for any game.
+local Contract = Map.ZoneContract
+local PART_TAG = Contract.PartTags[#Contract.PartTags]
+local OBSTACLE = Contract.KnockOverTag
+local KNOCK_OVER = Contract.KnockOverAttribute
+local START = Contract.StartTag
 
 local function part(name: string, parent: any, tags: { string }?): any
 	local p = Instance.new("Part")
@@ -53,18 +51,18 @@ local function goodZone(zoneIndex: number): any
 	local root = Instance.new("Folder")
 	root.Name = string.format("Zone%02d", zoneIndex)
 	root:SetAttribute("ZoneIndex", zoneIndex)
-	part("Ground", root, { SURFACE_TAG })
+	part("Ground", root, { PART_TAG })
 	local start = Instance.new("Attachment")
 	start.Name = "Start"
-	start:AddTag("ZoneStart")
+	start:AddTag(START)
 	start.Parent = root:FindFirstChild("Ground")
 	local multiPart = Instance.new("Model")
 	multiPart.Name = "MultiPartObstacle"
 	multiPart.Parent = root
-	part("PartA", multiPart, { "Obstacle" })
-	part("PartB", multiPart, { "Obstacle" })
-	local single = part("SingleObstacle", root, { "Obstacle" })
-	single:SetAttribute("KnockOverSize", 4)
+	part("PartA", multiPart, { OBSTACLE })
+	part("PartB", multiPart, { OBSTACLE })
+	local single = part("SingleObstacle", root, { OBSTACLE })
+	single:SetAttribute(KNOCK_OVER, 4)
 	part("Find1", root, { "FindPoint" })
 	station("Stand", "UpgradeStand", root)
 	local bounds = Instance.new("Folder")
@@ -147,21 +145,21 @@ return T.suite("tests/world/ZoneContract", function(test)
 		expectProblem(model, "must not use ModelStreamingMode Atomic")
 	end)
 
-	test("ZoneStart: none or two is a problem, a Model is the wrong kind", function()
+	test("zone start: none or two is a problem, a Model is the wrong kind", function()
 		local none = goodZone(1)
 		none:FindFirstChild("Ground"):FindFirstChild("Start"):Destroy()
-		expectProblem(none, "needs exactly 1 ZoneStart, has 0")
+		expectProblem(none, `needs exactly 1 {START}, has 0`)
 
 		local two = goodZone(1)
-		part("Start2", two, { "ZoneStart" })
-		expectProblem(two, "needs exactly 1 ZoneStart, has 2")
+		part("Start2", two, { START })
+		expectProblem(two, `needs exactly 1 {START}, has 2`)
 
 		local wrong = goodZone(1)
 		wrong:FindFirstChild("Ground"):FindFirstChild("Start"):Destroy()
 		local model = Instance.new("Model")
-		model:AddTag("ZoneStart")
+		model:AddTag(START)
 		model.Parent = wrong
-		expectProblem(wrong, "ZoneStart must be an Attachment or BasePart")
+		expectProblem(wrong, `{START} must be an Attachment or BasePart`)
 	end)
 
 	test("stations need a Model, a PrimaryPart and Atomic streaming", function()
@@ -178,16 +176,16 @@ return T.suite("tests/world/ZoneContract", function(test)
 		expectProblem(notModel, "Barrier must be a Model")
 	end)
 
-	test("parts: surfaces and obstacles must be BaseParts, KnockOverSize positive", function()
+	test("parts: part tags need a BasePart, the knock-over attribute is positive", function()
 		local root = goodZone(1)
 		local attachment = Instance.new("Attachment")
-		attachment:AddTag(SURFACE_TAG)
+		attachment:AddTag(PART_TAG)
 		attachment.Parent = root:FindFirstChild("Ground")
-		expectProblem(root, `{SURFACE_TAG} must be a BasePart`)
+		expectProblem(root, `{PART_TAG} must be a BasePart`)
 
 		local size = goodZone(1)
-		size:FindFirstChild("SingleObstacle"):SetAttribute("KnockOverSize", -1)
-		expectProblem(size, "KnockOverSize must be a positive number")
+		size:FindFirstChild("SingleObstacle"):SetAttribute(KNOCK_OVER, -1)
+		expectProblem(size, `{KNOCK_OVER} must be a positive number`)
 	end)
 
 	test("bounds: folder required, walls invisible, colliding and anchored", function()
@@ -207,9 +205,9 @@ return T.suite("tests/world/ZoneContract", function(test)
 	test("counts are per object and only for configured tags", function()
 		-- MultiPartObstacle (2 obstacle parts) + SingleObstacle = 2 obstacle objects.
 		local root = goodZone(1)
-		T.equal(#ZoneContract.check(root, nil, { Counts = { Obstacle = { Min = 2, Max = 2 } } }), 0)
-		expectProblem(root, "Obstacle objects: 2, needs at least 3", { Counts = { Obstacle = { Min = 3 } } })
-		expectProblem(root, "Obstacle objects: 2, allows at most 1", { Counts = { Obstacle = { Max = 1 } } })
+		T.equal(#ZoneContract.check(root, nil, { Counts = { [OBSTACLE] = { Min = 2, Max = 2 } } }), 0)
+		expectProblem(root, `{OBSTACLE} objects: 2, needs at least 3`, { Counts = { [OBSTACLE] = { Min = 3 } } })
+		expectProblem(root, `{OBSTACLE} objects: 2, allows at most 1`, { Counts = { [OBSTACLE] = { Max = 1 } } })
 		expectProblem(root, "FindPoint objects: 1, needs at least 2", { Counts = { FindPoint = { Min = 2 } } })
 	end)
 

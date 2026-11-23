@@ -4,7 +4,6 @@
 -- @lune/roblox and returns a list of problems, so the spec can feed it built fixtures and real
 -- files alike. Every problem names the instance's path, so a builder can find it.
 
-local Ball = require("../../src/shared/Config/Ball")
 local Map = require("../../src/shared/Config/Map")
 
 export type Range = { Min: number?, Max: number? }
@@ -15,17 +14,14 @@ export type Rules = {
 
 local ZoneContract = {}
 
-local Tags = Map.Tags
--- ADR 0009 names WorldGate, but no code binds it yet, so it is not in Config.Map.Tags.
-local WORLD_GATE_TAG = "WorldGate"
-local STATION_TAGS = { Tags.UpgradeStand, Tags.EggStation, Tags.Barrier, WORLD_GATE_TAG }
--- Tags whose instance must be an anchor (Attachment or BasePart).
-local ANCHOR_TAGS = { Tags.ZoneStart, Tags.FindPoint, Ball.ScaleAnchorTag }
--- Tags whose instance must be a BasePart.
-local PART_TAGS = { Tags.ScalePlate, Ball.ObstacleTag }
-for _, surface in Ball.Surfaces do
-	table.insert(PART_TAGS, surface)
-end
+-- All tag and attribute names come from Config.Map.ZoneContract, so this checker stays neutral.
+local Contract = Map.ZoneContract
+local START_TAG = Contract.StartTag
+local STATION_TAGS = Contract.StationTags
+local ANCHOR_TAGS = Contract.AnchorTags
+local PART_TAGS = Contract.PartTags
+local KNOCK_OVER_TAG = Contract.KnockOverTag
+local KNOCK_OVER_ATTRIBUTE = Contract.KnockOverAttribute
 
 local function pathOf(instance: any, root: any): string
 	local names = {}
@@ -128,10 +124,10 @@ function ZoneContract.check(root: any, fileZone: number?, rules: Rules): { strin
 		end
 	end
 
-	-- Exactly one ZoneStart.
-	local starts = tagged[Tags.ZoneStart] or {}
+	-- Exactly one zone start.
+	local starts = tagged[START_TAG] or {}
 	if #starts ~= 1 then
-		problem(root, `needs exactly 1 {Tags.ZoneStart}, has {#starts}`)
+		problem(root, `needs exactly 1 {START_TAG}, has {#starts}`)
 	end
 
 	for _, tag in ANCHOR_TAGS do
@@ -166,11 +162,11 @@ function ZoneContract.check(root: any, fileZone: number?, rules: Rules): { strin
 		end
 	end
 
-	-- KnockOverSize, when set, must be a positive finite number.
-	for _, instance in tagged[Ball.ObstacleTag] or {} do
-		local size = instance:GetAttribute(Ball.KnockOverSizeAttribute)
+	-- The knock-over attribute, when set, must be a positive finite number.
+	for _, instance in tagged[KNOCK_OVER_TAG] or {} do
+		local size = instance:GetAttribute(KNOCK_OVER_ATTRIBUTE)
 		if size ~= nil and not isPositiveFinite(size) then
-			problem(instance, `{Ball.KnockOverSizeAttribute} must be a positive number, is {size}`)
+			problem(instance, `{KNOCK_OVER_ATTRIBUTE} must be a positive number, is {size}`)
 		end
 	end
 
@@ -211,9 +207,9 @@ function ZoneContract.check(root: any, fileZone: number?, rules: Rules): { strin
 	if rules.KnockOverShare then
 		local objects: { [any]: boolean } = {}
 		local total, knockable = 0, 0
-		for _, instance in tagged[Ball.ObstacleTag] or {} do
+		for _, instance in tagged[KNOCK_OVER_TAG] or {} do
 			local object = objectOf(instance, root)
-			local canKnock = isPositiveFinite(instance:GetAttribute(Ball.KnockOverSizeAttribute))
+			local canKnock = isPositiveFinite(instance:GetAttribute(KNOCK_OVER_ATTRIBUTE))
 			if objects[object] == nil then
 				objects[object] = canKnock
 				total += 1

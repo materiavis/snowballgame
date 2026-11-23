@@ -111,6 +111,15 @@ local Map = {
 		-- Folder in every zone area root with the invisible walls at the zone edge.
 		BoundsFolderName = "Bounds",
 		MaxZoneIndex = 50,
+		-- Which instance kind each tag needs (ADR 0009). The checker reads only these lists, so
+		-- it knows no game names; a test keeps them equal to the names game code binds to.
+		StartTag = "ZoneStart", -- exactly one per zone
+		AnchorTags = table.freeze({ "ZoneStart", "FindPoint", "ScaleAnchor" }), -- Attachment or BasePart
+		PartTags = table.freeze({ "ScalePlate", "Obstacle", "Snow", "DeepSnow", "Ice", "Grass" }), -- BasePart
+		StationTags = table.freeze({ "UpgradeStand", "EggStation", "Barrier", "WorldGate" }), -- atomic Model
+		-- Obstacles that can be knocked over carry this positive number attribute.
+		KnockOverTag = "Obstacle",
+		KnockOverAttribute = "KnockOverSize",
 		Counts = table.freeze({}) :: { [string]: { Min: number?, Max: number? } },
 		KnockOverShare = nil :: { Min: number?, Max: number? }?,
 		-- Per-world overrides: Worlds[<folder name>] = { Counts = ..., KnockOverShare = ... }.
