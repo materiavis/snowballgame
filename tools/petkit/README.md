@@ -55,6 +55,36 @@ Getestet am 18.11.2026 auf einer lokalen Baseplate: Schneehase und Rotfuchs mit 
 
 Upload unter der Gruppe Materiavis (siehe Notion «Asset-Berechtigungen»). Asset-IDs nie von Hand eintippen.
 
+## Upload-Liste
+
+`upload-list.json` ist die einzige Quelle für Asset-IDs der Welt-Teile. Agents lesen sie nur; Einträge macht ein Mensch nach dem Upload von Hand in Studio (Creator = Gruppe Materiavis). Ohne Upload bleibt die Datei eine leere Liste `[]`.
+
+Ein Eintrag pro hochgeladenem Teil:
+
+```json
+{
+  "part": "tanne_klein",
+  "variant": 1,
+  "seed": 1234,
+  "file": "tools/petkit/modelle/welt1/tanne_klein_v1.glb",
+  "meshId": "rbxassetid://...",
+  "textureId": "rbxassetid://...",
+  "uploadedBy": "Marco",
+  "date": "2026-11-23"
+}
+```
+
+| Feld | Inhalt |
+|---|---|
+| `part` | Slug des Teils |
+| `variant` | Nummer der Variante (1–3) |
+| `seed` | Seed, mit dem die Variante gebaut wurde |
+| `file` | Pfad der hochgeladenen `.glb`, vom Repository-Wurzelverzeichnis aus |
+| `meshId` | Asset-ID des Meshes, `rbxassetid://<Zahl>` |
+| `textureId` | Asset-ID der Textur, `rbxassetid://<Zahl>` |
+| `uploadedBy` | wer hochgeladen hat |
+| `date` | Datum des Uploads, `JJJJ-MM-TT` |
+
 ## Offen
 
 - Leichte Version für fremde Pets (ca. 600 Dreiecke): `target` in `Pet.build()` senken und testen
