@@ -9,11 +9,20 @@ local roblox = require("@lune/roblox")
 local T = require("../TestKit")
 local ZoneContract = require("../helpers/ZoneContract")
 local Map = require("../../src/shared/Config/Map")
+local Ball = require("../../src/shared/Config/Ball")
 
 local Instance = roblox.Instance
 local Enum = roblox.Enum
 
 local NO_COUNTS: ZoneContract.Rules = { Counts = {} }
+
+-- Any surface tag from Config; the checker treats them all alike.
+local surfaceNames = {}
+for _, name in Ball.Surfaces do
+	table.insert(surfaceNames, name)
+end
+table.sort(surfaceNames)
+local SURFACE_TAG = surfaceNames[1]
 
 local function part(name: string, parent: any, tags: { string }?): any
 	local p = Instance.new("Part")
@@ -44,18 +53,18 @@ local function goodZone(zoneIndex: number): any
 	local root = Instance.new("Folder")
 	root.Name = string.format("Zone%02d", zoneIndex)
 	root:SetAttribute("ZoneIndex", zoneIndex)
-	part("Ground", root, { "Snow" })
+	part("Ground", root, { SURFACE_TAG })
 	local start = Instance.new("Attachment")
 	start.Name = "Start"
 	start:AddTag("ZoneStart")
 	start.Parent = root:FindFirstChild("Ground")
-	local tree = Instance.new("Model")
-	tree.Name = "Tree"
-	tree.Parent = root
-	part("Trunk", tree, { "Obstacle" })
-	part("Crown", tree, { "Obstacle" })
-	local rock = part("Rock", root, { "Obstacle" })
-	rock:SetAttribute("KnockOverSize", 4)
+	local multiPart = Instance.new("Model")
+	multiPart.Name = "MultiPartObstacle"
+	multiPart.Parent = root
+	part("PartA", multiPart, { "Obstacle" })
+	part("PartB", multiPart, { "Obstacle" })
+	local single = part("SingleObstacle", root, { "Obstacle" })
+	single:SetAttribute("KnockOverSize", 4)
 	part("Find1", root, { "FindPoint" })
 	station("Stand", "UpgradeStand", root)
 	local bounds = Instance.new("Folder")
@@ -118,7 +127,7 @@ return T.suite("tests/world/ZoneContract", function(test)
 		expectProblem(root, "must be a whole number")
 
 		local child = goodZone(3)
-		child:FindFirstChild("Rock"):SetAttribute("ZoneIndex", 3)
+		child:FindFirstChild("SingleObstacle"):SetAttribute("ZoneIndex", 3)
 		expectProblem(child, "only belongs on the zone area root")
 
 		local named = goodZone(3)
@@ -172,12 +181,12 @@ return T.suite("tests/world/ZoneContract", function(test)
 	test("parts: surfaces and obstacles must be BaseParts, KnockOverSize positive", function()
 		local root = goodZone(1)
 		local attachment = Instance.new("Attachment")
-		attachment:AddTag("DeepSnow")
+		attachment:AddTag(SURFACE_TAG)
 		attachment.Parent = root:FindFirstChild("Ground")
-		expectProblem(root, "DeepSnow must be a BasePart")
+		expectProblem(root, `{SURFACE_TAG} must be a BasePart`)
 
 		local size = goodZone(1)
-		size:FindFirstChild("Rock"):SetAttribute("KnockOverSize", -1)
+		size:FindFirstChild("SingleObstacle"):SetAttribute("KnockOverSize", -1)
 		expectProblem(size, "KnockOverSize must be a positive number")
 	end)
 
@@ -196,7 +205,7 @@ return T.suite("tests/world/ZoneContract", function(test)
 	end)
 
 	test("counts are per object and only for configured tags", function()
-		-- Tree (2 obstacle parts) + Rock = 2 obstacle objects.
+		-- MultiPartObstacle (2 obstacle parts) + SingleObstacle = 2 obstacle objects.
 		local root = goodZone(1)
 		T.equal(#ZoneContract.check(root, nil, { Counts = { Obstacle = { Min = 2, Max = 2 } } }), 0)
 		expectProblem(root, "Obstacle objects: 2, needs at least 3", { Counts = { Obstacle = { Min = 3 } } })
@@ -205,7 +214,7 @@ return T.suite("tests/world/ZoneContract", function(test)
 	end)
 
 	test("knock-over share counts objects that can be knocked over", function()
-		-- Rock can, Tree cannot: share 0.5.
+		-- SingleObstacle can be knocked over, MultiPartObstacle cannot: share 0.5.
 		local root = goodZone(1)
 		T.equal(#ZoneContract.check(root, nil, { Counts = {}, KnockOverShare = { Min = 0.5, Max = 0.5 } }), 0)
 		expectProblem(root, "knock-over share", { Counts = {}, KnockOverShare = { Min = 0.6 } })

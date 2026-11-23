@@ -49,7 +49,7 @@ local function isPositiveFinite(value: any): boolean
 	return type(value) == "number" and value == value and value > 0 and value < math.huge
 end
 
--- The object a tagged instance belongs to when counting: its nearest Model ancestor (a tree
+-- The object a tagged instance belongs to when counting: its nearest Model ancestor (an object
 -- made of several parts counts once), else the instance itself.
 local function objectOf(instance: any, root: any): any
 	local current = instance

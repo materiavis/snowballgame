@@ -30,7 +30,7 @@ Before you start:
 
 ## Rules
 
-1. **Kit parts only.** Every obstacle, prop and station is a copy of a template from the kit. You build your own geometry only for the ground (and its `Snow`/`DeepSnow`/`Ice`/`Grass` surface tags per ADR 0009) and for the invisible walls. If a needed part is missing from the kit, stop and ask for it from the `asset-builder`; do not improvise one.
+1. **Kit parts only.** Every obstacle, prop and station is a copy of a template from the kit. You build your own geometry only for the ground (with the surface tags the issue names, from `Config.Ball.Surfaces`) and for the invisible walls. If a needed part is missing from the kit, stop and ask for it from the `asset-builder`; do not improvise one.
 2. **Contract first.** Each area meets ADR 0009: root is a `Folder` (or a non-atomic Model) with `ZoneIndex` on the root only; exactly one `ZoneStart`; stations are Models with `PrimaryPart` and `ModelStreamingMode = Atomic`; tags only on the instance kinds the ADR names; no design values as attributes.
 3. **Invisible walls.** Every area has a folder `Bounds` (name from `Config.Map.ZoneContract.BoundsFolderName`) with walls along the area edge: `Transparency = 1`, `CanCollide`, `Anchored`. Nothing a player must reach lies outside them.
 4. **Sight lines and layout come from the issue.** If the issue says something must be visible from the zone start, place it so and prove it in the object list (positions, distance, nothing in between on the straight line). Keep the paths between stations wide enough for the largest object the issue names.
