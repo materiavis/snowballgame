@@ -1,0 +1,19 @@
+{
+  "zone": 1,
+  "kit": "world/kits/KIT_NAME.rbxmx",
+  "ground": [
+    {
+      "name": "Ground",
+      "size": [300, 2, 150],
+      "position": [0, -1, 0],
+      "material": "SmoothPlastic",
+      "color": [200, 200, 200],
+      "tags": []
+    }
+  ],
+  "start": [-140, 1, 0],
+  "bounds": { "min": [-150, -75], "max": [150, 75], "bottom": 0, "height": 60 },
+  "objects": [
+    { "template": "TEMPLATE_NAME", "position": [0, 0, 0], "rotation": 0, "scale": 1 }
+  ]
+}

@@ -31,14 +31,14 @@ jobs:
           cache: true
 
       - name: "StyLua (format check)"
-        run: stylua --check src tests
+        run: stylua --check src tests tools/world tools/kit
 
       - name: "Selene (lint)"
         run: selene src
 
       # Tests run under Lune, so they use their own config with plain Luau globals.
       - name: "Selene (lint tests)"
-        run: selene --config tests/selene.toml tests
+        run: selene --config tests/selene.toml tests tools/world tools/kit
 
       # Kept in this job on purpose: its name is the required status check in the main
       # ruleset, so a failing test blocks the merge. A separate job would not.
