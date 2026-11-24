@@ -1,6 +1,6 @@
 # Welt-1-Baukasten: Plan
 
-Stand 24.11.2026 · Refs #29 · Status: **Entwurf, wartet auf Owner-Antworten**
+Stand 24.11.2026 · Refs #29 · Status: **technische Fragen entschieden (Abschnitt 10), Stilfragen bei Marco (PR #140)**
 
 Plan für den ganzen Welt-1-Baukasten (Alpen, Zonen 1–10), damit `asset-builder` und
 `world-builder` an der ganzen Welt getestet werden statt Teil für Teil. Dieses Dokument
@@ -22,7 +22,7 @@ Quellen:
 |---|---|
 | asset-builder und world-builder auf `main` (PR #138) | PASS: gemergt am 24.11.2026 |
 | petkit unter `tools/petkit/` auf `main` (PR #133) | PASS: gemergt am 18.11.2026 |
-| MCP-Server `materiavis-files-agent` | FAIL: `uvx` nicht im PATH, Server startet nicht |
+| MCP-Server `materiavis-files-agent` | FAIL: `uvx` nicht im PATH, Server startet nicht. Erneut geprüft am 24.11. nach der Meldung «uv installiert, Passwort gesetzt»: in der Umgebung des Development Managers weiterhin kein `uvx` und kein `NC_AGENT_APP_PASSWORD` (Protokoll, Abschnitt 11) |
 
 ## 2. Blocker
 
@@ -209,12 +209,12 @@ ist eine Stilfrage (F6). Danach wächst Batch 4 oder 5.
 
 | Batch | Inhalt | Meshes (Seeds) | Warum an dieser Stelle |
 |---|---|---|---|
-| **1** | Tännchen, kleiner Fels, Zaunstück | 8 | Vorgabe: Look Review früh. Diese drei Formen tragen den Stil (gestufter Kegel, runder Brocken, Pfosten mit Balken) und kommen in 9 von 10 Zonen vor. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
-| **2** | Latschenbusch, grosse Tanne, Tannengruppe, Felsblock, Felsgruppe | 11 | Mit Batch 1 hat dann jede Vertical-Slice-Zone (1–5) kleine **und** grosse Hindernisse. Danach kann der erste World task (Zonen 1–2) den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
-| **3** | Waage, Upgrade-Stand, Ei-Station, Barriere, Fundpunkt-Marker | 4 | Ohne Stationen sind die Zonen nicht spielbar (Ziel G2/G3 des Vertical Slice). Stationen haben die meisten Funktions-Tags und das grösste Budget. Sie kommen nach dem Look Review von Batch 1, damit der Stil feststeht. |
-| **4** | Holzstapel, Heuballen, Wegweiser, Alphütte (+ Teile aus F6 für die Zonen 2, 4, 5) | 7+ | Schliesst den Vertical Slice (Zonen 1–5) ab, vor allem Zone 3. |
-| **5** | Eisblock, Welten-Tor, Pistenstange, Liftmast, Gipfelkreuz (+ Teile aus F6 für die Zonen 7–10) | 6+ | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. |
-| **6** | Schneehügel, Schneewechte, Eisrand, Gletscherspalte | 9 | **BLOCKED** bis F1 entschieden ist. Bis dahin entsteht der Boden aus Blöcken des world-builders. |
+| **1** (#142) | Tännchen, kleiner Fels, Zaunstück | 8 | Vorgabe: Look Review früh. Diese drei Formen tragen den Stil (gestufter Kegel, runder Brocken, Pfosten mit Balken) und kommen in 9 von 10 Zonen vor. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
+| **2** (#143) | Latschenbusch, grosse Tanne, Tannengruppe, Felsblock, Felsgruppe | 11 | Mit Batch 1 hat dann jede Vertical-Slice-Zone (1–5) kleine **und** grosse Hindernisse. Danach kann der erste World task (Zonen 1–2) den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
+| **3** (#144) | Waage, Upgrade-Stand, Ei-Station, Barriere, Fundpunkt-Marker | 4 | Ohne Stationen sind die Zonen nicht spielbar (Ziel G2/G3 des Vertical Slice). Stationen haben die meisten Funktions-Tags und das grösste Budget. Sie kommen nach dem Look Review von Batch 1, damit der Stil feststeht. |
+| **4** (#145) | Holzstapel, Heuballen, Wegweiser, Alphütte (+ Teile aus F6 für die Zonen 2, 4, 5) | 7+ | Schliesst den Vertical Slice (Zonen 1–5) ab, vor allem Zone 3. |
+| **5** (#146) | Eisblock, Welten-Tor, Pistenstange, Liftmast, Gipfelkreuz (+ Teile aus F6 für die Zonen 7–10) | 6+ | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. |
+| **6** (kein Issue, BLOCKED) | Schneehügel, Schneewechte, Eisrand, Gletscherspalte | 9 | **BLOCKED** bis F1 entschieden ist. Bis dahin entsteht der Boden aus Blöcken des world-builders. |
 
 ## 8. World tasks und benötigte Batches
 
@@ -245,3 +245,27 @@ Zonen-Check ein.
 | F10 | Höchstens 6 Deko-Teile in den Zonen 1, 3 und 5 (Budget)? | Sonst über 40'000 Dreiecke. |
 | F11 | Wie viele Seeds pro Teil? (Vorschlag: klein 3 bzw. 2, gross 2, Deko und Stationen 1) | Bestimmt den Upload-Aufwand: 36 Meshes ohne Batch 6, 45 mit. |
 | F12 | `TagKinds`/`PositiveAttributes` (ADR 0009) vor Batch 1 in `WorldRules.luau` eintragen? | Sonst prüft der Kit-Check die Tags nicht (Blocker 2). Ändert den Entscheid «leer bis ein World task fragt». |
+
+## 10. Entscheide (24.11.2026)
+
+| # | Entscheid | Von | Umsetzung |
+|---|---|---|---|
+| F2 | **Gate 1:** Die Galerie von Batch 1 gilt als Abnahme der Look-Referenz. Die Batches 2–5 starten erst danach. | Yowaldy | AC in #142 |
+| F3 | Lighting, Atmosphere und Sky bekommen ein eigenes Issue, nicht den asset-builder. | Yowaldy | #141 |
+| F4 | `KnockOverShare = 0.7` gilt provisorisch und ist als **PLAYTEST TUNING** markiert. Endgültig wird der Wert erst nach einem Playtest. | Development Manager (technisch, Auftrag Yowaldy) | `src/shared/Config/WorldRules.luau`, Test in `tests/shared/WorldRules.spec.luau` (0.4 < Wert ≤ 1) |
+| F9 | Alles wird selbst gebaut. Teile aus dem Creator Store kommen nur nach einem Model Audit dazu (Look-Referenz, CLAUDE.md Abschnitt 10). | Development Manager | Abschnitt `Fix` in jedem Asset task |
+| F10 | In den Zonen 1 und 5 höchstens 6 Deko-Teile, in Zone 3 höchstens 5 neben der Alphütte. Mesh-Boden zählt mit. | Development Manager | Limits im World task, Hinweis in #145 |
+| F11 | Seeds: kleine Hindernisse 3 (Tännchen, Fels, Latschen) bzw. 2 (übrige), grosse 2, Deko und Stationen 1. Das ergibt 36 Meshes ohne Batch 6. | Development Manager | Asset tasks #142–#146 |
+
+Noch offen:
+- F1 (Terrain) bleibt beim Test auf Jans Handy, Batch 6 ist BLOCKED.
+- F12 hat Marco entschieden («leer, bis ein World task fragt»). Der Vorschlag für einen chore steht in PR #140 und wird ohne seine Antwort nicht umgesetzt.
+- F5–F8 (Stil) hat Marco in PR #140.
+- F4, F5 und F12 müssen vor Runde 2 von Batch 1 beantwortet sein, sonst stoppt Runde 2.
+
+## 11. Protokoll: ungeplante Eingriffe von Menschen
+
+| Wann | Wer | Eingriff | Folge |
+|---|---|---|---|
+| 24.11.2026 | Marco | Commit `bce7ae9` auf PR #138, während der Development Manager den asset-builder auf denselben Branch brachte: `TagKinds` und `PositiveAttributes` werden leer. | Regel 4 des asset-builders und die Vorlage «Asset task» angepasst (Tag-Art kommt aus dem Issue). Der Kit-Check prüft die Tags erst, wenn sie eingetragen sind (Blocker 2, F12). |
+| 24.11.2026 | Yowaldy | Meldung: `uv` installiert und `NC_AGENT_APP_PASSWORD` gesetzt. | In der Umgebung des Development Managers ist beides nicht sichtbar: kein `uvx` im PATH, Variable leer (auch in einer Login-Shell). Vermutlich auf einem anderen Rechner oder nach dem Start dieser Session gesetzt. Batch 1 startet nicht. |

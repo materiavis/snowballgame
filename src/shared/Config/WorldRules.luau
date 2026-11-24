@@ -39,4 +39,9 @@ return table.freeze({
 	Shares = table.freeze({}) :: { Share },
 	-- Per-world limits replace the ones above: Worlds["<folder name>"] = { Counts = ..., Shares = ... }.
 	Worlds = table.freeze({}) :: { [string]: Limits },
+	-- Kit sizes, not used by the builder or the zone check. Share of a zone's visual ball maximum
+	-- (concept 7.3) at which a small obstacle becomes knock-over-able: the asset-builder sets
+	-- KnockOverSize = KnockOverShare x D(zone) / Config.Ball.KnockOverSizeRatio. PLAYTEST TUNING,
+	-- provisional (docs/kits/welt1-plan.md, F4). Must stay above 0.4, the ball's start share.
+	KnockOverShare = 0.7,
 })
