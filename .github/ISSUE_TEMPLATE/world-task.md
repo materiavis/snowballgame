@@ -20,6 +20,9 @@ labels: ["world"]
 - Paths (how wide, what must stay free):
 - Must be visible from the start:
 
+## Tags the zone check must check
+<!-- Optional. Which tag sits on which kind of object: Point (marker or part), Part (one part) or Group (several parts with a main part). Attributes that must be positive. Written into WorldRules (TagKinds, PositiveAttributes). -->
+
 ## Limits for the zone check
 <!-- Optional. Counts per tag (min/max) and shares (e.g. "40-60 % of <tag> objects carry <attribute>"). Written into WorldRules under Worlds["<world>"]. -->
 

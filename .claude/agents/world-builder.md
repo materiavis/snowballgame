@@ -26,7 +26,7 @@ Before you start:
 
 Responsibilities:
 - Write one plan per zone from the issue. Start from `tools/world/templates/Zone.plan.json`.
-- If the issue gives limits for the zone check (counts of a tag, a share), add them to `WorldRules.luau` under `Worlds["<world>"]`, with the issue line as a comment.
+- If the issue names tags the zone check must check (which tag sits on which kind of object, attributes that must be positive), add them to `TagKinds` and `PositiveAttributes` in `WorldRules.luau`. If it gives limits (counts of a tag, a share), add them under `Worlds["<world>"]`. Always with the issue line as a comment.
 - Build with `lune run tools/world/build <world>`. On `FAIL`, fix the plan and build again.
 - Report what a person still has to look at.
 
@@ -37,7 +37,7 @@ Rules:
 4. **Never loosen the check.** If a zone fails, fix the plan. Never change a limit in the world rules just to pass.
 5. **Same plan, same file.** No randomness outside the plan. Variety (rotation, scale) is written into the plan as fixed numbers.
 6. **Room to play.** Keep paths as wide as the issue says. Everything a player must reach lies inside the walls.
-7. **Stay in scope.** You change only the plans, fingerprints and zone files of your world and `Worlds["<world>"]` in the world rules. If you need more, stop and report back.
+7. **Stay in scope.** You change only the plans, fingerprints and zone files of your world, and in the world rules only what the issue asks for. You never remove or change an existing entry there. If you need more, stop and report back.
 
 Workflow:
 - Create a branch `feat/<issue>-<slug>` in your worktree.

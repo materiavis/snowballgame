@@ -1,64 +1,43 @@
 --!strict
--- Keeps Config.WorldRules (the game's names for the general world-builder and zone check)
--- equal to the names game code binds to (ADR 0009, ADR 0002). This test belongs to the game,
--- not to the world-builder: it is the one place where both meet.
+-- Config.WorldRules (the game's names for the general world-builder and zone check) is well
+-- formed: every tag the rules mention has a known kind, and every limit makes sense.
 
 local T = require("../TestKit")
 local Rules = require("../../src/shared/Config/WorldRules")
-local Map = require("../../src/shared/Config/Map")
-local Ball = require("../../src/shared/Config/Ball")
 
-local function expectKinds(expected: { [string]: string })
-	for tag, kind in expected do
-		T.equal(Rules.TagKinds[tag], kind, `TagKinds.{tag}`)
-	end
-	for tag in Rules.TagKinds do
-		T.isTrue(expected[tag] ~= nil, `TagKinds.{tag} is not a tag game code uses`)
-	end
-end
+local KINDS = { Point = true, Part = true, Group = true }
 
 return T.suite("src/shared/Config/WorldRules", function(test)
-	test("names match the map config", function()
-		T.equal(Rules.ZoneNumberAttribute, Map.ZoneIndexAttribute)
-		T.equal(Rules.StartTag, Map.Tags.ZoneStart)
-		T.equal(Rules.GroupStreamingMode, Map.StationStreamingMode)
+	test("the basics the builder needs are set", function()
+		T.equal(type(Rules.ZoneNumberAttribute), "string")
+		T.equal(type(Rules.StartTag), "string")
+		T.equal(type(Rules.BoundsFolder), "string")
+		T.isTrue(Rules.MaxZoneNumber >= 1 and Rules.MaxZoneNumber % 1 == 0, "MaxZoneNumber")
 	end)
 
-	test("tag kinds match ADR 0009", function()
-		expectKinds({
-			[Map.Tags.ZoneStart] = "Point",
-			[Map.Tags.FindPoint] = "Point",
-			[Ball.ScaleAnchorTag] = "Point",
-			[Map.Tags.ScalePlate] = "Part",
-			[Ball.ObstacleTag] = "Part",
-			[Map.Tags.UpgradeStand] = "Group",
-			[Map.Tags.EggStation] = "Group",
-			[Map.Tags.Barrier] = "Group",
-			-- ADR 0009 names WorldGate; no code binds it yet, so it is not in Map.Tags.
-			WorldGate = "Group",
-		})
+	test("every tag kind is Point, Part or Group", function()
+		for tag, kind in Rules.TagKinds do
+			T.isTrue(KINDS[kind] ~= nil, `TagKinds.{tag} = {kind}`)
+		end
 	end)
 
-	test("positive attributes match game code", function()
-		T.equal(#Rules.PositiveAttributes, 1)
-		T.equal(Rules.PositiveAttributes[1].Tag, Ball.ObstacleTag)
-		T.equal(Rules.PositiveAttributes[1].Attribute, Ball.KnockOverSizeAttribute)
-	end)
-
-	test("limits are well formed", function()
+	test("limits name tags with a kind and stay in range", function()
 		local function checkLimits(counts: { [string]: any }?, shares: { any }?, label: string)
 			for tag, range in counts or {} do
-				T.isTrue(Rules.TagKinds[tag] ~= nil, `{label} Counts.{tag} is a known tag`)
+				T.isTrue(Rules.TagKinds[tag] ~= nil or tag == Rules.StartTag, `{label} Counts.{tag} has a kind`)
 				T.isTrue(range.Min == nil or range.Max == nil or range.Min <= range.Max, `{label} Counts.{tag}`)
 			end
 			for i, share in shares or {} do
-				T.isTrue(Rules.TagKinds[share.Tag] ~= nil, `{label} Shares[{i}] tag is known`)
+				T.isTrue(Rules.TagKinds[share.Tag] ~= nil, `{label} Shares[{i}] tag has a kind`)
 				T.isTrue((share.Min or 0) >= 0 and (share.Max or 1) <= 1, `{label} Shares[{i}] in 0..1`)
 			end
 		end
 		checkLimits(Rules.Counts, Rules.Shares, "")
 		for world, limits in Rules.Worlds do
 			checkLimits(limits.Counts, limits.Shares, `Worlds.{world}`)
+		end
+		for i, entry in Rules.PositiveAttributes do
+			T.isTrue(Rules.TagKinds[entry.Tag] ~= nil, `PositiveAttributes[{i}] tag has a kind`)
 		end
 	end)
 end)

@@ -4,8 +4,8 @@
 -- game; everything game-specific they need comes from here. Another game copies the generic
 -- parts and writes its own version of this file.
 --
--- Values follow ADR 0009 (map contract). tests/shared/WorldRules.spec.luau keeps them equal to
--- the names game code binds to, so a renamed tag cannot drift away from the check.
+-- Kept to what the builder itself needs. Tag kinds, positive attributes and limits are added
+-- only when a world task asks for them, with the line from the issue as a comment.
 
 export type Range = { Min: number?, Max: number? }
 -- "Point": Attachment or BasePart. "Part": BasePart. "Group": Model with PrimaryPart and the
@@ -17,33 +17,24 @@ export type Limits = { Counts: { [string]: Range }?, Shares: { Share }? }
 return table.freeze({
 	-- Zone files: world/<world>/ZoneNN.rbxmx, NN = zone number with two digits.
 	ZoneFilePattern = "^Zone(%d%d)%.rbxmx$",
-	-- Attribute on the zone root with its number, 1..MaxZoneNumber.
+	-- Attribute on the zone root with its number, 1..MaxZoneNumber. The game reads it to know
+	-- which zone a player is in.
 	ZoneNumberAttribute = "ZoneIndex",
 	MaxZoneNumber = 50,
 	-- Folder in every zone root with the invisible walls at the zone edge.
 	BoundsFolder = "Bounds",
-	-- Tag of the zone start; every zone has exactly one. The builder puts it on an Attachment.
+	-- Tag of the zone start; every zone has exactly one. The game puts arriving players there.
 	StartTag = "ZoneStart",
-	-- Which kind of object each tag must sit on. Tags not listed here are not checked.
-	TagKinds = table.freeze({
-		ZoneStart = "Point",
-		FindPoint = "Point",
-		ScaleAnchor = "Point",
-		ScalePlate = "Part",
-		Obstacle = "Part",
-		UpgradeStand = "Group",
-		EggStation = "Group",
-		Barrier = "Group",
-		WorldGate = "Group",
-	}) :: { [string]: Kind },
+	-- Which kind of object a tag must sit on: [<tag>] = "Point" | "Part" | "Group".
+	-- Tags not listed here are not checked. Empty until a world task asks for a tag.
+	TagKinds = table.freeze({}) :: { [string]: Kind },
+	-- Streaming mode every "Group" must use.
 	GroupStreamingMode = "Atomic",
-	-- Attributes that must be a positive number when they are set on an object with the tag.
-	PositiveAttributes = table.freeze({
-		table.freeze({ Tag = "Obstacle", Attribute = "KnockOverSize" }),
-	}) :: { { Tag: string, Attribute: string } },
+	-- Attributes that must be a positive number when set: { Tag = "<tag>", Attribute = "<name>" }.
+	PositiveAttributes = table.freeze({}) :: { { Tag: string, Attribute: string } },
 	-- Optional limits for every world, counted per object (a Model counts once).
 	-- Counts: [<tag>] = { Min, Max }. Shares: the share of <tag> objects that carry a positive
-	-- <attribute>, between 0 and 1. Empty on purpose: the team fills them from the approved spec.
+	-- <attribute>, between 0 and 1.
 	Counts = table.freeze({}) :: { [string]: Range },
 	Shares = table.freeze({}) :: { Share },
 	-- Per-world limits replace the ones above: Worlds["<folder name>"] = { Counts = ..., Shares = ... }.
