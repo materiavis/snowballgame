@@ -27,6 +27,7 @@
       "Bash(stylua:*)",
       "Bash(selene:*)",
       "Bash(lune run tests:*)",
+      "Bash(lune run tools/world/build:*)",
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)",
       "Bash(gh pr view:*)",

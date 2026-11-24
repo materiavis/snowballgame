@@ -1,32 +1,33 @@
 --!strict
--- Zone contract check (ADR 0009). Part 1 proves the checker on built fixtures, so a green run on
--- real files means something. Part 2 checks every world/<world>/ZoneNN.rbxmx in the repository.
--- Counts come from Config.Map.ZoneContract; the fixture numbers here are test values.
+-- Zone check (tools/world/ZoneContract.luau). Part 1 proves the check with invented rules and
+-- invented names, so it is tested without any game. Part 2 checks every
+-- world/<world>/ZoneNN.rbxmx in this repository against this game's Config.WorldRules.
 
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
 local T = require("../TestKit")
-local ZoneContract = require("../helpers/ZoneContract")
-local Map = require("../../src/shared/Config/Map")
+local ZoneContract = require("../../tools/world/ZoneContract")
+local GameRules = require("../../src/shared/Config/WorldRules")
 
 local Instance = roblox.Instance
 local Enum = roblox.Enum
 
-local NO_COUNTS: ZoneContract.Rules = { Counts = {} }
-
--- The fixtures use the names from the contract config, so they hold for any game.
-local Contract = Map.ZoneContract
--- A part tag other than the knock-over tag, so the ground is not counted as an obstacle.
-local PART_TAG = if Contract.PartTags[1] ~= Contract.KnockOverTag then Contract.PartTags[1] else Contract.PartTags[2]
-local OBSTACLE = Contract.KnockOverTag
-local KNOCK_OVER = Contract.KnockOverAttribute
-local START = Contract.StartTag
--- Second anchor tag and three station tags, whatever their names are.
-local ANCHOR = Contract.AnchorTags[#Contract.AnchorTags]
-local STATION_A = Contract.StationTags[1]
-local STATION_B = Contract.StationTags[2]
-local STATION_C = Contract.StationTags[3]
+-- Invented rules: no game uses these names.
+local RULES: ZoneContract.Rules = {
+	ZoneFilePattern = "^Zone(%d%d)%.rbxmx$",
+	ZoneNumberAttribute = "ZoneNumber",
+	MaxZoneNumber = 50,
+	BoundsFolder = "Bounds",
+	StartTag = "TagStart",
+	TagKinds = { TagStart = "Point", TagPoint = "Point", TagPart = "Part", TagGroup = "Group", TagGroup2 = "Group" },
+	GroupStreamingMode = "Atomic",
+	PositiveAttributes = { { Tag = "TagPart", Attribute = "Strength" } },
+	Counts = {},
+	Shares = {},
+	Worlds = {},
+}
+local NO_LIMITS: ZoneContract.Limits = {}
 
 local function part(name: string, parent: any, tags: { string }?): any
 	local p = Instance.new("Part")
@@ -39,7 +40,7 @@ local function part(name: string, parent: any, tags: { string }?): any
 	return p
 end
 
-local function station(name: string, tag: string, parent: any, withPrimary: boolean?): any
+local function group(name: string, tag: string, parent: any, withPrimary: boolean?): any
 	local model = Instance.new("Model")
 	model.Name = name
 	model:AddTag(tag)
@@ -52,29 +53,29 @@ local function station(name: string, tag: string, parent: any, withPrimary: bool
 	return model
 end
 
--- A zone area that meets every structure rule.
-local function goodZone(zoneIndex: number): any
+-- A zone that follows every rule.
+local function goodZone(number: number): any
 	local root = Instance.new("Folder")
-	root.Name = string.format("Zone%02d", zoneIndex)
-	root:SetAttribute("ZoneIndex", zoneIndex)
-	part("Ground", root, { PART_TAG })
+	root.Name = string.format("Zone%02d", number)
+	root:SetAttribute("ZoneNumber", number)
+	local ground = part("Ground", root)
 	local start = Instance.new("Attachment")
 	start.Name = "Start"
-	start:AddTag(START)
-	start.Parent = root:FindFirstChild("Ground")
-	local multiPart = Instance.new("Model")
-	multiPart.Name = "MultiPartObstacle"
-	multiPart.Parent = root
-	part("PartA", multiPart, { OBSTACLE })
-	part("PartB", multiPart, { OBSTACLE })
-	local single = part("SingleObstacle", root, { OBSTACLE })
-	single:SetAttribute(KNOCK_OVER, 4)
-	part("AnchorPart", root, { ANCHOR })
-	station("StationA", STATION_A, root)
+	start:AddTag("TagStart")
+	start.Parent = ground
+	local multi = Instance.new("Model")
+	multi.Name = "TwoPartObject"
+	multi.Parent = root
+	part("PartA", multi, { "TagPart" })
+	part("PartB", multi, { "TagPart" })
+	local single = part("OnePartObject", root, { "TagPart" })
+	single:SetAttribute("Strength", 4)
+	part("PointPart", root, { "TagPoint" })
+	group("GroupA", "TagGroup", root)
 	local bounds = Instance.new("Folder")
-	bounds.Name = Map.ZoneContract.BoundsFolderName
+	bounds.Name = "Bounds"
 	bounds.Parent = root
-	local wall = part("WallLeft", bounds)
+	local wall = part("Wall", bounds)
 	wall.Transparency = 1
 	wall.CanCollide = true
 	return root
@@ -89,177 +90,158 @@ local function hasProblem(problems: { string }, needle: string): boolean
 	return false
 end
 
-local function expectProblem(root: any, needle: string, rules: ZoneContract.Rules?)
-	local problems = ZoneContract.check(root, nil, rules or NO_COUNTS)
-	T.isTrue(hasProblem(problems, needle), `expected a problem with "{needle}", got: {table.concat(problems, " | ")}`)
-end
-
--- Every zone area file in the repository, as { world, file, zone, root }.
-local function zoneFiles(): { { world: string, file: string, zone: number, roots: { any } } }
-	local found = {}
-	for _, world in fs.readDir("world") do
-		local dir = `world/{world}`
-		if not fs.isDir(dir) then
-			continue
-		end
-		local files = fs.readDir(dir)
-		table.sort(files)
-		for _, file in files do
-			local zone = ZoneContract.fileZone(file)
-			if zone then
-				local roots = roblox.deserializeModel(fs.readFile(`{dir}/{file}`))
-				table.insert(found, { world = world, file = file, zone = zone, roots = roots })
-			end
-		end
-	end
-	return found
+local function expectProblem(root: any, needle: string, limits: ZoneContract.Limits?)
+	local problems = ZoneContract.check(root, nil, RULES, limits or NO_LIMITS)
+	T.isTrue(hasProblem(problems, needle), `expected "{needle}", got: {table.concat(problems, " | ")}`)
 end
 
 return T.suite("tests/world/ZoneContract", function(test)
-	test("a zone that follows ADR 0009 has no problems", function()
-		local problems = ZoneContract.check(goodZone(3), 3, NO_COUNTS)
+	test("a zone that follows the rules has no problems", function()
+		local problems = ZoneContract.check(goodZone(3), 3, RULES, NO_LIMITS)
 		T.equal(#problems, 0, table.concat(problems, " | "))
 	end)
 
-	test("root: ZoneIndex missing, out of range, on a child or not matching the file", function()
+	test("zone number: missing, out of range, not whole, on a child, not matching the file", function()
 		local root = goodZone(3)
-		root:SetAttribute("ZoneIndex", nil)
+		root:SetAttribute("ZoneNumber", nil)
 		expectProblem(root, "must be a whole number")
-		root:SetAttribute("ZoneIndex", 51)
+		root:SetAttribute("ZoneNumber", 51)
 		expectProblem(root, "must be a whole number")
-		root:SetAttribute("ZoneIndex", 2.5)
+		root:SetAttribute("ZoneNumber", 2.5)
 		expectProblem(root, "must be a whole number")
 
 		local child = goodZone(3)
-		child:FindFirstChild("SingleObstacle"):SetAttribute("ZoneIndex", 3)
-		expectProblem(child, "only belongs on the zone area root")
+		child:FindFirstChild("OnePartObject"):SetAttribute("ZoneNumber", 3)
+		expectProblem(child, "only belongs on the zone root")
 
-		local named = goodZone(3)
-		local problems = ZoneContract.check(named, 4, NO_COUNTS)
-		T.isTrue(hasProblem(problems, "does not match the file name"), "file name check")
+		T.isTrue(hasProblem(ZoneContract.check(goodZone(3), 4, RULES, NO_LIMITS), "does not match the file name"))
 	end)
 
-	test("root: an atomic Model root is refused, a default Model root is fine", function()
+	test("zone root: an atomic Model is refused, a normal Model is fine", function()
 		local model = Instance.new("Model")
 		model.Name = "Zone03"
 		for _, child in goodZone(3):GetChildren() do
 			child.Parent = model
 		end
-		model:SetAttribute("ZoneIndex", 3)
-		T.equal(#ZoneContract.check(model, 3, NO_COUNTS), 0, "default streaming mode")
+		model:SetAttribute("ZoneNumber", 3)
+		T.equal(#ZoneContract.check(model, 3, RULES, NO_LIMITS), 0)
 		model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		expectProblem(model, "must not use ModelStreamingMode Atomic")
 	end)
 
-	test("zone start: none or two is a problem, a Model is the wrong kind", function()
+	test("start: none or two is a problem, a Model is the wrong kind", function()
 		local none = goodZone(1)
 		none:FindFirstChild("Ground"):FindFirstChild("Start"):Destroy()
-		expectProblem(none, `needs exactly 1 {START}, has 0`)
+		expectProblem(none, "needs exactly 1 TagStart, has 0")
 
 		local two = goodZone(1)
-		part("Start2", two, { START })
-		expectProblem(two, `needs exactly 1 {START}, has 2`)
+		part("Start2", two, { "TagStart" })
+		expectProblem(two, "needs exactly 1 TagStart, has 2")
 
 		local wrong = goodZone(1)
 		wrong:FindFirstChild("Ground"):FindFirstChild("Start"):Destroy()
 		local model = Instance.new("Model")
-		model:AddTag(START)
+		model:AddTag("TagStart")
 		model.Parent = wrong
-		expectProblem(wrong, `{START} must be an Attachment or BasePart`)
+		expectProblem(wrong, "TagStart must be an Attachment or BasePart")
 	end)
 
-	test("stations need a Model, a PrimaryPart and Atomic streaming", function()
+	test("kinds: Part needs a BasePart, Group needs Model, PrimaryPart and streaming mode", function()
+		local onAttachment = goodZone(1)
+		local attachment = Instance.new("Attachment")
+		attachment:AddTag("TagPart")
+		attachment.Parent = onAttachment:FindFirstChild("Ground")
+		expectProblem(onAttachment, "TagPart must be a BasePart")
+
 		local noPrimary = goodZone(1)
-		station("StationB", STATION_B, noPrimary, false)
+		group("GroupB", "TagGroup2", noPrimary, false)
 		expectProblem(noPrimary, "needs a PrimaryPart")
 
 		local streaming = goodZone(1)
-		streaming:FindFirstChild("StationA").ModelStreamingMode = Enum.ModelStreamingMode.Default
+		streaming:FindFirstChild("GroupA").ModelStreamingMode = Enum.ModelStreamingMode.Default
 		expectProblem(streaming, "needs ModelStreamingMode Atomic")
 
 		local notModel = goodZone(1)
-		part("StationPart", notModel, { STATION_C })
-		expectProblem(notModel, `{STATION_C} must be a Model`)
+		part("GroupAsPart", notModel, { "TagGroup2" })
+		expectProblem(notModel, "TagGroup2 must be a Model")
 	end)
 
-	test("parts: part tags need a BasePart, the knock-over attribute is positive", function()
+	test("positive attributes: a negative value is a problem", function()
 		local root = goodZone(1)
-		local attachment = Instance.new("Attachment")
-		attachment:AddTag(PART_TAG)
-		attachment.Parent = root:FindFirstChild("Ground")
-		expectProblem(root, `{PART_TAG} must be a BasePart`)
-
-		local size = goodZone(1)
-		size:FindFirstChild("SingleObstacle"):SetAttribute(KNOCK_OVER, -1)
-		expectProblem(size, `{KNOCK_OVER} must be a positive number`)
+		root:FindFirstChild("OnePartObject"):SetAttribute("Strength", -1)
+		expectProblem(root, "Strength must be a positive number")
 	end)
 
-	test("bounds: folder required, walls invisible, colliding and anchored", function()
+	test("walls: folder needed, walls invisible, colliding and anchored", function()
 		local missing = goodZone(1)
-		missing:FindFirstChild(Map.ZoneContract.BoundsFolderName):Destroy()
+		missing:FindFirstChild("Bounds"):Destroy()
 		expectProblem(missing, "folder with the invisible walls")
 
 		local visible = goodZone(1)
-		visible:FindFirstChild(Map.ZoneContract.BoundsFolderName):FindFirstChild("WallLeft").Transparency = 0
+		visible:FindFirstChild("Bounds"):FindFirstChild("Wall").Transparency = 0
 		expectProblem(visible, "wall must be Transparency 1")
 
 		local empty = goodZone(1)
-		empty:FindFirstChild(Map.ZoneContract.BoundsFolderName):FindFirstChild("WallLeft"):Destroy()
+		empty:FindFirstChild("Bounds"):FindFirstChild("Wall"):Destroy()
 		expectProblem(empty, "has no wall parts")
 	end)
 
-	test("counts are per object and only for configured tags", function()
-		-- MultiPartObstacle (2 obstacle parts) + SingleObstacle = 2 obstacle objects.
+	test("counts are per object: a Model with two tagged parts counts once", function()
 		local root = goodZone(1)
-		T.equal(#ZoneContract.check(root, nil, { Counts = { [OBSTACLE] = { Min = 2, Max = 2 } } }), 0)
-		expectProblem(root, `{OBSTACLE} objects: 2, needs at least 3`, { Counts = { [OBSTACLE] = { Min = 3 } } })
-		expectProblem(root, `{OBSTACLE} objects: 2, allows at most 1`, { Counts = { [OBSTACLE] = { Max = 1 } } })
-		expectProblem(root, `{ANCHOR} objects: 1, needs at least 2`, { Counts = { [ANCHOR] = { Min = 2 } } })
+		T.equal(#ZoneContract.check(root, nil, RULES, { Counts = { TagPart = { Min = 2, Max = 2 } } }), 0)
+		expectProblem(root, "TagPart objects: 2, needs at least 3", { Counts = { TagPart = { Min = 3 } } })
+		expectProblem(root, "TagPart objects: 2, allows at most 1", { Counts = { TagPart = { Max = 1 } } })
 	end)
 
-	test("knock-over share counts objects that can be knocked over", function()
-		-- SingleObstacle can be knocked over, MultiPartObstacle cannot: share 0.5.
+	test("shares: OnePartObject has Strength, TwoPartObject not, so the share is 0.5", function()
 		local root = goodZone(1)
-		T.equal(#ZoneContract.check(root, nil, { Counts = {}, KnockOverShare = { Min = 0.5, Max = 0.5 } }), 0)
-		expectProblem(root, "knock-over share", { Counts = {}, KnockOverShare = { Min = 0.6 } })
+		local half = { Tag = "TagPart", Attribute = "Strength", Min = 0.5, Max = 0.5 }
+		T.equal(#ZoneContract.check(root, nil, RULES, { Shares = { half } }), 0)
+		local more = { Tag = "TagPart", Attribute = "Strength", Min = 0.6 }
+		expectProblem(root, "share of TagPart with Strength", { Shares = { more } })
 	end)
 
-	test("world: two areas with the same ZoneIndex", function()
-		local problems = ZoneContract.checkWorld({ goodZone(2), goodZone(2) })
-		T.equal(#problems, 1)
-		T.equal(#ZoneContract.checkWorld({ goodZone(1), goodZone(2) }), 0)
+	test("world: two zones with the same number", function()
+		T.equal(#ZoneContract.checkWorld({ goodZone(2), goodZone(2) }, RULES), 1)
+		T.equal(#ZoneContract.checkWorld({ goodZone(1), goodZone(2) }, RULES), 0)
 	end)
 
-	test("config: counts and per-world overrides are well formed", function()
-		local contract = Map.ZoneContract
-		T.isTrue(table.isfrozen(contract), "ZoneContract is frozen")
-		for _, rules in { ZoneContract.rulesFor("") } do
-			for tag, range in rules.Counts do
-				T.isTrue(range.Min == nil or range.Max == nil or range.Min <= range.Max, `{tag} Min <= Max`)
-			end
-		end
-		for world in contract.Worlds do
-			T.isTrue(fs.isDir(`world/{world}`), `Worlds.{world} names a folder in world/`)
-		end
+	test("world limits replace the general ones", function()
+		local rules = table.clone(RULES)
+		rules.Counts = { TagPart = { Min = 1 } }
+		rules.Worlds = { forest = { Counts = { TagPoint = { Min = 1 } } } }
+		T.isTrue(ZoneContract.limitsFor(rules, "forest").Counts.TagPoint ~= nil)
+		T.isTrue(ZoneContract.limitsFor(rules, "other").Counts.TagPart ~= nil)
 	end)
 
-	test("every ZoneNN.rbxmx in world/ meets the contract", function()
+	test("every ZoneNN.rbxmx in world/ follows this game's world rules", function()
+		local rules = GameRules :: any
 		local byWorld: { [string]: { any } } = {}
 		local problems: { string } = {}
-		for _, entry in zoneFiles() do
-			if #entry.roots ~= 1 then
-				table.insert(problems, `world/{entry.world}/{entry.file}: needs exactly 1 root, has {#entry.roots}`)
+		for _, world in fs.readDir("world") do
+			local dir = `world/{world}`
+			if not fs.isDir(dir) then
 				continue
 			end
-			local root = entry.roots[1]
-			for _, text in ZoneContract.check(root, entry.zone, ZoneContract.rulesFor(entry.world)) do
-				table.insert(problems, `world/{entry.world}/{entry.file}: {text}`)
+			for _, file in fs.readDir(dir) do
+				local zone = ZoneContract.fileZone(rules, file)
+				if not zone then
+					continue
+				end
+				local roots = roblox.deserializeModel(fs.readFile(`{dir}/{file}`))
+				if #roots ~= 1 then
+					table.insert(problems, `{dir}/{file}: needs exactly 1 root, has {#roots}`)
+					continue
+				end
+				for _, text in ZoneContract.check(roots[1], zone, rules, ZoneContract.limitsFor(rules, world)) do
+					table.insert(problems, `{dir}/{file}: {text}`)
+				end
+				byWorld[world] = byWorld[world] or {}
+				table.insert(byWorld[world], roots[1])
 			end
-			byWorld[entry.world] = byWorld[entry.world] or {}
-			table.insert(byWorld[entry.world], root)
 		end
 		for world, roots in byWorld do
-			for _, text in ZoneContract.checkWorld(roots) do
+			for _, text in ZoneContract.checkWorld(roots, rules) do
 				table.insert(problems, `world/{world}: {text}`)
 			end
 		end

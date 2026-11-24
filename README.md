@@ -105,6 +105,19 @@ when it is missing or inaccessible, the skill returns a copy-ready report and
 the blocker. It does not create a Reports Space or claim that a draft was saved
 there. Open/unmerged PRs cannot produce a post-merge report.
 
+## World builder
+
+Open an issue with the **World task** template (`.github/ISSUE_TEMPLATE/world-task.md`) and
+hand it to the `world-builder` agent, e.g. through `/build <issue>`. The agent writes one plan
+per zone and runs `lune run tools/world/build <world>`, which builds
+`world/<world>/ZoneNN.rbxmx` from the plans and the building kit and writes them only if every
+zone passes the zone check. See [tools/world/README.md](tools/world/README.md).
+
+The world builder knows no game. The game's own names (tags, attributes, limits) are in
+`src/shared/Config/WorldRules.luau`. A zone changed by hand in Studio is never overwritten. The
+agent does not make templates, meshes or uploads; the kit must already be in the repository.
+Look and feel stay a human review.
+
 ## Agents
 
 Defined in `.claude/agents/`:
@@ -115,3 +128,4 @@ Defined in `.claude/agents/`:
 | systems-engineer | data, networking, core systems | no | yes |
 | playtester | syncs a branch, playtests, reports | yes (only one) | no |
 | model-auditor | security review of third-party assets | no | no |
+| world-builder | builds zones of any game from a building kit | no | yes |
