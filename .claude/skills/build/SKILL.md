@@ -50,7 +50,7 @@ Preserve unrelated local changes and other worktrees throughout the workflow.
 
 Select the issue's named agent, otherwise use its label and actual scope:
 `gameplay` → `gameplay-engineer`, `systems` → `systems-engineer`, `ui` →
-`ui-engineer`. Confirm the definition exists; do not silently substitute gameplay
+`ui-engineer`, `assets` → `asset-builder`, `world` → `world-builder`. Confirm the definition exists; do not silently substitute gameplay
 for a missing UI agent. For tooling or mixed scope, choose a suitable available
 file-writing agent and explain the assignment; resolve incompatible scope first.
 
