@@ -126,6 +126,8 @@ Defined in `.claude/agents/`:
 |---|---|---|---|
 | gameplay-engineer | gameplay features | no | yes |
 | systems-engineer | data, networking, core systems | no | yes |
+| ui-engineer | HUDs, shops, menus, onboarding, UI feedback | no | yes |
 | playtester | syncs a branch, playtests, reports | yes (only one) | no |
 | model-auditor | security review of third-party assets | no | no |
+| asset-builder | builds building kits (templates) of any game for the world-builder | no | yes |
 | world-builder | builds zones of any game from a building kit | no | yes |
