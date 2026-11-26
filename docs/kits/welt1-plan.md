@@ -1,6 +1,6 @@
 # Welt-1-Baukasten: Plan
 
-Stand 26.11.2026 · Refs #29 · Status: **F2–F12 entschieden (Abschnitt 10), Teileliste pro Zone wartet auf Marco (F13)**
+Stand 26.11.2026 · Refs #29 · Status: **F2–F13 entschieden (Abschnitt 10), offen nur F1 (Terrain)**
 
 Plan für den ganzen Welt-1-Baukasten (Alpen, Zonen 1–10), damit `asset-builder` und
 `world-builder` an der ganzen Welt getestet werden statt Teil für Teil. Dieses Dokument
@@ -82,13 +82,13 @@ ist. `ScaleMin`/`ScaleMax` hat sie nicht. Für Template-Namen gilt ASCII (ä →
 **Grosse Hindernisse (Entschieden, F8, Marco, 26.11.):** `H(z) = 1.5 × D(z)` hoch, also das
 Anderthalbfache des grössten Balls der Zone. Sie haben kein `KnockOverSize`. Jedes grosse Teil
 wird für seine Zone gebaut (Höhe `H(z)` bei Skalierung 1) und bekommt **`ScaleMin = 1`,
-`ScaleMax = 1.3`** (Vorschlag, F13), damit gleiche Teile nicht gleich gross wirken.
+`ScaleMax = 1.3`** (F13), damit gleiche Teile nicht gleich gross wirken.
 
 | Zone | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `H(z)` Studs | 6.00 | 7.41 | 8.82 | 10.23 | 11.64 | 13.05 | 14.46 | 15.87 | 17.28 | 18.69 |
 
-Übergang (Vorschlag, F13): Ein grosses Teil darf in der direkt folgenden Zone höchstens zweimal
+Übergang (F13): Ein grosses Teil darf in der direkt folgenden Zone höchstens zweimal
 stehen, skaliert auf mindestens `H(z+1)`. Das Verhältnis `H(z+1) / H(z)` ist höchstens 1.24
 (Zone 1 → 2), passt also in `ScaleMax = 1.3`. Kleine Teile wechseln die Zone nie, weil sie dort
 eine zweite Grössen-Stufe bräuchten.
@@ -100,12 +100,12 @@ contact test»), das Mesh selbst kollidiert nicht. Die Look-Referenz nennt «Box
 fällt weg, weil das Mesh nur das Aussehen trägt. Gruppen (Tannengruppe, Felsgruppe) bekommen
 mehrere Boxen in einem Model. Die Dreiecks-Budgets stammen aus der Look-Referenz.
 
-### 4.1 Hindernisse pro Zone (Vorschlag, F13)
+### 4.1 Hindernisse pro Zone (entschieden, F13)
 
 Jede Zone bekommt ein eigenes Set aus 3 kleinen und 2 grossen Teilen (F6). Kein Teil kommt aus
 einer früheren Zone (Ausnahme: Übergang grosser Teile, Abschnitt 3). Die Teile folgen den
-Zonen-Themen aus 7.6 und der Look-Referenz. Die Namen sind ein Vorschlag des Development
-Managers, Formen und Stil gibt das Look Review frei.
+Zonen-Themen aus 7.6 und der Look-Referenz. Die Liste hat Marco am 26.11. freigegeben (F13),
+Formen und Stil gibt das Look Review frei.
 
 Gemeinsam für alle: klein = 400 Dreiecke, 1 Box (flach und breit bei Zaun, Ast, Tafel),
 `Obstacle` + `KnockOverSize = K(z)`, 2 Seeds. Gross = 1'200 Dreiecke, 1–3 Boxen, `Obstacle`,
@@ -211,20 +211,20 @@ Folgen:
 - 100 statt 28 Hindernis-Meshes, entsprechend mehr Upload-Arbeit für die Menschen.
 - Das Dreiecks-Budget pro Zone (Abschnitt 5) ändert sich nicht, es zählt platzierte Teile.
 - Die Look-Referenz in Notion nennt rund 20 Teile. Die neue Liste muss dort nachgeführt werden
-  (Creative/Product), sobald F13 entschieden ist.
+  (Creative/Product).
 
 ## 7. Batches (Asset tasks)
 
-Neu geschnitten nach F6 (jede Zone ihr eigenes Set). Die Issues #142–#146 werden angepasst,
-sobald F13 entschieden ist.
+Neu geschnitten nach F6 und F13: ein Asset task pro Zone, dazu einer für die Stationen. Die Issues
+#142–#146 wurden am 26.11. umgeschrieben, #150–#155 sind neu.
 
 | Batch | Inhalt | Meshes (Seeds) | Warum an dieser Stelle |
 |---|---|---|---|
-| **1** (#142) | Zone 1 klein: Tännchen, kleiner Fels, Wegweiser | 6 | Vorgabe: Look Review früh (Gate 1). Gestufter Kegel, runder Brocken und Pfosten mit Brett tragen den Stil. Das Zaunstück wandert mit Zone 3 in Batch 4. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
-| **2** (#143) | Zone 1 gross (grosse Tanne, Felsblock) und Zone 2 komplett | 14 | Danach sind die Zonen 1 und 2 vollständig, und der erste World task (Zonen 1–2) kann den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
+| **1** (#142) | Zone 1 komplett: Tännchen, kleiner Fels, Wegweiser, grosse Tanne, Felsblock | 10 | Vorgabe: Look Review früh (Gate 1). Eine ganze Zone zeigt den Stil für kleine und grosse Teile. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
+| **2** (#143) | Zone 2 komplett | 10 | Danach kann der erste World task (Zonen 1–2) den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
 | **3** (#144) | Waage, Upgrade-Stand, Ei-Station, Barriere, Fundpunkt-Marker | 4 | Ohne Stationen sind die Zonen nicht spielbar (Ziel G2/G3 des Vertical Slice). Sie kommen nach dem Look Review von Batch 1, damit der Stil feststeht. |
-| **4** (#145, aufgeteilt) | Zonen 3, 4 und 5 komplett, dazu die Alphütte | 31 | Schliesst den Vertical Slice (Zonen 1–5) ab. Vorschlag: ein Issue pro Zone (#145 = Zone 3, zwei neue Issues für 4 und 5), damit eine Runde des asset-builders nicht über 30 Meshes umfasst. |
-| **5** (#146, aufgeteilt) | Zonen 6–10 komplett, dazu Welten-Tor, Liftmast, Gipfelkreuz | 53 | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. Wird bei der Launch-Planung ebenfalls pro Zone aufgeteilt. |
+| **4** (#145, #150, #151) | Zonen 3, 4 und 5, dazu die Alphütte in Zone 3 | 31 | Schliesst den Vertical Slice (Zonen 1–5) ab. Ein Issue pro Zone, damit eine Runde des asset-builders klein bleibt. |
+| **5** (#146, #152–#155) | Zonen 6–10, dazu Liftmast (6), Gipfelkreuz und Welten-Tor (10) | 53 | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. |
 | **6** (kein Issue, BLOCKED) | Schneehügel, Schneewechte, Eisrand, Gletscherspalte | 9 | **BLOCKED** bis F1 entschieden ist. Bis dahin entsteht der Boden aus Blöcken des world-builders. |
 
 ## 8. World tasks und benötigte Batches
@@ -256,7 +256,7 @@ Zonen-Check ein.
 | F10 | Höchstens 6 Deko-Teile in den Zonen 1, 3 und 5 (Budget)? | Sonst über 40'000 Dreiecke. |
 | F11 | Wie viele Seeds pro Teil? (Vorschlag: klein 3 bzw. 2, gross 2, Deko und Stationen 1) | Bestimmt den Upload-Aufwand: 36 Meshes ohne Batch 6, 45 mit. |
 | F12 | `TagKinds`/`PositiveAttributes` (ADR 0009) vor Batch 1 in `WorldRules.luau` eintragen? | Sonst prüft der Kit-Check die Tags nicht (Blocker 2). Ändert den Entscheid «leer bis ein World task fragt». **Entschieden 26.11.** |
-| F13 | Teileliste pro Zone (Abschnitt 4.1) freigeben? Dazu: grosse Teile `ScaleMax = 1.3`, Übergang grosser Teile in die nächste Zone (höchstens 2×), Stationen bleiben in allen Zonen gleich, 2 Seeds pro Hindernis. | Folgt aus F6. Ohne Liste können die Asset tasks #142–#146 nicht angepasst werden, Runde 2 von Batch 1 stoppt. |
+| F13 | Teileliste pro Zone (Abschnitt 4.1) freigeben? Dazu: grosse Teile `ScaleMax = 1.3`, Übergang grosser Teile in die nächste Zone (höchstens 2×), Stationen bleiben in allen Zonen gleich, 2 Seeds pro Hindernis. | Folgt aus F6. Ohne Liste können die Asset tasks #142–#146 nicht angepasst werden, Runde 2 von Batch 1 stoppt. **Entschieden 26.11.** |
 
 ## 10. Entscheide (24.11.2026)
 
@@ -267,17 +267,19 @@ Zonen-Check ein.
 | F4 | `KnockOverShare = 0.7` gilt provisorisch und ist als **PLAYTEST TUNING** markiert. Endgültig wird der Wert erst nach einem Playtest. | Development Manager (technisch, Auftrag Yowaldy) | `src/shared/Config/WorldRules.luau`, Test in `tests/shared/WorldRules.spec.luau` (0.4 < Wert ≤ 1) |
 | F9 | Alles wird selbst gebaut. Teile aus dem Creator Store kommen nur nach einem Model Audit dazu (Look-Referenz, CLAUDE.md Abschnitt 10). | Development Manager | Abschnitt `Fix` in jedem Asset task |
 | F10 | In den Zonen 1 und 5 höchstens 6 Deko-Teile, in Zone 3 höchstens 5 neben der Alphütte. Mesh-Boden zählt mit. | Development Manager | Limits im World task, Hinweis in #145 |
-| F11 | Seeds: kleine Hindernisse 3 (Tännchen, Fels, Latschen) bzw. 2 (übrige), grosse 2, Deko und Stationen 1. Das ergibt 36 Meshes ohne Batch 6. **Überholt durch F6:** Vorschlag 2 Seeds pro Hindernis, 108 Meshes ohne Batch 6 (F13). | Development Manager | Asset tasks #142–#146 |
+| F11 | Seeds: kleine Hindernisse 3 (Tännchen, Fels, Latschen) bzw. 2 (übrige), grosse 2, Deko und Stationen 1. Das ergibt 36 Meshes ohne Batch 6. **Überholt durch F13:** 2 Seeds pro Hindernis, 108 Meshes ohne Batch 6. | Development Manager | Asset tasks #142–#146 |
 | F5 | Kleine Hindernisse in Zone 1 sind kniehoch (höchstens 1.33 Studs, bei f = 0.7 0.93 Studs) und wachsen Zone für Zone. | Marco (26.11.) | Abschnitt 3 |
-| F6 | Keine Teile aus früheren Zonen wiederverwenden: jede Zone bekommt ein eigenes Set neuer Teile. | Marco (26.11.) | Abschnitte 4.1, 6, 7; Teileliste offen (F13) |
+| F6 | Keine Teile aus früheren Zonen wiederverwenden: jede Zone bekommt ein eigenes Set neuer Teile. | Marco (26.11.) | Abschnitte 4.1, 6, 7 |
 | F7 | Deko darf im Laufweg stehen. Pistenstange = kleines umrollbares Hindernis (Zone 6), Liftmast = Deko am Rand mit Kollision ohne Grössenverlust. | Marco (26.11.) | Abschnitte 4.1, 4.2 |
 | F8 | Grosse Hindernisse sind `1.5 × D(z)` hoch (6 Studs in Zone 1, 18.69 in Zone 10). | Marco (26.11.) | Abschnitt 3 |
-| F12 | Ein `chore` trägt vor Runde 2 von Batch 1 die ADR-0009-Tags in `TagKinds`/`PositiveAttributes` ein, ohne Limits. | Marco (26.11.) | eigenes chore-Issue |
+| F12 | Ein `chore` trägt vor Runde 2 von Batch 1 die ADR-0009-Tags in `TagKinds`/`PositiveAttributes` ein, ohne Limits. | Marco (26.11.) | #149 |
+| F13 | Teileliste pro Zone (4.1) freigegeben, dazu: grosse Teile `ScaleMax = 1.3`, Übergang grosser Teile höchstens 2× in die nächste Zone, Stationen in allen Zonen gleich, 2 Seeds pro Hindernis. | Marco (26.11.) | Asset tasks #142–#146, #150–#155 |
 
 Noch offen:
 - F1 (Terrain) bleibt beim Test auf Jans Handy, Batch 6 ist BLOCKED.
-- F13 (Teileliste pro Zone) bei Marco. Danach werden #142–#146 angepasst und die Look-Referenz in Notion nachgeführt (Creative/Product).
-- Vor Runde 2 von Batch 1: F13 entschieden und der F12-chore gemergt, sonst stoppt Runde 2.
+- Die Look-Referenz in Notion muss die Teileliste aus 4.1 und F7 (Deko im Laufweg) übernehmen (Creative/Product).
+- Vor Runde 2 von Batch 1 muss der F12-chore #149 gemergt sein, sonst stoppt Runde 2.
+- Offene Grössen (Alphütte, Liftmast, Gipfelkreuz, Welten-Tor, Stationen) stehen als OPEN in den Asset tasks.
 
 ## 11. Protokoll: ungeplante Eingriffe von Menschen
 
