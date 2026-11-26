@@ -15,6 +15,11 @@ return T.suite("src/shared/Config/WorldRules", function(test)
 		T.isTrue(Rules.MaxZoneNumber >= 1 and Rules.MaxZoneNumber % 1 == 0, "MaxZoneNumber")
 	end)
 
+	test("the knock-over share lies inside a zone's ball growth (40 % to 100 %)", function()
+		T.isTrue(type(Rules.KnockOverShare) == "number", "KnockOverShare is a number")
+		T.isTrue(Rules.KnockOverShare > 0.4 and Rules.KnockOverShare <= 1, `KnockOverShare = {Rules.KnockOverShare}`)
+	end)
+
 	test("every tag kind is Point, Part or Group", function()
 		for tag, kind in Rules.TagKinds do
 			T.isTrue(KINDS[kind] ~= nil, `TagKinds.{tag} = {kind}`)
