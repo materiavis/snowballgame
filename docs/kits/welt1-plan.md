@@ -1,6 +1,6 @@
 # Welt-1-Baukasten: Plan
 
-Stand 24.11.2026 · Refs #29 · Status: **technische Fragen entschieden (Abschnitt 10), Stilfragen bei Marco (PR #140)**
+Stand 26.11.2026 · Refs #29 · Status: **F2–F12 entschieden (Abschnitt 10), Teileliste pro Zone wartet auf Marco (F13)**
 
 Plan für den ganzen Welt-1-Baukasten (Alpen, Zonen 1–10), damit `asset-builder` und
 `world-builder` an der ganzen Welt getestet werden statt Teil für Teil. Dieses Dokument
@@ -33,8 +33,8 @@ Quellen:
 2. **Die Welt-Regeln prüfen noch keine Tags.** `TagKinds` und `PositiveAttributes` in
    `WorldRules.luau` sind leer (Owner-Entscheid Marco, 24.11.). Darum prüft der Kit-Check heute
    weder, ob `Obstacle` auf einem BasePart sitzt, noch ob `KnockOverSize` positiv ist. Der
-   asset-builder darf die Welt-Regeln nicht ändern (Regel 13). Vorschlag: Vor Batch 1 trägt ein
-   kleiner `chore` die Tags aus ADR 0009 ein (Frage F12).
+   asset-builder darf die Welt-Regeln nicht ändern (Regel 13). **Entschieden (F12, Marco,
+   26.11.):** Vor Runde 2 von Batch 1 trägt ein kleiner `chore` die Tags aus ADR 0009 ein.
 3. **Mesh-Boden passt nicht zum Kit-Check.** Schneehügel, Wechte, Eisrand und Gletscherspalte
    brauchen als Mesh eine Kollision auf dem Mesh (Hull oder Precise), weil eine Box keinen Hang
    abbildet. Der Kit-Check verlangt aber `CanCollide` aus auf jedem MeshPart. Erst wenn der
@@ -71,19 +71,27 @@ Quellen:
 
 Folge (F5): Ein kleines Hindernis in Zone 1 ist höchstens 1.33 Studs gross, bei f = 0.7 etwa
 0.93 Studs. Die Figur ist etwa 5 Studs gross, das Hindernis geht ihr also bis ans Knie. Das passt
-zu `Config.Ball` («small obstacle the character steps over»). Ob ein «Tännchen» so klein wirken
-darf, ist eine Frage des Stils.
+zu `Config.Ball` («small obstacle the character steps over»). **Entschieden (F5, Marco, 26.11.):**
+So gewollt. Kleine Hindernisse sind kniehoch und wachsen Zone für Zone.
 
-**Grössen-Vorlagen (Regel 6):** Ein umrollbares Teil bekommt pro Zone, in der es vorkommt, eine
-eigene Vorlage `<Teil>_Z<NN>_<Variante>`, zum Beispiel `Taennchen_Z01_1`. Jede hat
-`KnockOverSize = K(z)`, und ihre Kollisionsbox ist `K(z)` hoch. `ScaleMin`/`ScaleMax` hat sie
-nicht. Alle Grössen eines Teils nutzen dasselbe Mesh, jedes Mesh wird nur einmal hochgeladen.
-Für Template-Namen gilt ASCII (ä → ae).
+**Grössen-Vorlagen (Regel 6):** Jedes Teil gehört zu genau einer Zone (F6, Abschnitt 6). Ein
+umrollbares Teil hat darum genau eine Grössen-Stufe: Vorlage `<Teil>_Z<NN>_<Variante>`, zum
+Beispiel `Taennchen_Z01_1`, mit `KnockOverSize = K(z)` und einer Kollisionsbox, die `K(z)` hoch
+ist. `ScaleMin`/`ScaleMax` hat sie nicht. Für Template-Namen gilt ASCII (ä → ae).
 
-**Grosse Hindernisse (Vorschlag, F8):** «deutlich höher als der Ball der Zone» heisst hier
-mindestens `2 × D(z)`: 8 Studs in Zone 1, 25 Studs in Zone 10. Sie haben kein `KnockOverSize`
-und darum eine einzige Vorlage pro Variante, gebaut für Zone 1 (Grundhöhe 8 Studs), mit
-`ScaleMin = 1` und `ScaleMax = 3.2`. Der world-builder skaliert sie pro Zone.
+**Grosse Hindernisse (Entschieden, F8, Marco, 26.11.):** `H(z) = 1.5 × D(z)` hoch, also das
+Anderthalbfache des grössten Balls der Zone. Sie haben kein `KnockOverSize`. Jedes grosse Teil
+wird für seine Zone gebaut (Höhe `H(z)` bei Skalierung 1) und bekommt **`ScaleMin = 1`,
+`ScaleMax = 1.3`** (Vorschlag, F13), damit gleiche Teile nicht gleich gross wirken.
+
+| Zone | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `H(z)` Studs | 6.00 | 7.41 | 8.82 | 10.23 | 11.64 | 13.05 | 14.46 | 15.87 | 17.28 | 18.69 |
+
+Übergang (Vorschlag, F13): Ein grosses Teil darf in der direkt folgenden Zone höchstens zweimal
+stehen, skaliert auf mindestens `H(z+1)`. Das Verhältnis `H(z+1) / H(z)` ist höchstens 1.24
+(Zone 1 → 2), passt also in `ScaleMax = 1.3`. Kleine Teile wechseln die Zone nie, weil sie dort
+eine zweite Grössen-Stufe bräuchten.
 
 ## 4. Teile
 
@@ -92,31 +100,37 @@ contact test»), das Mesh selbst kollidiert nicht. Die Look-Referenz nennt «Box
 fällt weg, weil das Mesh nur das Aussehen trägt. Gruppen (Tannengruppe, Felsgruppe) bekommen
 mehrere Boxen in einem Model. Die Dreiecks-Budgets stammen aus der Look-Referenz.
 
-### 4.1 Hindernisse klein (umrollbar)
+### 4.1 Hindernisse pro Zone (Vorschlag, F13)
 
-| Teil | Budget | Kollision | Tags (ADR 0009) | Seeds | Zonen (Vorschlag nach 7.6-Zuordnung) | Grössen-Vorlagen bei f = 0.7 (KnockOverSize) |
-|---|---|---|---|---|---|---|
-| Tännchen | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 3 | 1, 2, 3, 6, 7 | Z01 0.93 · Z02 1.15 · Z03 1.37 · Z06 2.03 · Z07 2.25 |
-| Latschenbusch | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 3 | 1, 2, 4, 5, 10 | Z01 0.93 · Z02 1.15 · Z04 1.59 · Z05 1.81 · Z10 2.91 |
-| Kleiner Fels | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 3 | 1, 4, 5, 8, 9, 10 | Z01 0.93 · Z04 1.59 · Z05 1.81 · Z08 2.47 · Z09 2.69 · Z10 2.91 |
-| Zaunstück | 400 | 1 Box (flach, breit) | `Obstacle` + `KnockOverSize` | 2 | 3, 6, 7 | Z03 1.37 · Z06 2.03 · Z07 2.25 |
-| Holzstapel | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 2 | 3 | Z03 1.37 |
-| Heuballen mit Schneekappe | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 2 | 3 | Z03 1.37 |
-| Wegweiser | 400 | 1 Box | `Obstacle` + `KnockOverSize` | 2 | 1, 3, 6 | Z01 0.93 · Z03 1.37 · Z06 2.03 |
+Jede Zone bekommt ein eigenes Set aus 3 kleinen und 2 grossen Teilen (F6). Kein Teil kommt aus
+einer früheren Zone (Ausnahme: Übergang grosser Teile, Abschnitt 3). Die Teile folgen den
+Zonen-Themen aus 7.6 und der Look-Referenz. Die Namen sind ein Vorschlag des Development
+Managers, Formen und Stil gibt das Look Review frei.
 
-Summe: 7 Teile, 17 Meshes (Seeds), 24 Grössen-Stufen, 64 Vorlagen (Stufen × Seeds), 17 Uploads.
+Gemeinsam für alle: klein = 400 Dreiecke, 1 Box (flach und breit bei Zaun, Ast, Tafel),
+`Obstacle` + `KnockOverSize = K(z)`, 2 Seeds. Gross = 1'200 Dreiecke, 1–3 Boxen, `Obstacle`,
+Höhe `H(z)` bei Skalierung 1, `ScaleMin = 1`, `ScaleMax = 1.3`, 2 Seeds.
 
-### 4.2 Hindernisse gross (fest)
+| Zone (7.6) | K(z) | H(z) | Klein (umrollbar) | Gross (fest) |
+|---|---|---|---|---|
+| 1 Schneegrenze | 0.93 | 6.00 | Tännchen, Kleiner Fels, Wegweiser | Grosse Tanne, Felsblock |
+| 2 Tannenwald | 1.15 | 7.41 | Baumstumpf, Liegender Ast, Latschenbusch | Tannengruppe, Hochstand |
+| 3 Alphütte | 1.37 | 8.82 | Zaunstück, Holzstapel, Heuballen mit Schneekappe | Heustadel, Grosser Holzstoss |
+| 4 Bergsee | 1.59 | 10.23 | Schilfbüschel, Eisbrocken, Ufersteine | Lärche, Aufgestellte Eisscholle |
+| 5 Felsgrat | 1.81 | 11.64 | Geröllhaufen, Felszacken, Edelweissbüschel | Felsgruppe, Felsnadel |
+| 6 Skipiste | 2.03 | 13.05 | Pistenstange (F7), Schneehaufen, Ski im Schnee | Schneekanone, Pistenraupe |
+| 7 Lawinenhang | 2.25 | 14.46 | Lawinenschneeball, Lawinen-Warntafel, Geknickte Jungtanne | Lawinenverbau, Lawinenkegel |
+| 8 Gletscherzunge | 2.47 | 15.87 | Eissplitter, Moränenstein, Messstange | Eisblock, Findling |
+| 9 Gletscher | 2.69 | 17.28 | Routenfahne, Eiskegel, Eisknolle | Sérac (Eisturm), Gletschertisch |
+| 10 Gipfel | 2.91 | 18.69 | Steinmann, Raureif-Fels, Gipfelbuch-Kasten | Gipfelfelsen, Raureif-Felsturm |
 
-| Teil | Budget | Kollision | Tags | Seeds | Zonen (Vorschlag) | Skalierung |
-|---|---|---|---|---|---|---|
-| Grosse Tanne | 1'200 | 1 Box (Stamm + Krone) | `Obstacle` | 2 | 1, 2, 3, 6, 7 | 1–3.2 |
-| Tannengruppe | 1'200 | 2–3 Boxen | `Obstacle` | 2 | 2, 6, 7 | 1–3.2 |
-| Felsblock | 1'200 | 1 Box | `Obstacle` | 2 | 1, 4, 5, 8, 10 | 1–3.2 |
-| Felsgruppe | 1'200 | 2–3 Boxen | `Obstacle` | 2 | 5, 9, 10 | 1–3.2 |
-| Eisblock (Gletscher) | 1'200 | 1 Box | `Obstacle` | 2 | 8, 9 | 1–3.2 |
+Summe: 30 kleine und 20 grosse Teile, 100 Meshes (je 2 Seeds), 100 Uploads. Vorher waren es
+12 Teile mit 28 Meshes, die über mehrere Zonen geteilt wurden.
 
-### 4.3 Boden und Deko
+### 4.2 Boden und Deko
+
+Deko darf im Laufweg stehen (F7, Marco, 26.11.). Deko mit Kollision ohne Tag blockiert den Ball,
+ohne dass er schrumpft.
 
 | Teil | Budget | Kollision | Tags | Seeds | Zonen | Status |
 |---|---|---|---|---|---|---|
@@ -124,19 +138,19 @@ Summe: 7 Teile, 17 Meshes (Seeds), 24 Grössen-Stufen, 64 Vorlagen (Stufen × Se
 | Schneewechte | 1'200 | Mesh-Kollision nötig | `Snow` | 2 | 6, 7 | **BLOCKED** (F1) |
 | Rand der Eisfläche (Bergsee) | 1'200 | Mesh-Kollision nötig | `Ice` (Fläche), Rand `Snow` | 2 | 4 | **BLOCKED** (F1) |
 | Gletscherspalte | 1'200 | Mesh-Kollision nötig | — (Loch, Grenzfall 6.5) | 2 | 8, 9 | **BLOCKED** (F1) |
-| Pistenstange | 1'200 | keine (F7) | — | 1 | 6, 7 | offen (F7) |
-| Liftmast | 1'200 | 1 Box ohne Tag (F7) | — | 1 | 6, 7 | offen (F7) |
+| Liftmast | 1'200 | 1 Box ohne Tag | — | 1 | 6 | am Rand, Kollision ohne Grössenverlust (F7) |
 | Alphütte | 3'000 | 1–2 Boxen ohne Tag | — | 1 | 3 | — |
 | Gipfelkreuz | 1'200 | 1 Box ohne Tag | — | 1 | 10 | — |
 
 Die Tiefschnee-Felder (6.2: 2–3 pro Zone) und der normale Schneeboden entstehen als Boden-Blöcke
 des world-builders mit `DeepSnow`/`Snow`. Für sie braucht es keine Kit-Teile, solange F1 offen ist.
 
-### 4.4 Stationshüllen und Marker
+### 4.3 Stationshüllen und Marker
 
 Stationen sind laut ADR 0009 Models mit dem Tag auf dem Model, `PrimaryPart`,
 `ModelStreamingMode = Atomic` und optional einem `LabelAnchor`. Konzept 11: Signatur-Assets,
-selbst gebaut.
+selbst gebaut. Stationen fallen nicht unter F6: Spieler sollen Waage, Upgrade-Stand und
+Ei-Station in jeder Zone wiedererkennen.
 
 | Teil | Budget | Kollision | Tags | Seeds | Zonen |
 |---|---|---|---|---|---|
@@ -184,36 +198,33 @@ Befund:
 
 ## 6. Abwechslung pro Zone
 
-Vorschlag für den Massstab, damit eine Zone «nicht kopiert» wirkt: mindestens 3 verschiedene
-kleine und 2 grosse Teile, je 2–3 Seeds. Der Abschnitt `Spielraum` des World task erlaubt dazu
-Drehung und Skalierung (nur bei den grossen Teilen).
+Massstab, damit eine Zone «nicht kopiert» wirkt: mindestens 3 verschiedene kleine und 2 grosse
+Teile, je 2 Seeds. Der Abschnitt `Spielraum` des World task erlaubt dazu Drehung und Skalierung
+(nur bei den grossen Teilen).
 
-| Zone (7.6) | Thema (Look-Referenz) | Klein | Gross | Deko | Status |
-|---|---|---|---|---|---|
-| 1 Schneegrenze | viele Tannen | Tännchen, Latschen, Fels, Wegweiser | Grosse Tanne, Felsblock | — | PASS |
-| 2 Tannenwald | viele Tannen | Tännchen, Latschen | Grosse Tanne, Tannengruppe | — | **zu wenig klein** (2) |
-| 3 Alphütte | Zäune, Holz, Hütte | Tännchen, Zaun, Holzstapel, Heuballen, Wegweiser | Grosse Tanne | Alphütte | **zu wenig gross** (1) |
-| 4 Bergsee | Eisfläche | Latschen, Fels | Felsblock | (Eisrand BLOCKED) | **FAIL**: kein eigenes Teil |
-| 5 Felsgrat | Felsen | Latschen, Fels | Felsblock, Felsgruppe | — | **zu wenig klein** (2) |
-| 6 Skipiste | Pistenstangen, Liftmasten, Wechten | Tännchen, Zaun, Wegweiser | Grosse Tanne, Tannengruppe | Pistenstange, Liftmast | PASS |
-| 7 Lawinenhang | wie 6 | Tännchen, Zaun | Grosse Tanne, Tannengruppe | Pistenstange, Liftmast | **FAIL**: gleich wie Zone 6 |
-| 8 Gletscherzunge | Eisblöcke, Spalten | Fels | Eisblock, Felsblock | (Spalte BLOCKED) | **FAIL**: 1 kleines Teil |
-| 9 Gletscher | wie 8 | Fels | Eisblock, Felsgruppe | (Spalte BLOCKED) | **FAIL**: 1 kleines Teil |
-| 10 Gipfel | Felsen, Gipfelkreuz | Latschen, Fels | Felsblock, Felsgruppe | Gipfelkreuz | **zu wenig klein** (2) |
+Der erste Plan teilte rund 12 Teile über alle Zonen. Die Zonen 4 und 7–9 hatten damit kein eigenes
+Teil, die Zonen 2, 5 und 10 zu wenige. **Entschieden (F6, Marco, 26.11.):** Keine Teile aus
+früheren Zonen wiederverwenden, jede Zone bekommt ein eigenes Set neuer Teile (Tabelle in 4.1).
+Damit erfüllt jede Zone den Massstab mit eigenen Teilen (3 klein, 2 gross).
 
-Befund: Die ca. 20 Teile der Look-Referenz reichen für die Zonen 1, 3 und 6. Für die Zonen 4 und
-7–9 fehlen eigene kleine Hindernisse, und die Zonen 2, 5 und 10 sind knapp. Welche Teile dazukommen,
-ist eine Stilfrage (F6). Danach wächst Batch 4 oder 5.
+Folgen:
+- 100 statt 28 Hindernis-Meshes, entsprechend mehr Upload-Arbeit für die Menschen.
+- Das Dreiecks-Budget pro Zone (Abschnitt 5) ändert sich nicht, es zählt platzierte Teile.
+- Die Look-Referenz in Notion nennt rund 20 Teile. Die neue Liste muss dort nachgeführt werden
+  (Creative/Product), sobald F13 entschieden ist.
 
 ## 7. Batches (Asset tasks)
 
+Neu geschnitten nach F6 (jede Zone ihr eigenes Set). Die Issues #142–#146 werden angepasst,
+sobald F13 entschieden ist.
+
 | Batch | Inhalt | Meshes (Seeds) | Warum an dieser Stelle |
 |---|---|---|---|
-| **1** (#142) | Tännchen, kleiner Fels, Zaunstück | 8 | Vorgabe: Look Review früh. Diese drei Formen tragen den Stil (gestufter Kegel, runder Brocken, Pfosten mit Balken) und kommen in 9 von 10 Zonen vor. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
-| **2** (#143) | Latschenbusch, grosse Tanne, Tannengruppe, Felsblock, Felsgruppe | 11 | Mit Batch 1 hat dann jede Vertical-Slice-Zone (1–5) kleine **und** grosse Hindernisse. Danach kann der erste World task (Zonen 1–2) den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
-| **3** (#144) | Waage, Upgrade-Stand, Ei-Station, Barriere, Fundpunkt-Marker | 4 | Ohne Stationen sind die Zonen nicht spielbar (Ziel G2/G3 des Vertical Slice). Stationen haben die meisten Funktions-Tags und das grösste Budget. Sie kommen nach dem Look Review von Batch 1, damit der Stil feststeht. |
-| **4** (#145) | Holzstapel, Heuballen, Wegweiser, Alphütte (+ Teile aus F6 für die Zonen 2, 4, 5) | 7+ | Schliesst den Vertical Slice (Zonen 1–5) ab, vor allem Zone 3. |
-| **5** (#146) | Eisblock, Welten-Tor, Pistenstange, Liftmast, Gipfelkreuz (+ Teile aus F6 für die Zonen 7–10) | 6+ | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. |
+| **1** (#142) | Zone 1 klein: Tännchen, kleiner Fels, Wegweiser | 6 | Vorgabe: Look Review früh (Gate 1). Gestufter Kegel, runder Brocken und Pfosten mit Brett tragen den Stil. Das Zaunstück wandert mit Zone 3 in Batch 4. Runde 2 klärt nebenbei den Studio-Test des von Lune geschriebenen MeshPart (`InitialSize`). |
+| **2** (#143) | Zone 1 gross (grosse Tanne, Felsblock) und Zone 2 komplett | 14 | Danach sind die Zonen 1 und 2 vollständig, und der erste World task (Zonen 1–2) kann den Workflow testen, auch ohne Stationen (der Zonen-Check verlangt sie nicht). |
+| **3** (#144) | Waage, Upgrade-Stand, Ei-Station, Barriere, Fundpunkt-Marker | 4 | Ohne Stationen sind die Zonen nicht spielbar (Ziel G2/G3 des Vertical Slice). Sie kommen nach dem Look Review von Batch 1, damit der Stil feststeht. |
+| **4** (#145, aufgeteilt) | Zonen 3, 4 und 5 komplett, dazu die Alphütte | 31 | Schliesst den Vertical Slice (Zonen 1–5) ab. Vorschlag: ein Issue pro Zone (#145 = Zone 3, zwei neue Issues für 4 und 5), damit eine Runde des asset-builders nicht über 30 Meshes umfasst. |
+| **5** (#146, aufgeteilt) | Zonen 6–10 komplett, dazu Welten-Tor, Liftmast, Gipfelkreuz | 53 | Gehört zum Launch (#104, #105), nicht zum Vertical Slice, darum zuletzt. Wird bei der Launch-Planung ebenfalls pro Zone aufgeteilt. |
 | **6** (kein Issue, BLOCKED) | Schneehügel, Schneewechte, Eisrand, Gletscherspalte | 9 | **BLOCKED** bis F1 entschieden ist. Bis dahin entsteht der Boden aus Blöcken des world-builders. |
 
 ## 8. World tasks und benötigte Batches
@@ -221,8 +232,8 @@ ist eine Stilfrage (F6). Danach wächst Batch 4 oder 5.
 | World task | Zonen | Braucht | Meilenstein |
 |---|---|---|---|
 | WT-1 | 1–2 (Schneegrenze, Tannenwald) | Batch 1, 2 (Workflow-Test), danach 3 für die Spielbarkeit | Vertical Slice (#29) |
-| WT-2 | 3–5 (Alphütte, Bergsee, Felsgrat) | Batch 1–4 (Zone 4 erst nach F6) | Vertical Slice (#29) |
-| WT-3 | 6–10 (Skipiste bis Gipfel) | Batch 1–5 (Zonen 7–9 erst nach F6) | Launch (#104, #105) |
+| WT-2 | 3–5 (Alphütte, Bergsee, Felsgrat) | Batch 3, 4 | Vertical Slice (#29) |
+| WT-3 | 6–10 (Skipiste bis Gipfel) | Batch 3, 5 | Launch (#104, #105) |
 | später | Hügel, Wechten, Eisrand, Spalten nachrüsten | Batch 6 | nach F1 |
 
 Jeder World task trägt die Grenzen aus Abschnitt 5 (Deko pro Zone) und aus 6.2 (15–25 Hindernisse,
@@ -237,14 +248,15 @@ Zonen-Check ein.
 | F2 | Abnahme der Look-Referenz durch Yowaldy | Batch 1 baut nach ihr. Sie ist bisher ein Entwurf. |
 | F3 | Lighting, Atmosphere und Sky von Welt 1: eigenes Issue anlegen? | Gehört nicht zum asset-builder (Entscheid 24.11.). |
 | F4 | Wo in der Zone wird ein kleines Hindernis umrollbar? (Vorschlag f = 0.7, also ab 70 % des Zonenmaximums) | Legt alle Werte für `KnockOverSize` fest. Spielgefühl. |
-| F5 | Ist ein kleines Hindernis in Zone 1 mit höchstens 1.33 Studs (kniehoch) gewollt? | Folgt aus 7.3 und 7.4. Ein grösseres Hindernis wäre in Zone 1 nie umrollbar. |
-| F6 | Welche zusätzlichen kleinen Teile bekommen die Zonen 4, 7, 8 und 9 (und 2, 5, 10)? | Ohne sie wirken diese Zonen kopiert (Abschnitt 6). |
-| F7 | Pistenstange und Liftmast: Deko ohne Kollision oder Hindernis? Steht Deko im Laufweg? | Die Look-Referenz sagt «nie im Laufweg», auf einer Skipiste stehen Stangen aber mitten im Weg. |
-| F8 | Grosse Hindernisse mindestens 2 × Balldurchmesser hoch? | «Deutlich höher» (Look-Referenz) braucht eine Zahl für das Asset-Issue. |
+| F5 | Ist ein kleines Hindernis in Zone 1 mit höchstens 1.33 Studs (kniehoch) gewollt? | Folgt aus 7.3 und 7.4. Ein grösseres Hindernis wäre in Zone 1 nie umrollbar. **Entschieden 26.11.** |
+| F6 | Welche zusätzlichen kleinen Teile bekommen die Zonen 4, 7, 8 und 9 (und 2, 5, 10)? | Ohne sie wirken diese Zonen kopiert (Abschnitt 6). **Entschieden 26.11.** |
+| F7 | Pistenstange und Liftmast: Deko ohne Kollision oder Hindernis? Steht Deko im Laufweg? | Die Look-Referenz sagt «nie im Laufweg», auf einer Skipiste stehen Stangen aber mitten im Weg. **Entschieden 26.11.** |
+| F8 | Grosse Hindernisse mindestens 2 × Balldurchmesser hoch? | «Deutlich höher» (Look-Referenz) braucht eine Zahl für das Asset-Issue. **Entschieden 26.11.** |
 | F9 | Konzept 11 erlaubt für den Baukasten Creator-Store-Modelle (nach Model-Audit). Bauen wir alles selbst? | Dieser Plan nimmt an: alles selbst gebaut. |
 | F10 | Höchstens 6 Deko-Teile in den Zonen 1, 3 und 5 (Budget)? | Sonst über 40'000 Dreiecke. |
 | F11 | Wie viele Seeds pro Teil? (Vorschlag: klein 3 bzw. 2, gross 2, Deko und Stationen 1) | Bestimmt den Upload-Aufwand: 36 Meshes ohne Batch 6, 45 mit. |
-| F12 | `TagKinds`/`PositiveAttributes` (ADR 0009) vor Batch 1 in `WorldRules.luau` eintragen? | Sonst prüft der Kit-Check die Tags nicht (Blocker 2). Ändert den Entscheid «leer bis ein World task fragt». |
+| F12 | `TagKinds`/`PositiveAttributes` (ADR 0009) vor Batch 1 in `WorldRules.luau` eintragen? | Sonst prüft der Kit-Check die Tags nicht (Blocker 2). Ändert den Entscheid «leer bis ein World task fragt». **Entschieden 26.11.** |
+| F13 | Teileliste pro Zone (Abschnitt 4.1) freigeben? Dazu: grosse Teile `ScaleMax = 1.3`, Übergang grosser Teile in die nächste Zone (höchstens 2×), Stationen bleiben in allen Zonen gleich, 2 Seeds pro Hindernis. | Folgt aus F6. Ohne Liste können die Asset tasks #142–#146 nicht angepasst werden, Runde 2 von Batch 1 stoppt. |
 
 ## 10. Entscheide (24.11.2026)
 
@@ -255,13 +267,17 @@ Zonen-Check ein.
 | F4 | `KnockOverShare = 0.7` gilt provisorisch und ist als **PLAYTEST TUNING** markiert. Endgültig wird der Wert erst nach einem Playtest. | Development Manager (technisch, Auftrag Yowaldy) | `src/shared/Config/WorldRules.luau`, Test in `tests/shared/WorldRules.spec.luau` (0.4 < Wert ≤ 1) |
 | F9 | Alles wird selbst gebaut. Teile aus dem Creator Store kommen nur nach einem Model Audit dazu (Look-Referenz, CLAUDE.md Abschnitt 10). | Development Manager | Abschnitt `Fix` in jedem Asset task |
 | F10 | In den Zonen 1 und 5 höchstens 6 Deko-Teile, in Zone 3 höchstens 5 neben der Alphütte. Mesh-Boden zählt mit. | Development Manager | Limits im World task, Hinweis in #145 |
-| F11 | Seeds: kleine Hindernisse 3 (Tännchen, Fels, Latschen) bzw. 2 (übrige), grosse 2, Deko und Stationen 1. Das ergibt 36 Meshes ohne Batch 6. | Development Manager | Asset tasks #142–#146 |
+| F11 | Seeds: kleine Hindernisse 3 (Tännchen, Fels, Latschen) bzw. 2 (übrige), grosse 2, Deko und Stationen 1. Das ergibt 36 Meshes ohne Batch 6. **Überholt durch F6:** Vorschlag 2 Seeds pro Hindernis, 108 Meshes ohne Batch 6 (F13). | Development Manager | Asset tasks #142–#146 |
+| F5 | Kleine Hindernisse in Zone 1 sind kniehoch (höchstens 1.33 Studs, bei f = 0.7 0.93 Studs) und wachsen Zone für Zone. | Marco (26.11.) | Abschnitt 3 |
+| F6 | Keine Teile aus früheren Zonen wiederverwenden: jede Zone bekommt ein eigenes Set neuer Teile. | Marco (26.11.) | Abschnitte 4.1, 6, 7; Teileliste offen (F13) |
+| F7 | Deko darf im Laufweg stehen. Pistenstange = kleines umrollbares Hindernis (Zone 6), Liftmast = Deko am Rand mit Kollision ohne Grössenverlust. | Marco (26.11.) | Abschnitte 4.1, 4.2 |
+| F8 | Grosse Hindernisse sind `1.5 × D(z)` hoch (6 Studs in Zone 1, 18.69 in Zone 10). | Marco (26.11.) | Abschnitt 3 |
+| F12 | Ein `chore` trägt vor Runde 2 von Batch 1 die ADR-0009-Tags in `TagKinds`/`PositiveAttributes` ein, ohne Limits. | Marco (26.11.) | eigenes chore-Issue |
 
 Noch offen:
 - F1 (Terrain) bleibt beim Test auf Jans Handy, Batch 6 ist BLOCKED.
-- F12 hat Marco entschieden («leer, bis ein World task fragt»). Der Vorschlag für einen chore steht in PR #140 und wird ohne seine Antwort nicht umgesetzt.
-- F5–F8 (Stil) hat Marco in PR #140.
-- F4, F5 und F12 müssen vor Runde 2 von Batch 1 beantwortet sein, sonst stoppt Runde 2.
+- F13 (Teileliste pro Zone) bei Marco. Danach werden #142–#146 angepasst und die Look-Referenz in Notion nachgeführt (Creative/Product).
+- Vor Runde 2 von Batch 1: F13 entschieden und der F12-chore gemergt, sonst stoppt Runde 2.
 
 ## 11. Protokoll: ungeplante Eingriffe von Menschen
 
