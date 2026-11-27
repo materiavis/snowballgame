@@ -193,6 +193,7 @@ The full version of every plan and log lives in the repo (e.g. `docs/kits/<kit>-
 - an agent is unsure whether something is allowed.
 - an acceptance criterion stays ERROR because it cannot be made testable for the playtester. Only an owner may move it to the END PLAYTEST list, recorded on the issue.
 - the `/build` loop still fails after **three correction rounds** following the initial implementation. Technical, review and playtest failures share this budget. Preserve the count on the issue across restarts; stop further fixes and merging until an owner resolves the blocker or explicitly authorizes a new budget.
+- an asset kit gets its third Look review FAIL (section 16, Gate 1).
 
 ## 14. Milestones and releases
 
@@ -222,3 +223,40 @@ MCP servers in `.mcp.json`:
 | `materiavis-files-agent` | `agent`: reads everything, writes only `AI-Output`, cannot share | subagents. Give them only `mcp__materiavis-files-agent__*` in `tools:`, never `materiavis-files` |
 
 The agent's app password comes from the environment variable `NC_AGENT_APP_PASSWORD` on your machine. It is **never** written into this repo (it is public), a prompt, an issue or a log.
+
+## 16. Human gates
+
+Three steps in the workflow wait for a human. A gate blocks only the work that depends on it; independent work keeps running. Mark every dependent step `Not ready` in its issue and name the gate it waits for.
+
+| Gate | Question | Blocks | Does not block |
+|---|---|---|---|
+| 1. Look Review | Does the asset look good enough to upload? | the upload and the next asset round | other tasks |
+| 2. Upload | Are the assets uploaded under the Materiavis group and recorded in the upload list? | the kit file step and all work that needs this kit | independent tasks in the same batch |
+| 3. END PLAYTEST | Does the integrated result work and feel right for people? | closing the milestone | merging the PR |
+
+If an asset task names no reviewer, uploader or style reference, mark the dependent step `Not ready` and ask the owners on the issue.
+
+### Gate 1: Look Review
+
+- **When:** the asset agent has built the first meshes and opened a PR.
+- The agent puts a gallery of all parts, shown next to each other for size comparison, into Materiavis Files under `AI-Output/` (section 15). The PR links that folder; reviewers must be able to open it without asking.
+- The reviewer named in the asset task compares the assets with the style reference of that task and writes the result as a PR comment.
+- Comment format: `Look review: PASS` or `Look review: FAIL`, followed by the feedback.
+- Only a PASS written after the latest commit on the PR counts. No upload starts before that.
+- On FAIL, the agent starts a new round with that feedback.
+- After **three Look review FAILs** on the same kit, stop and escalate to the owners (section 13). They decide whether to start again with a fresh agent session or to improve the asset agent first. Do not start a fourth round on your own.
+- Gate 1 judges the asset on its own. It does not replace the playtest.
+
+### Gate 2: Upload
+
+- After a Look Review PASS, the Development Manager opens one issue `Upload <kit>` with the label `needs-upload` and assigns it to the uploader named in the asset task. The issue lists the PR link, the assets to upload and the expected entries of `tools/kit/<kit>/upload-list.json`.
+- The uploader uploads the assets in Studio, checks import and scale there, and enters the asset IDs in the upload list.
+- The gate passes only when the upload list in the repo is filled, its entries match the uploaded assets and the kit checks pass. A message like "uploaded", or removing the label, is not enough.
+- If the uploader commits to the PR branch, the fetch-before-push rule in section 7 applies.
+
+### Gate 3: END PLAYTEST
+
+- Applies to acceptance criteria that need human judgement: look, feel, device or multiplayer checks. Mark them in the issue with `[human]` and a concrete yes/no question, e.g. "Is the obstacle recognisable at once from the normal game camera?", never just "feels good".
+- The playtester reports these criteria as NEEDS HUMAN REVIEW. The Development Manager puts them on the milestone's END PLAYTEST issue (section 14). They block the milestone, not the PR.
+- A human checks the result and writes PASS or FAIL per criterion on the END PLAYTEST issue, as described in `/end-playtest`. On FAIL, the Development Manager opens a bug issue in the same milestone. Humans close the END PLAYTEST issue and the milestone.
+- A technical failure of the playtester is ERROR, never NEEDS HUMAN REVIEW.
