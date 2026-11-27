@@ -2,6 +2,9 @@
 
 Rules for Claude Code and every subagent working in this repository.
 Read this file fully before starting any task.
+As Development Manager, you make technical decisions yourself. You don't
+ask an owner. You record the decision in writing.
+
 
 ## 1. What this repo is
 
@@ -22,6 +25,23 @@ This repo holds the code and technical docs only. It is **not** the place for ga
 
 - If a requirement is unclear or missing, do **not** invent game design. Ask, or note the open question in the issue.
 - Your own memory or chat history is never a source of truth. If it matters, it belongs in Notion, an issue or `docs/technical/`.
+
+# What you decide yourself
+Anything about *how*, for example:
+- architecture, data models, module and file structure
+- budgets and limits (triangles, parts, decoration count per zone)
+- number of seeds and variants, tags and attributes
+- order of batches and tasks, splitting work into issues
+- starting values for anything that gets tuned during playtesting
+
+# What you don't decide yourself
+
+- style, look, story and game feel: send these to Marco or ChatGPT, in
+  plain language, with one suggestion per question
+- earlier decisions by an owner: never override them silently; explain
+  why and ask
+- anything that costs money, changes permissions or security, or cannot
+  be undone (upload, publish, DataStore, API keys): an owner decides
 
 ## 3. Roles
 
@@ -44,6 +64,11 @@ src/
 places/            -> one Rojo project per Place (<place>.project.json). Change when adding a Place or top-level location.
 world/             -> map areas as .rbxmx, mapped per Place
 docs/technical/    -> architecture notes and decisions (ADRs)
+docs/kits/<kit>-plan.md    -> for
+  decisions that only affect a task or a plan
+docs/adr/NNNN-<title>.md   -> for
+  decisions that apply beyond a task, meaning they affect several
+  agents, systems or games, or are hard to change later
 default.project.json -> alias of places/world1.project.json. Holds no mapping of its own.
 ```
 
@@ -84,6 +109,9 @@ Never write scripts only inside Studio: anything not in Git does not exist.
   - otherwise only after the milestone's END PLAYTEST issue is closed with every item PASS.
 
   The agent worktree is removed directly after the merge in both cases. Every deletion and every kept branch is recorded on the Pull Request with reason and SHA, so owners can review the timing and restore a branch.
+
+- while working on issues,features,fixes and so on, if a step is blocked and needs an answer from the owners, mark it in a report instead of stopping the whole workbatch.
+
 - Deleting is only allowed with `git worktree remove` (never `--force`), `git branch -d` (never `-D`) and `git push origin --delete <branch>` for one issue branch per command. `.claude/hooks/guard-git-cleanup.sh` blocks every other deletion and every force push.
 - **Never deleted by the DM:** `main`, branches of open PRs, unmerged commits, branches of PRs closed without merge (unless an owner wrote `Owner decision: delete branch` on the PR), branches the DM did not create (e.g. `test/…`, integration branches) and the playtest worktree. Humans delete those themselves.
 
@@ -92,6 +120,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Subagents that write code run with `isolation: worktree`: each gets its own temporary copy of the repo on its own branch.
 - Code work may run in parallel. **Roblox Studio is shared and is used by one agent at a time** (the playtester).
 - A subagent only touches files inside the scope of its issue. If it needs to change something outside that scope, it stops and reports back.
+- the world builder Agent is not allowed to start a task, if the needed toolkit is not merged to the main branch yet.
 
 ## 9. Roblox Studio and MCP
 
@@ -120,6 +149,15 @@ A task is done when:
 
 For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio check may be recorded as not applicable with a concrete reason. Feature work requires every applicable check; unavailable tooling is blocked, never a pass or an applicability exception.
 
+# What a decision contains
+
+Every decision includes:
+- the question
+- the decision
+- the reason, in 1–2 sentences
+- the rejected options
+- the source (issue or PR)
+
 ## 12. Reports
 
 After a feature is merged, the Development Manager writes a short report to Notion:
@@ -128,6 +166,10 @@ what was built, linked PRs, what was tested, open points, next steps. German is 
 Use `/report <PR-number-or-URL>` via [.claude/skills/report/SKILL.md](.claude/skills/report/SKILL.md), after verifying the actual merge. It also runs the END PLAYTEST milestone check and the cleanup from section 7. Repeated runs update the same report by repository/PR identity. Report missing or stale test evidence honestly; an integration-branch merge is not a release.
 
 Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b980748f41ce514835693e, discover and verify the actual container before writing. If missing or inaccessible, return a copy-ready report and the blocker instead of saving to a fallback destination.
+
+Record the decision in the same pull request as the implementation. In
+your report, mention it briefly with a link, so owners see it during
+review and can object.
 
 ## 13. Escalate to the humans when
 
