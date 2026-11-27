@@ -15,7 +15,7 @@ Responsibilities:
 - One data service owns all DataStore access: retries with backoff, session locking, versioned save schema, safe defaults for new players.
 - Remotes are created in one place, named clearly, and every server handler validates type, range and rate.
 - Write systems to be game-agnostic where reasonable (no snowball-specific logic in generic modules), so they can later move into the Materiavis toolkit.
-- Document every architectural decision in `docs/technical/` (short ADR: context, decision, consequences).
+- Document every architectural decision in `docs/adr/` (ADR format in `docs/adr/README.md`).
 
 Workflow:
 - Branch `feat/<issue>-<slug>` (or `fix/…`), keep to the issue's scope.

@@ -24,9 +24,9 @@ This repo holds the code and technical docs only. It is **not** the place for ga
 | Development reports | Notion |
 
 - If a requirement is unclear or missing, do **not** invent game design. Ask, or note the open question in the issue.
-- Your own memory or chat history is never a source of truth. If it matters, it belongs in Notion, an issue or `docs/technical/`.
+- Your own memory or chat history is never a source of truth. If it matters, it belongs in Notion, an issue, "docs/adr/" or "docs/technical/".
 
-# What you decide yourself
+### What you decide yourself
 Anything about *how*, for example:
 - architecture, data models, module and file structure
 - budgets and limits (triangles, parts, decoration count per zone)
@@ -34,7 +34,7 @@ Anything about *how*, for example:
 - order of batches and tasks, splitting work into issues
 - starting values for anything that gets tuned during playtesting
 
-# What you don't decide yourself
+### What you don't decide yourself
 
 - style, look, story and game feel: send these to Marco or ChatGPT, in
   plain language, with one suggestion per question
@@ -65,7 +65,7 @@ src/
   places/          -> social, lobby, simulator, arena; each with server/ and client/, mounted per Place
 places/            -> one Rojo project per Place (<place>.project.json). Change when adding a Place or top-level location.
 world/             -> map areas as .rbxmx, mapped per Place
-docs/technical/    -> architecture notes and decisions (ADRs)
+docs/technical/ -> architecture notes (no decisions)
 docs/kits/<kit>-plan.md    -> for
   decisions that only affect a task or a plan
 docs/adr/NNNN-<title>.md   -> for
@@ -113,7 +113,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 
   The agent worktree is removed directly after the merge in both cases. Every deletion and every kept branch is recorded on the Pull Request with reason and SHA, so owners can review the timing and restore a branch.
 
-- while working on issues,features,fixes and so on, if a step is blocked and needs an answer from the owners, mark it in a report instead of stopping the whole workbatch.
+- If a step is blocked and needs an answer from the owners, stop only that step: mark it `Not ready` in its issue, name what is missing, and keep working on everything that does not depend on it.
 
 - Deleting is only allowed with `git worktree remove` (never `--force`), `git branch -d` (never `-D`) and `git push origin --delete <branch>` for one issue branch per command. `.claude/hooks/guard-git-cleanup.sh` blocks every other deletion and every force push.
 - **Never deleted by the DM:** `main`, branches of open PRs, unmerged commits, branches of PRs closed without merge (unless an owner wrote `Owner decision: delete branch` on the PR), branches the DM did not create (e.g. `test/…`, integration branches) and the playtest worktree. Humans delete those themselves.
@@ -123,7 +123,6 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Subagents that write code run with `isolation: worktree`: each gets its own temporary copy of the repo on its own branch.
 - Code work may run in parallel. **Roblox Studio is shared and is used by one agent at a time** (the playtester).
 - A subagent only touches files inside the scope of its issue. If it needs to change something outside that scope, it stops and reports back.
-- the world builder Agent is not allowed to start a task, if the needed toolkit is not merged to the main branch yet.
 - **Check preconditions before you start.** At the start of every task, check what it needs: the MCP servers it uses are connected, the PRs or kits it builds on are merged to `main`, the required environment variables are set. Record each result (PASS/FAIL) in the issue or plan. If one fails, stop the steps that depend on it and report it. Never work around it: no copies from unmerged branches, no substitute tools, no guessed values.
   - The world-builder never starts a world task while the kit it needs is not merged to `main`.
 
@@ -155,7 +154,7 @@ A task is done when:
 
 For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio check may be recorded as not applicable with a concrete reason. Feature work requires every applicable check; unavailable tooling is blocked, never a pass or an applicability exception.
 
-# What a decision contains
+### What a decision contains
 
 Every decision includes:
 - the question
@@ -177,10 +176,8 @@ Record the decision in the same pull request as the implementation. In
 your report, mention it briefly with a link, so owners see it during
 review and can object.
 
-The full version of every plan and log lives in the repo (e.g. `docs/kits/<kit>-plan.md`). Notion only gets a short summary with a link to the file on GitHub. Never keep two full versions.
-
 - Every human intervention in a log gets one of three types:
-  - **Planned gate:** a step where this file says a human acts (see the gates section).
+  - **Planned gate:** a step where this file says a human acts (section 16).
   - **One-time setup:** something set up once that stays (installing a tool, setting a password, creating a label).
   - **Unplanned intervention:** anything else a human had to do to keep the work going.
   Only unplanned interventions count as candidates for automation.

@@ -100,7 +100,7 @@ not a hand check. Only the five human categories in
 [Playtester handoff](references/playtest.md) may carry `[human]` or end as
 NEEDS HUMAN REVIEW.
 A new ADR in the PR must read `**Status:** Accepted with merge of PR #NN.` with
-the actual PR number (`docs/technical/README.md`). Technical or review failures enter section 5. Proceed to playtesting only once
+the actual PR number (`docs/adr/README.md`). Technical or review failures enter section 5. Proceed to playtesting only once
 those checks pass. Never weaken criteria to get a green result.
 
 ## 4. Studio playtester handoff

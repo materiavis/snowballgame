@@ -56,7 +56,7 @@ decisions in Notion; conflicts with repository rules must be resolved, not hidde
 ## 2. Draft the technical plan
 
 Reuse the ADR for this concept if one already exists; otherwise choose the next
-free `NNNN-<game>-intake.md` in `docs/technical/`. Use
+free `NNNN-<game>-intake.md` in `docs/adr/`. Use
 [the ADR template](assets/technical-plan.md) and add it to the existing ADR index
 as **Proposed**. This step changes technical documentation only.
 

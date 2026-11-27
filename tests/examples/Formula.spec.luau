@@ -1,6 +1,6 @@
 --!strict
 -- Example: exact-formula tests (concept 7.5), additive bonus stacking per ADR 0003 plan
--- revision 2 (docs/technical/0003-snow-rush-intake.md, line 375). Bases other than the
+-- revision 2 (docs/adr/0003-snow-rush-intake.md, line 375). Bases other than the
 -- plan's own case are arbitrary test values, not game numbers. All checks use `==`.
 
 local T = require("../TestKit")
