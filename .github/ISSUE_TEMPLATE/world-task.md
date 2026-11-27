@@ -8,7 +8,7 @@ labels: ["world"]
 <!-- Folder name under world/ and which zones, e.g. world/<world>/, zones 1-5. -->
 
 ## Kit
-<!-- world/kits/<kit>.rbxmx. It must already be in the repository, with every template this task uses. -->
+<!-- world/kits/<kit>.rbxmx. It must already be merged to `main`, with every template this task uses. Otherwise the task is Not ready. -->
 
 ## Per zone
 <!-- One block per zone. Sizes in studs. -->
@@ -35,7 +35,8 @@ labels: ["world"]
 ## Acceptance criteria
 - [ ] Every zone is built by `lune run tools/world/build <world>` and passes the zone check
 - [ ] 
-- [ ] [human] Look and feel reviewed by:
+<!-- [human] criteria need a concrete yes/no question, e.g. "Is every obstacle recognisable from the normal game camera?". Never just "feels good". They go to the END PLAYTEST (Gate 3). -->
+- [ ] [human]
 
 ## Agent
 world-builder

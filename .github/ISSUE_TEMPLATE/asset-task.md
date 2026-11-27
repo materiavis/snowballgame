@@ -8,7 +8,7 @@ labels: ["assets"]
 <!-- Kit name: world/kits/<kit>.rbxmx and tools/kit/<kit>/. -->
 
 ## Style reference
-<!-- Link (Notion or Materiavis Files). Only the look comes from it; parts, sizes and numbers come from this issue. -->
+<!-- Link (Notion or Materiavis Files). The Look reviewer compares the assets with it (Gate 1). Only the look comes from it; parts, sizes and numbers come from this issue. -->
 
 ## Parts
 <!-- One block per part. Sizes in studs at scale 1. -->
@@ -29,12 +29,17 @@ labels: ["assets"]
 ## Spielraum
 <!-- What the agent may decide itself. State explicitly if nothing. -->
 
+## People
+<!-- Anyone can take these roles; name them per task. Without them, the gates are Not ready. -->
+- Look reviewer (Gate 1):
+- Uploader (Gate 2, must be able to upload under the Materiavis group):
+
 ## Acceptance criteria
 - [ ] Every template is generated from a seed; the generator gives the same files twice
 - [ ] Every mesh is within its triangle budget (check.py)
 - [ ] `world/kits/<kit>.rbxmx` passes the kit check in `lune run tests`
-- [ ] [human] Meshes uploaded under the group Materiavis, IDs in `tools/kit/<kit>/upload-list.json`
-- [ ] [human] Look reviewed by:
+- [ ] [human] Look review PASS on the PR (Gate 1)
+- [ ] [human] Assets uploaded, IDs in `tools/kit/<kit>/upload-list.json`, kit check green (Gate 2)
 
 ## Agent
 asset-builder

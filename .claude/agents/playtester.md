@@ -85,7 +85,7 @@ Die Kategorien für NEEDS HUMAN REVIEW:
 5. `start_stop_play` stoppen. Damit verfallen auch alle Studio switches.
 
 ### Studio switches
-Studio switches sind Attribute auf `ServerScriptService`, die eine ADR in `docs/technical/` beschreibt („Playtest hooks“ oder „Studio playtest support“). Der Game-Code liest sie nur in Studio bei PlaceId 0.
+Studio switches sind Attribute auf `ServerScriptService`, die eine ADR in docs/adr/ beschreibt („Playtest hooks“ oder „Studio playtest support“). Der Game-Code liest sie nur in Studio bei PlaceId 0.
 
 - Erlaubt ist nur genau diese Form, mit `execute_luau` im DataModel `server` während Play:
   `game.ServerScriptService:SetAttribute("<Name>", <Wert>)`

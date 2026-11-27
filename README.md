@@ -53,7 +53,7 @@ lune run tests
 In Claude Code, run `/intake <Notion concept URL>`. The
 [intake skill](.claude/skills/intake/SKILL.md) checks that the concept is
 **Freigegeben für Development** and its release checklist is complete, then
-drafts a technical ADR in `docs/technical/`.
+drafts a technical ADR in `docs/adr/`.
 
 The command stops for **Miguel and Yowaldy** to review the plan. Resume with
 `/intake <Notion concept URL> <ADR path>` after both approvals are recorded for

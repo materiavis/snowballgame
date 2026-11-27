@@ -1,7 +1,7 @@
 --!strict
 -- EXAMPLE FIXTURE, NOT GAME CODE. Shows the shape of an exact-formula test (concept 7.5).
 -- Stacking follows ADR 0003 plan revision 2, verification plan
--- (docs/technical/0003-snow-rush-intake.md, line 375): "sell with bonuses
+-- (docs/adr/0003-snow-rush-intake.md, line 375): "sell with bonuses
 -- (×1.4 + ×2.0 + ×3.0 → ×4.4)", i.e. bonuses add up: total = 1 + Σ(bonus − 1).
 -- The real sell formula, its inputs and its rounding come with the economy-config
 -- issue (#27) and live in src/shared/Config; nothing here is a design value.
