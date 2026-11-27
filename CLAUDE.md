@@ -38,8 +38,10 @@ Anything about *how*, for example:
 
 - style, look, story and game feel: send these to Marco or ChatGPT, in
   plain language, with one suggestion per question
-- earlier decisions by an owner: never override them silently; explain
-  why and ask
+- earlier decisions by an owner: never override them silently. If a technical
+  reason speaks against one (e.g. an owner left a config value empty on
+  purpose, and your task would need it filled), explain the reason and ask
+  before you change it.
 - anything that costs money, changes permissions or security, or cannot
   be undone (upload, publish, DataStore, API keys): an owner decides
 
@@ -104,6 +106,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - The Development Manager may merge PRs into branches other than `main` only after technical checks, acceptance review and applicable playtests pass for the current PR head. Recheck the live base and head before merging; bind the merge to the verified head SHA.
 - **Only humans merge PRs into `main`.** The Development Manager must hand off a ready PR and never merge it, enable auto-merge into `main`, or retarget it to bypass this rule. Subagents never merge any PR.
 - No force pushes, no history rewrites on shared branches.
+- **Fetch before every push.** Run `git fetch origin <branch>` and check `git log HEAD..origin/<branch>`. If the remote has a commit you did not make (e.g. an owner fixed something directly on an agent branch), do not overwrite it and do not rebase. Stop and report the commit SHA and author on the PR.
 - **Branch cleanup is the Development Manager's job** (`/cleanup`), not a GitHub setting. It deletes its merged issue branches locally and on GitHub:
   - directly after the merge, when no acceptance criterion of the PR waits for the END PLAYTEST;
   - otherwise only after the milestone's END PLAYTEST issue is closed with every item PASS.
@@ -121,6 +124,8 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - Code work may run in parallel. **Roblox Studio is shared and is used by one agent at a time** (the playtester).
 - A subagent only touches files inside the scope of its issue. If it needs to change something outside that scope, it stops and reports back.
 - the world builder Agent is not allowed to start a task, if the needed toolkit is not merged to the main branch yet.
+- **Check preconditions before you start.** At the start of every task, check what it needs: the MCP servers it uses are connected, the PRs or kits it builds on are merged to `main`, the required environment variables are set. Record each result (PASS/FAIL) in the issue or plan. If one fails, stop the steps that depend on it and report it. Never work around it: no copies from unmerged branches, no substitute tools, no guessed values.
+  - The world-builder never starts a world task while the kit it needs is not merged to `main`.
 
 ## 9. Roblox Studio and MCP
 
@@ -131,6 +136,7 @@ Never write scripts only inside Studio: anything not in Git does not exist.
 - The playtester is started from the main checkout on `main`, so its definition and hook always come from `main`, never from a Pull Request state. During Play it may set the Studio switches documented in an ADR (`game.ServerScriptService:SetAttribute`) and nothing else; its hook blocks every other change.
 - Never `require` a module from `execute_luau`: it starts a second instance of that module (e.g. a second DataService that loads a profile). Read state through the attributes documented in an ADR. The hook blocks every `require`, `getfenv` and `setfenv`; `.claude/hooks/test-guard-studio-luau.sh` is its regression test.
 - If the playtester cannot reach a state an acceptance criterion needs through input, the implementation adds a documented Studio switch for it, so the criterion can be tested without a person.
+- Attention! **MCP servers connect only when the session starts.** If a server is missing because a command is not in `PATH` or an environment variable is not set, ask for a full restart of VS Code after the fix. An `export` in the terminal does not reach a session that is already running.
 
 ## 10. Third-party assets
 
@@ -170,6 +176,14 @@ Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b98
 Record the decision in the same pull request as the implementation. In
 your report, mention it briefly with a link, so owners see it during
 review and can object.
+
+The full version of every plan and log lives in the repo (e.g. `docs/kits/<kit>-plan.md`). Notion only gets a short summary with a link to the file on GitHub. Never keep two full versions.
+
+- Every human intervention in a log gets one of three types:
+  - **Planned gate:** a step where this file says a human acts (see the gates section).
+  - **One-time setup:** something set up once that stays (installing a tool, setting a password, creating a label).
+  - **Unplanned intervention:** anything else a human had to do to keep the work going.
+  Only unplanned interventions count as candidates for automation.
 
 ## 13. Escalate to the humans when
 
