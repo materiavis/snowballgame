@@ -185,6 +185,14 @@ The full version of every plan and log lives in the repo (e.g. `docs/kits/<kit>-
   - **Unplanned intervention:** anything else a human had to do to keep the work going.
   Only unplanned interventions count as candidates for automation.
 
+
+**Plans and logs: full text in the repo, summary in Notion**
+
+- The full plan or log is a file in the repo (e.g. `docs/kits/<kit>-plan.md`). Edit it only there.
+- Notion gets a summary of at most 5 lines: goal, current status, open questions for the owners, link to the file on GitHub.
+- Write the summary as one sub-page per plan under Reports: https://app.notion.com/p/425c1165e2b980d9a02ce51ca81bcb93. When the status or the open questions change, update that sub-page instead of creating a new one.
+- Never copy tables, decisions or log entries into Notion. Link to them.
+
 ## 13. Escalate to the humans when
 
 - a spec in Notion contradicts itself or the code,
