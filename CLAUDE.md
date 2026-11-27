@@ -24,7 +24,7 @@ This repo holds the code and technical docs only. It is **not** the place for ga
 | Development reports | Notion |
 
 - If a requirement is unclear or missing, do **not** invent game design. Ask, or note the open question in the issue.
-- Your own memory or chat history is never a source of truth. If it matters, it belongs in Notion, an issue, "docs/adr/" or "docs/technical/".
+- Your own memory or chat history is never a source of truth. If it matters, it belongs in Notion, an issue, `docs/adr/` or `docs/technical/`.
 
 ### What you decide yourself
 Anything about *how*, for example:
@@ -154,15 +154,6 @@ A task is done when:
 
 For tooling/docs-only changes, an inapplicable formatting, lint, build or Studio check may be recorded as not applicable with a concrete reason. Feature work requires every applicable check; unavailable tooling is blocked, never a pass or an applicability exception.
 
-### What a decision contains
-
-Every decision includes:
-- the question
-- the decision
-- the reason, in 1–2 sentences
-- the rejected options
-- the source (issue or PR)
-
 ## 12. Reports
 
 After a feature is merged, the Development Manager writes a short report to Notion:
@@ -175,6 +166,15 @@ Reports belong in notion under this link: https://app.notion.com/p/40cc1165e2b98
 Record the decision in the same pull request as the implementation. In
 your report, mention it briefly with a link, so owners see it during
 review and can object.
+
+### What a decision contains
+
+Every decision includes:
+- the question
+- the decision
+- the reason, in 1–2 sentences
+- the rejected options
+- the source (issue or PR)
 
 - Every human intervention in a log gets one of three types:
   - **Planned gate:** a step where this file says a human acts (section 16).
